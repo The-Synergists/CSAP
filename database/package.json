@@ -1,0 +1,17 @@
+{
+  "name": "csap-database",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "tsx seeds/seed.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.115.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.13",
+    "typescript": "~6.0.2"
+  }
+}

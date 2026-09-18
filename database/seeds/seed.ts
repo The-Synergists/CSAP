@@ -6,25 +6,36 @@
  * violation) instead of silently. See supabase/migrations for the schema and
  * the plan doc for the full design rationale.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
-import { mockTenders, mockBids } from '../src/data/mockData';
-import type { Bid, Tender, VerificationStatus } from '../src/types';
+import { mockTenders, mockBids } from '../../frontend/src/data/mockData';
+import type { Bid, Tender, VerificationStatus } from '../../frontend/src/types';
 
 // --- minimal .env.local loader (no extra dependency for 3 lines of parsing) ---
 function loadEnvLocal() {
-  const raw = readFileSync(new URL('../.env.local', import.meta.url), 'utf8');
-  for (const line of raw.split(/\r?\n/)) {
-    const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
-    if (m) process.env[m[1]] = m[2];
+  const possiblePaths = [
+    new URL('../../.env.local', import.meta.url),
+    new URL('../.env.local', import.meta.url),
+    new URL('../../frontend/.env.local', import.meta.url),
+  ];
+  for (const envUrl of possiblePaths) {
+    if (existsSync(envUrl)) {
+      const raw = readFileSync(envUrl, 'utf8');
+      for (const line of raw.split(/\r?\n/)) {
+        const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+        if (m) process.env[m[1]] = m[2];
+      }
+      break;
+    }
   }
 }
 loadEnvLocal();
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  throw new Error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  console.error('Error: Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
+  process.exit(1);
 }
 
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
