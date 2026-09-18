@@ -20,6 +20,20 @@ ai_engine/
 └── README.md
 ```
 
+## OCR Engine — NVIDIA Nemotron OCR V2
+
+Document text extraction is exclusively powered by **[nemotron-ocr-v2](https://build.nvidia.com/nvidia/nemotron-ocr-v2)** via the NVIDIA NIM hosted API.
+
+| Setting | Environment Variable | Default |
+|---|---|---|
+| API Key (required) | `NVIDIA_API_KEY` | — |
+| Inference endpoint | `NEMOTRON_OCR_ENDPOINT` | `https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2/infer` |
+| Text merge level | `NEMOTRON_OCR_MERGE_LEVEL` | `paragraph` (`word` / `sentence` / `paragraph`) |
+
+Get your API key and test the model at **[build.nvidia.com/nvidia/nemotron-ocr-v2](https://build.nvidia.com/nvidia/nemotron-ocr-v2)**.
+
+When `NVIDIA_API_KEY` is not set or no image bytes are supplied, the extractor falls back to a deterministic keyword-seeded response so the rest of the verification pipeline keeps running.
+
 ## Quickstart
 
 ### 1. Create Virtual Environment
