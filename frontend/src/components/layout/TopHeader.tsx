@@ -297,7 +297,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-slate-700 font-medium"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-400" />
-                <span>Settings</span>
+                <span>Officer Authority & Profile</span>
               </button>
               <button
                 type="button"

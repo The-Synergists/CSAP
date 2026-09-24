@@ -1,56 +1,13 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
-
-import type {
-  Tender,
-  Bid,
-  Bidder,
-  OfficerDecisionRecord,
-  DashboardMetrics,
-} from '../types';
-
-import {
-  findTenderByIdOrSlug,
-  findBidById,
-} from '../types';
-
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import type { Tender, Bid, Bidder, OfficerDecisionRecord, DashboardMetrics } from '../types';
+import { findTenderByIdOrSlug, findBidById } from '../types';
 import { supabase } from '../lib/supabaseClient';
-
-import {
-  fetchTenders,
-  fetchBids,
-} from '../lib/procurementData';
-
-import {
-  mockTenders,
-  mockBids,
-} from '../data/mockData';
-
-
-/* =========================================================
-   TYPES
-========================================================= */
-
-interface VerificationStep {
-  name: string;
-  status:
-    | 'pending'
-    | 'in-progress'
-    | 'completed'
-    | 'flagged';
-}
+import { fetchTenders, fetchBids } from '../lib/procurementData';
 
 interface VerificationProgressState {
   isRunning: boolean;
   currentStep: number;
-  steps: VerificationStep[];
+  steps: { name: string; status: 'pending' | 'in-progress' | 'completed' | 'flagged' }[];
   completed: boolean;
 }
 
@@ -58,32 +15,21 @@ interface ProcurementContextType {
   tenders: Tender[];
   bids: Bid[];
   bidders: Bidder[];
-
   activeTenderId: string;
   activeBidId: string;
   activeBidderId: string;
-
   setActiveTenderId: (id: string) => void;
   setActiveBidId: (id: string) => void;
   setActiveBidderId: (id: string) => void;
-
   selectBid: (bidId: string, tenderId?: string) => void;
   selectTender: (tenderId: string) => void;
-
   activeTender: Tender | undefined;
   activeBid: Bid | undefined;
-  activeBidder: Bidder | undefined;
-
+  activeBidder: Bid | undefined;
   verificationProgress: VerificationProgressState;
-
   startAiVerification: (bidId: string) => Promise<void>;
-
-  submitOfficerDecision: (
-    decision: OfficerDecisionRecord
-  ) => Promise<void>;
-
+  submitOfficerDecision: (decision: OfficerDecisionRecord) => Promise<void>;
   metrics: DashboardMetrics;
-
   currentUser: {
     name: string;
     designation: string;
@@ -91,840 +37,292 @@ interface ProcurementContextType {
     badgeId: string;
     email: string;
   };
-
   isAuthenticated: boolean;
+  /** True once the initial Supabase session check has resolved (whichever way). Route
+   *  guards must wait for this before redirecting, or a hard reload of a deep link
+   *  races the async session check and always bounces to /login then /dashboard. */
   authChecked: boolean;
+  /** True once tenders/bids have been fetched at least once after login. Pages that list
+   *  across all tenders/bids (dashboard, tender/bid lists) gate rendering on this to avoid
+   *  a crash on a hard reload of a deep link, before the first fetch resolves. Note that
+   *  activeTender/activeBid are NOT auto-populated on load — the officer must explicitly
+   *  select a tender or bid; see selectTender/selectBid. */
   dataLoaded: boolean;
-
   logout: () => void;
 }
 
-
-/* =========================================================
-   VERIFICATION STEPS
-========================================================= */
-
-const initialVerificationSteps: VerificationStep[] = [
-  {
-    name: 'Documents OCR Extraction',
-    status: 'pending',
-  },
-  {
-    name: 'Government Registry Cross-Check',
-    status: 'pending',
-  },
-  {
-    name: 'EMD & Payment Reconciliation',
-    status: 'pending',
-  },
-  {
-    name: 'Tender Rule & Eligibility Evaluation',
-    status: 'pending',
-  },
-  {
-    name: 'Discrepancy Detection',
-    status: 'pending',
-  },
-  {
-    name: 'Compliance & Risk Calculation',
-    status: 'pending',
-  },
+const initialVerificationSteps = [
+  { name: 'Documents OCR Extraction', status: 'pending' as const },
+  { name: 'Government Registry Cross-Check (GSTN / MCA21)', status: 'pending' as const },
+  { name: 'EMD & Payment Gateway Reconciliation', status: 'pending' as const },
+  { name: 'Tender Rule & Eligibility Evaluation', status: 'pending' as const },
+  { name: 'Discrepancy & Deficit Detection', status: 'pending' as const },
+  { name: 'Compliance & Multi-Vector Risk Calculation', status: 'pending' as const },
 ];
 
+const EMPTY_USER = { name: '', designation: '', organization: '', badgeId: '', email: '' };
 
-/* =========================================================
-   DEFAULT USER
-========================================================= */
+const ProcurementContext = createContext<ProcurementContextType | undefined>(undefined);
 
-const EMPTY_USER = {
-  name: '',
-  designation: '',
-  organization: '',
-  badgeId: '',
-  email: '',
-};
-
-
-/* =========================================================
-   CONTEXT
-========================================================= */
-
-const ProcurementContext =
-  createContext<ProcurementContextType | undefined>(
-    undefined
-  );
-
-
-/* =========================================================
-   PROVIDER
-========================================================= */
-
-export const ProcurementProvider: React.FC<{
-  children: ReactNode;
-}> = ({ children }) => {
-
-  /* -------------------------------------------------------
-     DATA
-  ------------------------------------------------------- */
-
+export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
+  const [activeTenderId, setActiveTenderId] = useState<string>('');
+  const [activeBidId, _setActiveBidId] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState(EMPTY_USER);
 
-  /* -------------------------------------------------------
-     ACTIVE ITEMS
-  ------------------------------------------------------- */
+  const [verificationProgress, setVerificationProgress] = useState<VerificationProgressState>({
+    isRunning: false,
+    currentStep: 0,
+    steps: initialVerificationSteps,
+    completed: true,
+  });
+  // Synchronous guard against duplicate runs — React state updates (and the button's
+  // `disabled` prop) are async, so a rapid double-click/double-invoke can otherwise slip
+  // through before the first render reflects isRunning:true, each one writing its own
+  // full set of ai_verification_runs / gov_portal_verification_log / audit_events rows.
+  const verificationLockRef = useRef(false);
 
-  const [activeTenderId, setActiveTenderId] =
-    useState('');
-
-  const [activeBidId, setInternalActiveBidId] =
-    useState('');
-
-  /* -------------------------------------------------------
-     AUTH
-  ------------------------------------------------------- */
-
-  const [isAuthenticated, setIsAuthenticated] =
-    useState(false);
-
-  const [authChecked, setAuthChecked] =
-    useState(false);
-
-  const [dataLoaded, setDataLoaded] =
-    useState(false);
-
-  const [userId, setUserId] =
-    useState<string | null>(null);
-
-  const [currentUser, setCurrentUser] =
-    useState(EMPTY_USER);
-
-  /* -------------------------------------------------------
-     AI VERIFICATION
-  ------------------------------------------------------- */
-
-  const [verificationProgress, setVerificationProgress] =
-    useState<VerificationProgressState>({
-      isRunning: false,
-      currentStep: 0,
-      steps: initialVerificationSteps,
-      completed: true,
-    });
-
-  const verificationLockRef =
-    useRef(false);
-
-
-  /* =======================================================
-     AUTHENTICATION
-  ======================================================= */
-
+  // Auth session tracking
   useEffect(() => {
-
-    const syncDemoAuth = () => {
-
-      const loggedIn =
-        sessionStorage.getItem('csap_logged_in') === 'true';
-
-      setIsAuthenticated(loggedIn);
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
+      setUserId(data.session?.user.id ?? null);
       setAuthChecked(true);
-
-      if (loggedIn) {
-
-        setUserId('demo-procurement-officer');
-
-        setCurrentUser({
-          name: 'Procurement Officer',
-          designation: 'Procurement Officer',
-          organization:
-            'Chennai Petroleum Corporation Limited',
-          badgeId: 'CPCL-PROC-001',
-          email: 'officer@cpcl.co.in',
-        });
-
-      } else {
-
-        setUserId(null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setUserId(session?.user.id ?? null);
+      setAuthChecked(true);
+      if (!session) {
         setDataLoaded(false);
         setTenders([]);
         setBids([]);
         setCurrentUser(EMPTY_USER);
       }
-    };
-
-    syncDemoAuth();
-
-    window.addEventListener(
-      'csap-auth-change',
-      syncDemoAuth
-    );
-
-    return () => {
-      window.removeEventListener(
-        'csap-auth-change',
-        syncDemoAuth
-      );
-    };
-
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
-
-
-  /* =======================================================
-     LOAD PROCUREMENT DATA
-  ======================================================= */
 
   const reloadData = useCallback(async () => {
-
-    try {
-
-      const [tenderList, bidList] =
-        await Promise.all([
-          fetchTenders(),
-          fetchBids(),
-        ]);
-
-      setTenders(
-        tenderList.length
-          ? tenderList
-          : mockTenders
-      );
-
-      setBids(
-        bidList.length
-          ? bidList
-          : mockBids
-      );
-
-    } catch (error) {
-
-      console.warn(
-        'Live procurement data unavailable. Using prototype data.',
-        error
-      );
-
-      setTenders(mockTenders);
-      setBids(mockBids);
-
-    } finally {
-
-      setDataLoaded(true);
-    }
-
+    const [tenderList, bidList] = await Promise.all([fetchTenders(), fetchBids()]);
+    setTenders(tenderList);
+    setBids(bidList);
+    // Deliberately no auto-selection here: the officer must explicitly pick a tender/bid
+    // (from the Dashboard, Tenders list, or search) rather than landing on one by default.
+    setDataLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
+  // Load profile + domain data once authenticated
   useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+    supabase
+      .from('profiles')
+      .select('full_name, designation, organization, badge_id, email')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setCurrentUser({
+            name: data.full_name ?? '',
+            designation: data.designation ?? '',
+            organization: data.organization ?? '',
+            badgeId: data.badge_id ?? '',
+            email: data.email ?? '',
+          });
+        }
+      });
+    reloadData().catch((err) => console.error('reloadData failed:', err));
+  }, [isAuthenticated, userId, reloadData]);
 
-    if (!isAuthenticated) {
-      return;
-    }
-
-    reloadData().catch((error) => {
-      console.error(
-        'Failed to load procurement data:',
-        error
-      );
-    });
-
-  }, [isAuthenticated, reloadData]);
-
-
-  /* =======================================================
-     ACTIVE TENDER / BID
-  ======================================================= */
-
-  const activeTender = activeTenderId
-    ? findTenderByIdOrSlug(
-        tenders,
-        activeTenderId
-      )
-    : undefined;
-
-  const activeBid = activeBidId
-    ? findBidById(
-        bids,
-        activeBidId
-      )
-    : undefined;
-
-  /*
-   * In this prototype, bidder workspace is connected
-   * to the selected bid.
-   */
-  const activeBidder =
-    activeBid as unknown as Bidder | undefined;
-
-
-  /* =======================================================
-     SELECT BID
-  ======================================================= */
+  // No fallback to tenders[0]/bids[0]: until the officer explicitly selects a case,
+  // there is no active tender or bid.
+  const activeTender = activeTenderId ? findTenderByIdOrSlug(tenders, activeTenderId) : undefined;
+  const activeBid = activeBidId ? findBidById(bids, activeBidId) : undefined;
+  const activeBidder = activeBid;
 
   const setActiveBidId = (id: string) => {
-
-    setInternalActiveBidId(id);
-
-    const found =
-      findBidById(bids, id);
-
-    if (found?.tenderId) {
-      setActiveTenderId(found.tenderId);
-    }
+    _setActiveBidId(id);
+    const found = findBidById(bids, id);
+    if (found && found.tenderId) setActiveTenderId(found.tenderId);
   };
+  const setActiveBidderId = setActiveBidId;
 
-
-  const setActiveBidderId =
-    (id: string) => {
-      setActiveBidId(id);
-    };
-
-
-  const selectBid = (
-    bidId: string,
-    tenderId?: string
-  ) => {
-
-    setInternalActiveBidId(bidId);
-
+  const selectBid = (bidId: string, tenderId?: string) => {
+    _setActiveBidId(bidId);
     if (tenderId) {
-
       setActiveTenderId(tenderId);
-      return;
-    }
-
-    const found =
-      findBidById(
-        bids,
-        bidId
-      );
-
-    if (found?.tenderId) {
-      setActiveTenderId(
-        found.tenderId
-      );
+    } else {
+      const found = findBidById(bids, bidId);
+      if (found && found.tenderId) setActiveTenderId(found.tenderId);
     }
   };
 
-
-  /* =======================================================
-     SELECT TENDER
-  ======================================================= */
-
-  const selectTender = (
-    tenderId: string
-  ) => {
-
-    setActiveTenderId(tenderId);
-  };
-
-
-  /* =======================================================
-     LOGOUT
-  ======================================================= */
+  const selectTender = (tenderId: string) => setActiveTenderId(tenderId);
 
   const logout = () => {
-
-    sessionStorage.removeItem(
-      'csap_logged_in'
-    );
-
-    setIsAuthenticated(false);
-    setAuthChecked(true);
-
-    setDataLoaded(false);
-
-    setTenders([]);
-    setBids([]);
-
-    setActiveTenderId('');
-    setInternalActiveBidId('');
-
-    setCurrentUser(EMPTY_USER);
-    setUserId(null);
-
-    window.dispatchEvent(
-      new Event('csap-auth-change')
-    );
+    supabase.auth.signOut();
   };
 
-
-  /* =======================================================
-     AI VERIFICATION
-  ======================================================= */
-
-  const startAiVerification = async (
-    targetBidId: string
-  ) => {
-
-    if (verificationLockRef.current) {
-      return;
-    }
-
+  const startAiVerification = async (targetBidId: string) => {
+    if (!userId || verificationLockRef.current) return;
     verificationLockRef.current = true;
-
     try {
-
-      await runAiVerification(
-        targetBidId
-      );
-
+      await runAiVerification(targetBidId);
     } finally {
-
       verificationLockRef.current = false;
     }
   };
 
-
-  const runAiVerification = async (
-    targetBidId: string
-  ) => {
-
-    const bid =
-      findBidById(
-        bids,
-        targetBidId
-      );
-
-
-    /* -----------------------------------------------------
-       Create verification run
-    ----------------------------------------------------- */
-
-    let runId: string | null = null;
-
-    if (userId) {
-
-      const {
-        data: run,
-        error: runErr,
-      } = await supabase
-        .from('ai_verification_runs')
-        .insert({
-          bid_id: targetBidId,
-          initiated_by: userId,
-          status: 'RUNNING',
-          steps: initialVerificationSteps,
-        })
-        .select('id')
-        .single();
-
-      if (runErr) {
-        console.warn(
-          'Could not create AI verification run:',
-          runErr
-        );
-      } else if (run) {
-        runId = run.id;
-      }
-    }
-
-
-    /* -----------------------------------------------------
-       Start UI progress
-    ----------------------------------------------------- */
+  const runAiVerification = async (targetBidId: string) => {
+    const { data: run, error: runErr } = await supabase
+      .from('ai_verification_runs')
+      .insert({ bid_id: targetBidId, initiated_by: userId, status: 'RUNNING', steps: initialVerificationSteps })
+      .select('id')
+      .single();
+    if (runErr) throw runErr;
 
     setVerificationProgress({
       isRunning: true,
       currentStep: 0,
-      steps: initialVerificationSteps.map(
-        (step, index) => ({
-          ...step,
-          status:
-            index === 0
-              ? 'in-progress'
-              : 'pending',
-        })
-      ),
+      steps: initialVerificationSteps.map((s, idx) => ({ ...s, status: idx === 0 ? 'in-progress' : 'pending' })),
       completed: false,
     });
 
+    const bid = findBidById(bids, targetBidId);
+    let finalSteps: VerificationProgressState['steps'] = initialVerificationSteps;
 
-    /* -----------------------------------------------------
-       Run each step
-    ----------------------------------------------------- */
+    for (let step = 0; step < initialVerificationSteps.length; step++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-    let finalSteps: VerificationStep[] =
-      initialVerificationSteps.map(
-        (step) => ({
-          ...step,
-          status: 'pending',
-        })
-      );
-
-
-    for (
-      let stepIndex = 0;
-      stepIndex < initialVerificationSteps.length;
-      stepIndex++
-    ) {
-
-      await new Promise<void>(
-        (resolve) =>
-          setTimeout(resolve, 500)
-      );
-
-
-      /* ---------------------------------------------------
-         Government registry simulation
-      --------------------------------------------------- */
-
-      if (
-        stepIndex === 1 &&
-        bid &&
-        runId
-      ) {
-
-        const now =
-          new Date().toISOString();
-
-        const makeLog = (
-          portal: string,
-          checkType: string,
-          field: string,
-          value: string
-        ) => ({
-          ai_verification_run_id:
-            runId,
-
-          portal_code:
-            portal,
-
-          check_type:
-            checkType,
-
-          requested_at:
-            now,
-
-          responded_at:
-            now,
-
-          request_payload: {
-            [field]: value,
-          },
-
-          response_payload: {
-            status: 'VERIFIED',
-            source:
-              `${portal} (simulated)`,
-          },
-
-          result_status:
-            'VERIFIED',
+      if (step === 1 && bid) {
+        // Government Registry Cross-Check — simulate the 5 registry portal calls.
+        const now = new Date().toISOString();
+        const canned = (portal: string, checkType: string, field: string, value: string) => ({
+          ai_verification_run_id: run.id,
+          portal_code: portal,
+          check_type: checkType,
+          requested_at: now,
+          responded_at: now,
+          request_payload: { [field]: value },
+          response_payload: { status: 'VERIFIED', source: `${portal} (simulated)` },
+          result_status: 'VERIFIED',
         });
-
-
-        try {
-
-          await supabase
-            .from(
-              'gov_portal_verification_log'
-            )
-            .insert([
-              makeLog(
-                'GSTN',
-                'GSTIN_STATUS',
-                'gstin',
-                bid.gstin
-              ),
-
-              makeLog(
-                'UDYAM',
-                'UDYAM_STATUS',
-                'udyam_number',
-                bid.udyamNumber
-              ),
-
-              makeLog(
-                'EPFO',
-                'EPFO_ECR',
-                'gstin',
-                bid.gstin
-              ),
-
-              makeLog(
-                'ESIC',
-                'ESIC_ECR',
-                'gstin',
-                bid.gstin
-              ),
-
-              makeLog(
-                'INCOME_TAX',
-                'ITR_FILING_STATUS',
-                'pan',
-                bid.pan
-              ),
-            ]);
-
-        } catch (error) {
-
-          console.warn(
-            'Government verification logging failed:',
-            error
-          );
-        }
+        await supabase.from('gov_portal_verification_log').insert([
+          canned('GSTN', 'GSTIN_STATUS', 'gstin', bid.gstin),
+          canned('UDYAM', 'UDYAM_STATUS', 'udyam_number', bid.udyamNumber),
+          canned('EPFO', 'EPFO_ECR', 'gstin', bid.gstin),
+          canned('ESIC', 'ESIC_ECR', 'gstin', bid.gstin),
+          canned('INCOME_TAX', 'ITR_FILING_STATUS', 'pan', bid.pan),
+        ]);
+      }
+      if (step === 2 && bid) {
+        // EMD & Payment Gateway Reconciliation
+        const now = new Date().toISOString();
+        await supabase.from('gov_portal_verification_log').insert({
+          ai_verification_run_id: run.id,
+          portal_code: 'BANK_TREASURY_SFMS',
+          check_type: 'EMD_RECONCILIATION',
+          requested_at: now,
+          responded_at: now,
+          request_payload: { transaction_or_bg_no: bid.emd?.transactionOrBgNo ?? '' },
+          response_payload: { status: bid.verificationsSummary.emd, source: 'BANK_TREASURY_SFMS (simulated)' },
+          result_status: bid.verificationsSummary.emd,
+        });
       }
 
-
-      /* ---------------------------------------------------
-         Update progress
-      --------------------------------------------------- */
-
-      const updatedSteps: VerificationStep[] =
-        initialVerificationSteps.map(
-          (item, index) => {
-
-            if (index < stepIndex) {
-
-              return {
-                ...item,
-                status: 'completed',
-              };
-            }
-
-            if (index === stepIndex) {
-
-              return {
-                ...item,
-                status:
-                  stepIndex ===
-                  initialVerificationSteps.length - 1
-                    ? 'completed'
-                    : 'in-progress',
-              };
-            }
-
-            return {
-              ...item,
-              status: 'pending',
-            };
-          }
-        );
-
-
-      finalSteps = updatedSteps;
-
-
-      setVerificationProgress({
-        isRunning: true,
-        currentStep: stepIndex + 1,
-        steps: updatedSteps,
-        completed:
-          stepIndex ===
-          initialVerificationSteps.length - 1,
+      setVerificationProgress((prev) => {
+        const isFlagged =
+          (step === 4 && targetBidId === 'BID-001') ||
+          (step === 3 && targetBidId === 'BID-002') ||
+          ((step === 2 || step === 4) && targetBidId === 'BID-003');
+        const nextSteps = prev.steps.map((s, idx) => {
+          // A step already marked 'flagged' by an earlier iteration must stay flagged —
+          // don't let this iteration's blanket "everything before `step` is completed" pass overwrite it.
+          if (idx < step) return { ...s, status: s.status === 'flagged' ? s.status : ('completed' as const) };
+          if (idx === step) return { ...s, status: isFlagged ? ('flagged' as const) : ('completed' as const) };
+          if (idx === step + 1) return { ...s, status: 'in-progress' as const };
+          return s;
+        });
+        finalSteps = nextSteps;
+        return { ...prev, currentStep: step + 1, steps: nextSteps };
       });
     }
 
+    await supabase
+      .from('ai_verification_runs')
+      .update({ status: 'COMPLETED', completed_at: new Date().toISOString(), steps: finalSteps })
+      .eq('id', run.id);
 
-    /* -----------------------------------------------------
-       Complete Supabase run
-    ----------------------------------------------------- */
-
-    if (runId) {
-
-      try {
-
-        await supabase
-          .from('ai_verification_runs')
-          .update({
-            status: 'COMPLETED',
-            completed_at:
-              new Date().toISOString(),
-            steps: finalSteps,
-          })
-          .eq('id', runId);
-
-      } catch (error) {
-
-        console.warn(
-          'Could not update verification run:',
-          error
-        );
-      }
-    }
-
-
-    /* -----------------------------------------------------
-       Audit event
-    ----------------------------------------------------- */
-
-    try {
-
-      await supabase
-        .from('audit_events')
-        .insert({
-          bid_id: targetBidId,
-          tender_id: bid?.tenderId ?? null,
-          actor_profile_id: null,
-          actor_display_name:
-            'CSAP Verification Engine',
-          actor_role:
-            'Automated Service',
-          action_type:
-            'SYSTEM_AI',
-          summary:
-            'AI verification pipeline completed',
-          details:
-            'Government registry and compliance checks completed.',
-        });
-
-    } catch (error) {
-
-      console.warn(
-        'Audit event could not be created:',
-        error
-      );
-    }
-
-
-    /* -----------------------------------------------------
-       Final UI state
-    ----------------------------------------------------- */
-
-    setVerificationProgress({
-      isRunning: false,
-      currentStep:
-        initialVerificationSteps.length,
-      steps: finalSteps,
-      completed: true,
+    await supabase.from('audit_events').insert({
+      bid_id: targetBidId,
+      tender_id: bid?.tenderId,
+      actor_profile_id: null,
+      actor_display_name: 'CSAP Verification Engine',
+      actor_role: 'Automated Service',
+      action_type: 'SYSTEM_AI',
+      summary: 'AI verification pipeline completed',
+      details: 'Simulated government registry cross-check, EMD reconciliation, and compliance scoring completed.',
     });
 
-
+    setVerificationProgress((prev) => ({ ...prev, isRunning: false, completed: true }));
     await reloadData();
   };
 
-
-  /* =======================================================
-     OFFICER DECISION
-  ======================================================= */
-
-  const submitOfficerDecision = async (
-    decision: OfficerDecisionRecord
-  ) => {
-
-    const targetId =
-      decision.bidId ||
-      decision.bidderId;
-
-    const { error } =
-      await supabase.rpc(
-        'submit_officer_decision',
-        {
-          p_bid_id: targetId,
-          p_decision:
-            decision.decision,
-          p_remarks:
-            decision.remarks,
-          p_justification_reason:
-            decision.justificationReason,
-          p_conditions_applied:
-            decision.conditionsApplied ??
-            null,
-        }
-      );
-
-    if (error) {
-      throw error;
-    }
-
+  const submitOfficerDecision = async (decision: OfficerDecisionRecord) => {
+    const targetId = decision.bidId || decision.bidderId;
+    const { error } = await supabase.rpc('submit_officer_decision', {
+      p_bid_id: targetId,
+      p_decision: decision.decision,
+      p_remarks: decision.remarks,
+      p_justification_reason: decision.justificationReason,
+      p_conditions_applied: decision.conditionsApplied ?? null,
+    });
+    if (error) throw error;
     await reloadData();
   };
-
-
-  /* =======================================================
-     DASHBOARD METRICS
-  ======================================================= */
 
   const metrics: DashboardMetrics = {
-
-    activeTenders:
-      tenders.filter(
-        (tender) =>
-          tender.status !== 'AWARDED' &&
-          tender.status !== 'CANCELLED'
-      ).length,
-
-    bidsUnderVerification:
-      bids.length,
-
-    fullyCompliant:
-      bids.filter(
-        (bid) =>
-          bid.overallComplianceScore >= 95
-      ).length,
-
-    pendingReviews:
-      bids.filter(
-        (bid) =>
-          !bid.officerDecision
-      ).length,
-
-    highRisk:
-      bids.filter(
-        (bid) =>
-          bid.riskLevel === 'HIGH' ||
-          bid.riskLevel === 'CRITICAL'
-      ).length,
-
-    averageCompliance:
-      Math.round(
-        bids.reduce(
-          (sum, bid) =>
-            sum +
-            bid.overallComplianceScore,
-          0
-        ) /
-          (bids.length || 1)
-      ),
+    activeTenders: tenders.filter((t) => t.status !== 'AWARDED' && t.status !== 'CANCELLED').length,
+    bidsUnderVerification: bids.length,
+    fullyCompliant: bids.filter((b) => b.overallComplianceScore >= 95).length,
+    pendingReviews: bids.filter((b) => !b.officerDecision).length,
+    highRisk: bids.filter((b) => b.riskLevel === 'HIGH' || b.riskLevel === 'CRITICAL').length,
+    averageCompliance: Math.round(
+      bids.reduce((sum, b) => sum + b.overallComplianceScore, 0) / (bids.length || 1)
+    ),
   };
-
-
-  /* =======================================================
-     PROVIDER
-  ======================================================= */
 
   return (
     <ProcurementContext.Provider
       value={{
         tenders,
         bids,
-
-        /*
-         * The existing prototype treats the selected bid
-         * as the bidder workspace record.
-         */
-        bidders:
-          bids as unknown as Bidder[],
-
+        bidders: bids,
         activeTenderId,
         activeBidId,
-        activeBidderId:
-          activeBidId,
-
+        activeBidderId: activeBidId,
         setActiveTenderId,
         setActiveBidId,
         setActiveBidderId,
-
         selectBid,
         selectTender,
-
         activeTender,
         activeBid,
         activeBidder,
-
         verificationProgress,
-
         startAiVerification,
-
         submitOfficerDecision,
-
         metrics,
-
         currentUser,
-
         isAuthenticated,
         authChecked,
         dataLoaded,
-
         logout,
       }}
     >
@@ -933,24 +331,10 @@ export const ProcurementProvider: React.FC<{
   );
 };
 
-
-/* =========================================================
-   HOOK
-========================================================= */
-
 export const useProcurement = () => {
-
-  const context =
-    useContext(
-      ProcurementContext
-    );
-
+  const context = useContext(ProcurementContext);
   if (!context) {
-
-    throw new Error(
-      'useProcurement must be used within a ProcurementProvider'
-    );
+    throw new Error('useProcurement must be used within a ProcurementProvider');
   }
-
   return context;
 };

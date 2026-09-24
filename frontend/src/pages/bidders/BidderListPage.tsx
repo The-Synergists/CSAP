@@ -30,14 +30,14 @@ export const BidderListPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Registered Bidders Directory
+            Bid Scrutiny & Evaluation Queue
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Cross-tender bidder profiles, compliance history, and verification standings
+            Cross-tender bid submissions, pre-qualification criteria (PQC), and statutory verification standings
           </p>
         </div>
         <span className="text-xs font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-          Total Bidders: {bids.length}
+          Total Submissions: {bids.length}
         </span>
       </div>
 
@@ -124,7 +124,7 @@ export const BidderListPage: React.FC = () => {
                       }}
                       className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold inline-flex items-center gap-1 transition-colors"
                     >
-                      <span>Inspect Bidder</span>
+                      <span>Scrutinize Bid</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </td>

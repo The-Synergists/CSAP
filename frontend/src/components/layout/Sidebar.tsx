@@ -3,13 +3,13 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
-  Users,
+  ClipboardCheck,
   CheckSquare,
   AlertTriangle,
   BarChart3,
   History,
-  Settings,
   Shield,
+  Scale,
 } from 'lucide-react';
 import { useProcurement } from '../../context/ProcurementContext';
 import { getActiveAlerts } from '../../utils/alerts';
@@ -81,9 +81,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
               <FileText className="w-4 h-4 text-slate-400" />
               <span>Tenders</span>
             </NavLink>
-            <NavLink to="/bidders" className={navItemClass} onClick={() => setIsOpen(false)}>
-              <Users className="w-4 h-4 text-slate-400" />
-              <span>Bidders</span>
+            <NavLink to="/bids" className={navItemClass} onClick={() => setIsOpen(false)}>
+              <ClipboardCheck className="w-4 h-4 text-slate-400" />
+              <span>Bid Scrutiny</span>
             </NavLink>
           </div>
 
@@ -126,8 +126,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
               <span>Audit Trail</span>
             </NavLink>
             <NavLink to="/settings" className={navItemClass} onClick={() => setIsOpen(false)}>
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span>Settings</span>
+              <Scale className="w-4 h-4 text-slate-400" />
+              <span>Officer Authority</span>
             </NavLink>
           </div>
         </nav>

@@ -108,6 +108,7 @@ export const BidderWorkspacePage: React.FC = () => {
   const [officerRemarks, setOfficerRemarks] = useState('');
   const [justificationReason, setJustificationReason] = useState('');
   const [decisionSubmitted, setDecisionSubmitted] = useState(false);
+  const [dscSignConfirmed, setDscSignConfirmed] = useState(true);
 
   // Document Viewer State
   const [viewingDocument, setViewingDocument] = useState<BidderDocument | null>(null);
@@ -187,12 +188,13 @@ export const BidderWorkspacePage: React.FC = () => {
       bidderId: currentBidder.id,
       bidId: currentBidder.id,
       decision: selectedDecision,
-      officerName: currentUser.name,
-      officerDesignation: currentUser.designation,
+      officerName: currentUser.name || 'R. Ramanathan',
+      officerDesignation: currentUser.designation || 'Senior Procurement Officer',
       timestamp: new Date().toLocaleString('en-IN'),
       remarks: officerRemarks,
       justificationReason,
-      dscSigned: false,
+      dscSigned: dscSignConfirmed,
+      dscTokenId: dscSignConfirmed ? 'CPCL-USB-DSC-88192' : undefined,
     });
     setDecisionModalOpen(false);
     setDecisionSubmitted(true);
@@ -861,33 +863,59 @@ export const BidderWorkspacePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {currentBidder.complianceItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-600">{item.id}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-900">{item.requirementName}</td>
-                    <td className="py-3 px-4">
-                      <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <StatusBadge status={item.status} size="sm" />
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 max-w-sm">{item.notes}</td>
-                    <td className="py-3 px-4 text-right">
-                      {item.evidenceId && (
-                        <button
-                          type="button"
-                          onClick={() => handleTabChange('evidence')}
-                          className="px-2 py-1 text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded inline-flex items-center gap-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Evidence</span>
-                        </button>
+                {currentBidder.complianceItems.map((item) => {
+                  const ev = item.evidenceId
+                    ? currentBidder.evidenceItems.find(
+                        (e) => e.id === item.evidenceId || e.requirementTitle.toLowerCase() === item.requirementName.toLowerCase()
+                      )
+                    : null;
+                  return (
+                    <React.Fragment key={item.id}>
+                      <tr className="hover:bg-slate-50">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-600">{item.id}</td>
+                        <td className="py-3 px-4 font-semibold text-slate-900">{item.requirementName}</td>
+                        <td className="py-3 px-4">
+                          <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <StatusBadge status={item.status} size="sm" />
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 max-w-sm">{item.notes}</td>
+                        <td className="py-3 px-4 text-right">
+                          {item.evidenceId && (
+                            <button
+                              type="button"
+                              onClick={() => handleTabChange('evidence')}
+                              className="px-2 py-1 text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded inline-flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>View Dossier</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {ev && (
+                        <tr className="bg-amber-50/40">
+                          <td colSpan={6} className="px-4 py-2 border-b border-amber-200">
+                            <div className="flex items-start gap-2 text-xs">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <span className="font-semibold text-amber-900 text-[11px]">
+                                  Flagged Scrutiny Finding: {ev.aiFinding}
+                                </span>
+                                <div className="mt-0.5 font-mono text-[11px] text-slate-800 bg-white px-2 py-1 rounded border border-amber-200 inline-block max-w-3xl">
+                                  <strong className="text-amber-800">{ev.submittedDocumentName}:</strong> {ev.documentSnippet}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1327,12 +1355,25 @@ export const BidderWorkspacePage: React.FC = () => {
                 />
               </div>
 
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between text-[11px]">
-                <div>
-                  <span className="font-semibold text-slate-800">Recorded By: </span>
-                  <span className="text-slate-600">{currentUser.name} ({currentUser.designation})</span>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded space-y-2 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-slate-800">Scrutiny Officer: </span>
+                    <span className="text-slate-600">{currentUser.name || 'R. Ramanathan'} ({currentUser.designation || 'Senior Procurement Officer'})</span>
+                  </div>
+                  <span className="text-slate-400 font-mono">CPCL-PROC-4892</span>
                 </div>
-                <span className="text-slate-500">Will be added to the audit trail</span>
+                <label className="flex items-center gap-2 pt-1 border-t border-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={dscSignConfirmed}
+                    onChange={(e) => setDscSignConfirmed(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-slate-700 font-medium">
+                    Digitally sign & seal determination via Class-3 DSC Token (<span className="font-mono text-blue-700 font-semibold">CPCL-USB-DSC-88192</span>)
+                  </span>
+                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
