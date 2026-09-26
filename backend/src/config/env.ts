@@ -10,17 +10,21 @@ const required = (...names: string[]): string => {
   throw new Error(`Missing environment variable ${names[0]} (see backend/.env.example)`);
 };
 
+// On Vercel the engine and PAN API are Python functions in the same project, reached through
+// the project's production domain (set automatically by Vercel).
+const vercelBase = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null;
+
 export const config = {
   port: Number(process.env.PORT ?? 5000),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   supabaseUrl: required('SUPABASE_URL', 'VITE_SUPABASE_URL'),
   supabaseAnonKey: required('SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY'),
   supabaseServiceRoleKey: required('SUPABASE_SERVICE_ROLE_KEY'),
-  aiEngineUrl: process.env.AI_ENGINE_URL ?? 'http://localhost:8000',
+  aiEngineUrl: process.env.AI_ENGINE_URL ?? (vercelBase ? `${vercelBase}/api/engine` : 'http://localhost:8000'),
   /** Shared secret the engine requires on every call (protects the NVIDIA-backed endpoints). */
   engineApiKey: process.env.ENGINE_API_KEY ?? '',
   /** Dummy PAN Verification API (pan_api/) — an external service from CSAP's point of view. */
-  panApiUrl: process.env.PAN_API_URL ?? 'http://localhost:8100',
+  panApiUrl: process.env.PAN_API_URL ?? (vercelBase ? `${vercelBase}/api/pan-registry` : 'http://localhost:8100'),
   panApiKey: process.env.PAN_API_KEY ?? 'csap-demo-pan-key',
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),
 };
