@@ -10,9 +10,9 @@
     "api/pan.py": { "maxDuration": 15, "includeFiles": "pan_api/{app.py,data/**}" }
   },
   "rewrites": [
-    { "source": "/api/engine/:path*", "destination": "/api/engine" },
-    { "source": "/api/pan-registry/:path*", "destination": "/api/pan" },
-    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/api/engine/:route*", "destination": "/api/engine" },
+    { "source": "/api/pan-registry/:route*", "destination": "/api/pan" },
+    { "source": "/api/:route*", "destination": "/api/index" },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }
