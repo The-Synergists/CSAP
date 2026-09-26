@@ -66,16 +66,8 @@ const fileToBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
-  const [preview, setPreview] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    api.documentUrl(run.document.path).then((r) => active && setPreview(r.url)).catch(() => active && setPreview(null));
-    return () => {
-      active = false;
-    };
-  }, [run.document.path]);
-
+/** Full stage-by-stage record (OCR text, model output, API request/response), shown on demand. */
+const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string | null }> = ({ run, preview }) => {
   const ocr = run.ocr;
   const ex = run.extraction;
   const failedAt = run.status === 'FAILED';
@@ -195,6 +187,168 @@ const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
         ) : null}
       </Stage>
     </ol>
+  );
+};
+
+type Step = { label: string; done: (r: DocumentVerificationRun) => boolean; active: (r: DocumentVerificationRun) => boolean };
+const STEPS: Step[] = [
+  { label: 'Document', done: () => true, active: (r) => r.status === 'QUEUED' },
+  { label: 'NVIDIA OCR', done: (r) => !!r.ocr, active: (r) => r.status === 'OCR_RUNNING' },
+  { label: 'Extraction', done: (r) => !!r.extraction, active: (r) => r.status === 'EXTRACTING' },
+  { label: 'PAN Registry API', done: (r) => !!r.apiResponse, active: (r) => r.status === 'CALLING_API' },
+  { label: 'Result', done: (r) => !!r.comparison, active: () => false },
+];
+
+/** Compact progress line: each step ticks off live as the pipeline advances. */
+const StepStrip: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
+  const failed = run.status === 'FAILED';
+  const firstOpen = STEPS.findIndex((st) => !st.done(run));
+  return (
+    <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" aria-label="Verification progress">
+      {STEPS.map((step, i) => {
+        const state: StageState = step.done(run)
+          ? 'done'
+          : failed && i === firstOpen
+            ? 'failed'
+            : !failed && (step.active(run) || i === firstOpen)
+              ? 'running'
+              : 'pending';
+        return (
+          <li key={step.label} className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5">
+              {ICON[state]}
+              <span className={state === 'pending' ? 'text-slate-400' : state === 'failed' ? 'font-semibold text-rose-700' : 'font-semibold text-slate-800'}>
+                {step.label}
+              </span>
+            </span>
+            {i < STEPS.length - 1 && <span aria-hidden className="text-slate-300">→</span>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div>
+    <dt className="text-[11px] font-semibold uppercase text-slate-500">{label}</dt>
+    <dd className="mt-0.5 font-semibold text-slate-900">{children}</dd>
+  </div>
+);
+
+const dash = <span className="text-slate-400">—</span>;
+
+/** What the officer needs: which document, what was read, what the registry says, and the verdict. */
+const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    api
+      .documentUrl(run.document.path)
+      .then((r) => active && setPreview(r.url))
+      .catch(() => active && setPreview(null));
+    return () => {
+      active = false;
+    };
+  }, [run.document.path]);
+
+  const fields = run.extraction?.fields;
+  const body = (run.apiResponse?.body ?? {}) as Record<string, unknown>;
+  const finished = run.status === 'COMPLETED' || run.status === 'FAILED';
+
+  return (
+    <div className="space-y-4">
+      <Card
+        title="Verification result"
+        actions={
+          run.verdict ? (
+            <Badge tone={PAN_VERDICT[run.verdict].tone} dot>
+              {PAN_VERDICT[run.verdict].label}
+            </Badge>
+          ) : !finished ? (
+            <Badge tone="info" dot>
+              Verifying…
+            </Badge>
+          ) : undefined
+        }
+      >
+        <div aria-live="polite" className="space-y-4">
+          <StepStrip run={run} />
+
+          <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+            {preview ? (
+              <a href={preview} target="_blank" rel="noreferrer" className="block self-start overflow-hidden rounded border border-slate-200" title="Open document">
+                <img src={preview} alt={`Uploaded document ${run.document.fileName}`} className="w-full" />
+              </a>
+            ) : (
+              <div className="flex h-24 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-400">Preview unavailable</div>
+            )}
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-500">
+                <span className="font-medium text-slate-700">{run.document.fileName}</span> · {run.document.source.replace('_', ' ')} · checked{' '}
+                {formatDateTime(run.startedAt)}
+              </p>
+              <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Field label="PAN on document">{fields?.pan ? <span className="font-mono">{fields.pan}</span> : dash}</Field>
+                <Field label="Name on document">{fields?.name ?? dash}</Field>
+                <Field label="Registry status">{body.status ? String(body.status).replace('_', ' ') : dash}</Field>
+                <Field label="Registered to">{(body.registered_name as string | undefined) ?? dash}</Field>
+              </dl>
+              {run.comparison && <p className="text-slate-800">{run.comparison.summary}</p>}
+              {run.status === 'FAILED' && (
+                <p className="flex items-start gap-1.5 text-rose-700">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Verification stopped: {run.error}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {run.comparison && (
+            <div className="relative overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-xs">
+                <thead className="border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2">Field</th>
+                    <th className="px-3 py-2">Document</th>
+                    <th className="px-3 py-2">PAN registry</th>
+                    <th className="px-3 py-2">Bid record</th>
+                    <th className="px-3 py-2">Result</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {run.comparison.rows
+                    .filter((r) => r.field !== 'Category')
+                    .map((r) => (
+                      <tr key={r.field} className="align-top">
+                        <td className="px-3 py-2 text-slate-600">{r.field}</td>
+                        <td className="px-3 py-2 font-mono text-slate-900">{r.document ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono text-slate-900">{r.apiRegistry ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono text-slate-900">{r.bidderRecord ?? '—'}</td>
+                        <td className="px-3 py-2">
+                          <Badge tone={r.result === 'MATCH' ? 'success' : r.result === 'MISMATCH' ? 'danger' : 'neutral'}>
+                            {r.result.replace('_', ' ').toLowerCase()}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-500">Advisory result. The officer decides how it affects the bid.</p>
+        </div>
+      </Card>
+
+      <details className="rounded-md border border-slate-200 bg-white shadow-2xs">
+        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50">
+          Show technical details
+          <span className="ml-2 font-normal normal-case tracking-normal text-slate-500">OCR text, model output, API request and response</span>
+        </summary>
+        <div className="border-t border-slate-200 p-4">
+          <TechnicalDetails run={run} preview={preview} />
+        </div>
+      </details>
+    </div>
   );
 };
 
