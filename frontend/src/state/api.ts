@@ -4,6 +4,17 @@
 import type { Database, DecisionType, DocumentVerificationRun, PortalVerification } from '@shared/domain/types';
 import type { VerificationRun } from '@shared/domain/verification';
 
+/** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
+export type RegistryAnswer = Omit<PortalVerification, 'id' | 'runId' | 'bidId' | 'checkedAt'>;
+
+export interface GstinProviderStatus {
+  provider: string;
+  configured: boolean;
+  cacheDays: number;
+  cachedAnswers: number;
+  usage: { ok: boolean; credits_used?: number; total_calls?: number; code?: string | null; message?: string } | null;
+}
+
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 const SESSION_KEY = 'csap.api-session.v1';
 
@@ -124,5 +135,7 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
+  gstinProvider: () => call<GstinProviderStatus>('/api/gstin/provider'),
+  gstinLive: (gstin: string) => call<RegistryAnswer>('/api/gstin/live', { method: 'POST', body: JSON.stringify({ gstin }) }),
   documentUrl: (path: string) => call<{ url: string }>(`/api/documents/url?path=${encodeURIComponent(path)}`),
 };

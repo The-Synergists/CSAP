@@ -26,5 +26,10 @@ export const config = {
   /** Government Gateway (gov_gateway/): simulated registries, external from CSAP's point of view. */
   govGatewayUrl: process.env.GOV_GATEWAY_URL ?? process.env.PAN_API_URL ?? (vercelBase ? `${vercelBase}/api/gov` : 'http://localhost:8100'),
   govGatewayKey: process.env.GOV_GATEWAY_KEY ?? process.env.PAN_API_KEY ?? 'csap-demo-pan-key',
+  /** Live GSTIN provider (gstinapi.in). Empty key = GSTN stays simulated only. */
+  gstinProviderUrl: (process.env.GSTIN_PROVIDER_URL ?? 'https://www.gstinapi.in').replace(/\/+$/, ''),
+  gstinProviderKey: process.env.GSTIN_PROVIDER_KEY ?? '',
+  /** Live answers are reused for this many days so repeated checks spend no credits. */
+  gstinCacheDays: Number(process.env.GSTIN_CACHE_DAYS ?? 30),
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),
 };

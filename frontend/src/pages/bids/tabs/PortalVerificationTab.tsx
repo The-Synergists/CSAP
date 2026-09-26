@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ChevronRight, Loader2, MinusCircle, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Globe2, Loader2, MinusCircle, RefreshCw, Search, XCircle } from 'lucide-react';
 import { mapPortalRow } from '@shared/domain/portal';
 import { latestPortalRun } from '@shared/domain/selectors';
 import type { PortalVerification, RegistryId } from '@shared/domain/types';
-import { api } from '../../../state/api';
+import { api, type GstinProviderStatus, type RegistryAnswer } from '../../../state/api';
 import { useApp } from '../../../state/appContext';
 import { subscribeToTables } from '../../../state/realtime';
 import { Badge } from '../../../components/ui/Badge';
@@ -18,11 +18,11 @@ const ORDER: RegistryId[] = ['PAN', 'GSTN', 'UDYAM', 'MCA21', 'EPFO', 'ESIC', 'S
 const CheckIcon: React.FC<{ ok: boolean | null }> = ({ ok }) =>
   ok === true ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : ok === false ? <XCircle className="h-4 w-4 text-rose-600" /> : <MinusCircle className="h-4 w-4 text-slate-400" />;
 
-const RegistryRow: React.FC<{ row: PortalVerification }> = ({ row }) => {
+const RegistryRow: React.FC<{ row: RegistryAnswer; open?: boolean }> = ({ row, open }) => {
   const reg = REGISTRY[row.registry];
   const applicable = row.status !== 'NOT_APPLICABLE';
   return (
-    <details className="group border-b border-slate-100 last:border-b-0">
+    <details open={open} className="group border-b border-slate-100 last:border-b-0">
       <summary className="flex cursor-pointer list-none flex-col gap-1.5 px-4 py-3 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-3">
         <ChevronRight aria-hidden className="hidden h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-90 sm:block" />
         <div className="min-w-0 sm:w-56 sm:shrink-0">
@@ -87,6 +87,92 @@ const RegistryRow: React.FC<{ row: PortalVerification }> = ({ row }) => {
         </div>
       )}
     </details>
+  );
+};
+
+const GSTIN_FORMAT = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+const providerNote = (p: GstinProviderStatus | null): { tone: 'success' | 'warning' | 'neutral'; text: string } => {
+  if (!p) return { tone: 'neutral', text: 'Checking provider…' };
+  if (!p.configured) return { tone: 'neutral', text: 'Not configured' };
+  if (p.usage?.ok) return { tone: 'success', text: `Connected · ${p.usage.credits_used ?? 0} credits used` };
+  if (p.usage?.code === 'email_unverified_credits_held') return { tone: 'warning', text: 'Credits on hold: confirm the account email at gstinapi.in' };
+  return { tone: 'warning', text: p.usage?.message ?? 'Provider not reachable' };
+};
+
+/** Officer's stand-alone lookup of any GSTIN against live GST portal data. */
+const LiveGstinLookup: React.FC = () => {
+  const [provider, setProvider] = useState<GstinProviderStatus | null>(null);
+  const [gstin, setGstin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<RegistryAnswer | null>(null);
+
+  const refreshProvider = useCallback(() => api.gstinProvider().then(setProvider).catch(() => setProvider(null)), []);
+  useEffect(() => {
+    void refreshProvider();
+  }, [refreshProvider]);
+
+  const value = gstin.trim().toUpperCase();
+  const formatOk = GSTIN_FORMAT.test(value);
+  const note = providerNote(provider);
+
+  const lookUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formatOk) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(await api.gstinLive(value));
+    } catch (err) {
+      setResult(null);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+      void refreshProvider();
+    }
+  };
+
+  return (
+    <Card
+      padded={false}
+      title="Live GST portal lookup"
+      subtitle={`Check any GSTIN against live GST portal data (gstinapi.in). Answers are kept for ${provider?.cacheDays ?? 30} days, so looking up the same GSTIN again uses no credit.`}
+      actions={<Badge tone={note.tone} dot>{note.text}</Badge>}
+    >
+      <form onSubmit={(e) => void lookUp(e)} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <label htmlFor="live-gstin" className="sr-only">GSTIN</label>
+          <div className="relative">
+            <Globe2 aria-hidden className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              id="live-gstin"
+              value={gstin}
+              onChange={(e) => setGstin(e.target.value.toUpperCase())}
+              maxLength={15}
+              placeholder="Enter a 15-character GSTIN"
+              className="w-full rounded border border-slate-300 bg-white py-2 pl-8 pr-3 font-mono text-xs uppercase text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              aria-describedby="live-gstin-help"
+            />
+          </div>
+          <p id="live-gstin-help" className="mt-1 text-[11px] text-slate-500">
+            {value && !formatOk
+              ? 'Not a GSTIN format yet (2 digits, PAN, entity code, Z, check digit).'
+              : 'Invalid GSTINs are rejected by CSAP before any provider call, so they never cost a credit.'}
+          </p>
+        </div>
+        <Button type="submit" variant="primary" size="sm" disabled={!formatOk || busy || !provider?.configured}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+          {busy ? 'Looking up…' : 'Look up'}
+        </Button>
+      </form>
+      {error && <p role="alert" className="border-t border-slate-100 px-4 py-3 text-xs text-rose-700">{error}</p>}
+      {result && (
+        <div className="border-t border-slate-200">
+          <RegistryRow row={result} open />
+        </div>
+      )}
+    </Card>
   );
 };
 
@@ -189,6 +275,8 @@ export const PortalVerificationTab: React.FC<TabProps> = ({ view }) => {
           </div>
         </Card>
       )}
+
+      <LiveGstinLookup />
     </div>
   );
 };

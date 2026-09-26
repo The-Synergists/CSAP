@@ -167,5 +167,5 @@ export const PORTAL_STATUS: Record<string, { label: string; tone: Tone }> = {
 
 export const REGISTRY_MODE: Record<string, { label: string; tone: Tone }> = {
   SIMULATED: { label: 'Simulated registry', tone: 'neutral' },
-  LIVE_PROVIDER: { label: 'Live provider', tone: 'info' },
+  LIVE_PROVIDER: { label: 'Live GST portal data', tone: 'info' },
 };

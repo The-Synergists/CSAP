@@ -5,6 +5,8 @@
 import type { BidView } from '../../../shared/domain/selectors.js';
 import type { PortalCheck, PortalStatus, RegistryId, RegistryMode } from '../../../shared/domain/types.js';
 import { config } from '../config/env.js';
+import { liveGstn } from './gstnLive.js';
+import { isValidGstin, providerConfigured } from './gstinProvider.js';
 
 export interface RegistryResult {
   registry: RegistryId;
@@ -59,8 +61,8 @@ const addMonths = (ym: string, n: number) => {
 /** Latest monthly return (ECR / contribution) that was already due on `date` (due on the 15th of the next month). */
 const latestDueMonth = (iso: string) => addMonths(monthKey(iso), Number(iso.slice(8, 10)) > 15 ? -1 : -2);
 
-const check = (label: string, ok: boolean | null, expected?: string | null, actual?: string | null): PortalCheck => ({ label, ok, expected, actual });
-const worst = (checks: PortalCheck[], failOn: string[] = []): PortalStatus =>
+export const check = (label: string, ok: boolean | null, expected?: string | null, actual?: string | null): PortalCheck => ({ label, ok, expected, actual });
+export const worst = (checks: PortalCheck[], failOn: string[] = []): PortalStatus =>
   checks.some((c) => c.ok === false && failOn.includes(c.label)) ? 'FAILED' : checks.some((c) => c.ok === false) ? 'REVIEW' : 'VERIFIED';
 
 async function gateway(path: string, body: unknown): Promise<{ httpStatus: number; body: Json; latencyMs: number; url: string }> {
@@ -124,8 +126,8 @@ const gstn: RegistryAdapter = {
   registry: 'GSTN',
   mode: 'SIMULATED',
   identifier: (v) => v.bidder.gstin,
-  verify: (v, id) =>
-    lookup('GSTN', '/v1/gstn/lookup', id, (rec) => {
+  async verify(v, id) {
+    const simulated = await lookup('GSTN', '/v1/gstn/lookup', id, (rec) => {
       const filings = (rec.filings ?? []) as Json[];
       const missed = filings.filter((f) => f.status === 'NOT_FILED');
       const late = filings.filter((f) => f.status === 'LATE');
@@ -157,7 +159,13 @@ const gstn: RegistryAdapter = {
         ],
         checks,
       };
-    }),
+    });
+    // GSTINs the simulated registry does not hold (i.e. real ones) go to the live provider.
+    if (simulated.status === 'NOT_FOUND' && providerConfigured() && isValidGstin(id)) {
+      return liveGstn(id, { name: v.bidder.companyName, pan: v.bidder.pan });
+    }
+    return simulated;
+  },
 };
 
 const udyam: RegistryAdapter = {
