@@ -52,10 +52,11 @@ def _stream(content):
 OCR_TEXT = "Permanent Account Number\nAABCA1234F\nName\nABC INDUSTRIAL SOLUTIONS PVT LTD"
 
 
-def _extract(model_output):
+def _extract(model_output, document_type="PAN", ocr_text=OCR_TEXT, raw=False):
     with patch("src.nvidia.extraction.requests.post", return_value=_stream([model_output])), patch("src.nvidia.extraction.settings") as s:
         s.nvidia_extraction_api_key, s.nvidia_extraction_base_url, s.nvidia_extraction_model = "k", "https://x/v1", "m"
-        return client.post("/api/v1/documents/extract", json={"documentType": "PAN", "ocrText": OCR_TEXT}).json()
+        res = client.post("/api/v1/documents/extract", json={"documentType": document_type, "ocrText": ocr_text})
+        return res if raw else res.json()
 
 
 def test_extraction_returns_grounded_fields():
@@ -76,3 +77,34 @@ def test_engine_key_enforced(monkeypatch):
     monkeypatch.setattr(settings, "engine_api_key", "secret")
     assert client.post("/api/v1/documents/extract", json={"documentType": "PAN", "ocrText": "x"}).status_code == 401
     assert client.get("/api/v1/health").status_code == 200
+
+
+INDIVIDUAL_PAN = chr(10).join(["INCOME TAX DEPARTMENT", "GOVT. OF INDIA", "RAHUL KUMAR SHARMA", "SURESH KUMAR SHARMA", "14/08/1998", "Permanent Account Number", "BQXPS4821K"])
+
+
+def test_individual_pan_card_fields():
+    body = _extract('{"pan": "BQXPS4821K", "name": "RAHUL KUMAR SHARMA", "father_name": "SURESH KUMAR SHARMA", "date_of_birth": "14/08/1998", "date_of_incorporation": null, "category": "Individual"}', ocr_text=INDIVIDUAL_PAN)
+    assert body["fields"]["father_name"] == "SURESH KUMAR SHARMA"
+    assert body["fields"]["date_of_birth"] == "14/08/1998"
+    # "Individual" is not printed on the card, so it is flagged rather than trusted.
+    assert body["grounding"]["category"] is False
+
+
+GST_TEXT = chr(10).join(["Form GST REG-06", "Registration Number: 09AABCN5544K1Z2", "Legal Name: NATIONAL SAFETY SYSTEMS", "Type of Registration: Regular"])
+
+
+def test_gst_certificate_extraction_normalises_identifier():
+    body = _extract('{"gstin": "09aabcn5544k1z2", "legal_name": "NATIONAL SAFETY SYSTEMS", "trade_name": null, "registration_type": "Regular", "address": null}', "GST_CERTIFICATE", GST_TEXT)
+    assert body["documentType"] == "GST_CERTIFICATE"
+    assert body["fields"]["gstin"] == "09AABCN5544K1Z2"
+    assert all(body["grounding"].values())
+
+
+def test_every_bid_document_type_has_a_schema():
+    from src.nvidia.extraction import SCHEMAS
+    for t in ["PAN", "GST_CERTIFICATE", "UDYAM_CERTIFICATE", "FINANCIAL_STATEMENTS", "MAKE_IN_INDIA", "OEM_AUTHORIZATION", "EMD", "EPFO_ESIC", "PAST_PERFORMANCE", "TEST_REPORT", "AFFIDAVIT", "LAND_BORDER"]:
+        assert t in SCHEMAS
+
+
+def test_unknown_document_type_rejected():
+    assert _extract("{}", "PASSPORT", raw=True).status_code == 400

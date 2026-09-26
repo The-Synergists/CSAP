@@ -236,6 +236,23 @@ async function main() {
     console.log(`Stored ${path}`);
   }
 
+  // 7. Specimen images of every other bid document (document-intelligence pipeline).
+  const packageDir = new URL('../sample_documents/bid_package/', import.meta.url);
+  for (const bidId of readdirSync(packageDir).filter((f) => /^BID-\d{3}$/.test(f))) {
+    for (const file of readdirSync(new URL(`${bidId}/`, packageDir)).filter((f) => f.endsWith('.png'))) {
+      const path = `${bidId}/${file}`;
+      const { error } = await sb.storage
+        .from('bid-documents')
+        .upload(path, readFileSync(new URL(path, packageDir)), { contentType: 'image/png', upsert: true });
+      if (error) throw new Error(`upload ${path}: ${error.message}`);
+      ok(
+        await sb.from('bid_documents').update({ storage_path: path, mime_type: 'image/png' }).eq('bid_id', bidId).eq('display_code', file.replace('.png', '')),
+        `link ${path}`,
+      );
+    }
+    console.log(`Stored bid package ${bidId}`);
+  }
+
   console.log(`\nDone. Officer login: ${demoUser.email} or employee ID ${demoUser.employeeId}`);
 }
 

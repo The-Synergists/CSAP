@@ -91,6 +91,17 @@
       "aadhaar_seeding": "NOT_APPLICABLE",
       "last_updated": "2026-04-21",
       "remarks": "Active PAN."
+    },
+    {
+      "record_id": "PANREG-0009",
+      "pan": "AXKPI7310Q",
+      "registered_name": "PRIYA SPECIMEN IYER",
+      "category": "Individual",
+      "status": "VALID",
+      "date_of_incorporation": "1994-03-12",
+      "aadhaar_seeding": "Y",
+      "last_updated": "2026-06-18",
+      "remarks": "Active PAN. Fictitious individual used to demonstrate reading an individual PAN card."
     }
   ]
 }

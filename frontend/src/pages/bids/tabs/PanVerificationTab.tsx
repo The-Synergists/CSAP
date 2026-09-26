@@ -238,6 +238,36 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 
 const dash = <span className="text-slate-400">—</span>;
 
+/** Officer uploads (e.g. a personal PAN card used for a test) can be removed from storage; the result stays. */
+const DeleteUpload: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (run.document.source !== 'officer_upload') return null;
+  if (run.document.deletedAt) return <p className="text-[11px] text-slate-500">Uploaded file deleted {formatDateTime(run.document.deletedAt)}; the result is kept.</p>;
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await api.deleteUpload(run.id);
+      toast({ kind: 'success', title: 'Uploaded file deleted', message: 'The image was removed from storage. The verification result is kept.' });
+    } catch (err) {
+      toast({ kind: 'error', title: 'Could not delete', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+      setConfirming(false);
+    }
+  };
+  return confirming ? (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-slate-700">Delete {run.document.fileName} from storage?</span>
+      <Button size="sm" variant="danger" disabled={busy} onClick={() => void remove()}>{busy ? 'Deleting…' : 'Delete'}</Button>
+      <Button size="sm" onClick={() => setConfirming(false)} disabled={busy}>Cancel</Button>
+    </div>
+  ) : (
+    <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>Delete uploaded image</Button>
+  );
+};
+
 /** What the officer needs: which document, what was read, what the registry says, and the verdict. */
 const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
   const [preview, setPreview] = useState<string | null>(null);
@@ -273,6 +303,7 @@ const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
         }
       >
         <div aria-live="polite" className="space-y-4">
+          <DeleteUpload run={run} />
           <StepStrip run={run} />
 
           <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
@@ -376,6 +407,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
       [{ table: 'document_verification_runs', filter: `bid_id=eq.${bidId}` }],
       (_t, row) => {
         const incoming = mapRunRow(row);
+        if (incoming.documentType !== 'PAN') return; // other documents belong to the Documents tab
         setRuns((prev) => {
           const list = prev ?? [];
           const existing = list.find((r) => r.id === incoming.id);

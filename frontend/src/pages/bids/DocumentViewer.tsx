@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { BidView } from '@shared/domain/selectors';
 import type { BidDocument } from '@shared/domain/types';
 import { CheckBadge } from '../../components/ui/Badge';
 import { Button, DetailList, Modal } from '../../components/ui/primitives';
 import { formatDateTime } from '../../lib/format';
+import { api } from '../../state/api';
 
 const parseFields = (text: string) =>
   text
@@ -23,6 +24,19 @@ export const DocumentViewer: React.FC<{
   onViewFinding: (findingId: string) => void;
 }> = ({ view, doc, onClose, onViewFinding }) => {
   const check = doc ? view.checks.find((c) => c.requirementId === doc.requirementId) : undefined;
+  const [preview, setPreview] = useState<{ path: string; url: string } | null>(null);
+  const path = doc?.storagePath;
+  useEffect(() => {
+    if (!path) return;
+    let active = true;
+    api
+      .documentUrl(path)
+      .then((r) => active && setPreview({ path, url: r.url }))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [path]);
   return (
     <Modal
       open={!!doc}
@@ -62,9 +76,14 @@ export const DocumentViewer: React.FC<{
               <p className="mt-1 text-slate-800">{check.note}</p>
             </div>
           )}
-          <p className="text-xs text-slate-500">
-            Preview shows extracted fields only. The original PDF is not stored in this prototype.
-          </p>
+          {preview && preview.path === path ? (
+            <div className="rounded border border-slate-200 bg-slate-50 p-2">
+              <img src={preview.url} alt={`Specimen image of ${doc.name}`} className="w-full rounded bg-white" />
+              <p className="mt-1.5 text-[11px] text-slate-500">Specimen image stored for this prototype. Use “Read all documents” on the Documents tab to have NVIDIA read it.</p>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">{path ? 'Loading preview…' : 'No stored file for this document in the prototype.'}</p>
+          )}
         </div>
       )}
     </Modal>

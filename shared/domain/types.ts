@@ -274,6 +274,21 @@ export interface Database {
 
 export type PipelineStatus = 'QUEUED' | 'OCR_RUNNING' | 'EXTRACTING' | 'CALLING_API' | 'COMPLETED' | 'FAILED';
 export type PanVerdict = 'VERIFIED' | 'NAME_MISMATCH' | 'PAN_MISMATCH' | 'PAN_INVALID' | 'PAN_NOT_FOUND' | 'ERROR';
+/** Non-PAN documents: does what the document says agree with the bid record? */
+export type DocumentVerdict = PanVerdict | 'CONSISTENT' | 'DISCREPANCY';
+export type DocumentType =
+  | 'PAN'
+  | 'GST_CERTIFICATE'
+  | 'UDYAM_CERTIFICATE'
+  | 'FINANCIAL_STATEMENTS'
+  | 'MAKE_IN_INDIA'
+  | 'OEM_AUTHORIZATION'
+  | 'EMD'
+  | 'EPFO_ESIC'
+  | 'PAST_PERFORMANCE'
+  | 'TEST_REPORT'
+  | 'AFFIDAVIT'
+  | 'LAND_BORDER';
 
 export interface PipelineDocument {
   path: string;
@@ -282,6 +297,12 @@ export interface PipelineDocument {
   sizeBytes: number;
   sha256: string;
   source: 'bid_package' | 'officer_upload' | 'sample';
+  /** Bid-package documents: display code (e.g. DOC-305), title and the requirement it supports. */
+  code?: string;
+  title?: string;
+  requirement?: string;
+  /** Set when an officer deleted an uploaded file (e.g. a personal PAN card used for testing). */
+  deletedAt?: string;
 }
 
 export interface OcrResult {
@@ -298,7 +319,8 @@ export interface ExtractionResult {
   endpoint: string;
   latencyMs: number;
   documentType: string;
-  fields: { pan: string | null; name: string | null; date_of_incorporation: string | null; category: string | null };
+  /** Keys depend on the document type (see ai_engine/src/nvidia/extraction.py SCHEMAS). */
+  fields: Record<string, string | null>;
   grounding: Record<string, boolean>;
   warnings: string[];
   rawOutput: string;
@@ -332,7 +354,10 @@ export interface ComparisonRow {
 export interface DocumentVerificationRun {
   id: string;
   bidId: string;
-  documentType: 'PAN';
+  documentType: DocumentType;
+  /** Set when the run is part of a "read all documents" batch. */
+  batchId?: string | null;
+  bidDocumentId?: string | null;
   initiatedBy: string;
   status: PipelineStatus;
   document: PipelineDocument;
@@ -341,9 +366,30 @@ export interface DocumentVerificationRun {
   apiRequest?: ApiRequestRecord | null;
   apiResponse?: ApiResponseRecord | null;
   comparison?: { rows: ComparisonRow[]; summary: string } | null;
-  verdict?: PanVerdict | null;
+  verdict?: DocumentVerdict | null;
   error?: string | null;
   startedAt: string;
   updatedAt: string;
   completedAt?: string | null;
+}
+
+/** One field compared across every document in a bid package and the bid record. */
+export interface ConsistencyCheck {
+  field: string;
+  values: { source: string; documentCode?: string; value: string }[];
+  result: 'MATCH' | 'MISMATCH' | 'NOT_AVAILABLE';
+  note?: string;
+}
+
+/** A "read all documents" run over a bid package. */
+export interface DocumentBatch {
+  id: string;
+  bidId: string;
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+  total: number;
+  consistency: ConsistencyCheck[] | null;
+  summary: string | null;
+  error: string | null;
+  startedAt: string;
+  completedAt: string | null;
 }

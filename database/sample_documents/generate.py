@@ -22,7 +22,10 @@ DOCS = [
     ("SAMPLE_PAN_invalid_Sunrise.png", "AAECS7788K", "SUNRISE SAFETY TRADERS", "03/07/2019", "Firm"),
     ("SAMPLE_PAN_not_found_Zenith.png", "AAHCZ9090P", "ZENITH SAFETY CORPORATION PVT LTD", "12/02/2020", "Company"),
     ("SAMPLE_PAN_name_mismatch_Kaveri.png", "AAGCK5566L", "KAVERI SAFETY EQUIPMENT PVT LTD", "09/09/2015", "Company"),
+    # Individual PAN (fictitious person): father's name and date of birth instead of incorporation
+    ("SAMPLE_PAN_individual_Priya.png", "AXKPI7310Q", "PRIYA SPECIMEN IYER", "12/03/1994", "Individual"),
 ]
+FATHER = {"AXKPI7310Q": "RAMESH IYER"}
 
 
 def render(file, pan, name, date, category):
@@ -33,7 +36,10 @@ def render(file, pan, name, date, category):
     d.rectangle([20, 20, w - 20, h - 20], outline=0, width=3)
     d.text((50, 45), "PAN DETAILS - BIDDER SUBMISSION", font=f_title, fill=0)
     d.text((50, 95), "Tender GEM/2026/CPCL/001 - Supporting document (Clause 4.3)", font=f_small, fill=60)
-    rows = [("Permanent Account Number", pan), ("Name", name), ("Date of Incorporation", date), ("Status of Taxpayer", category)]
+    if category == "Individual":
+        rows = [("Permanent Account Number", pan), ("Name", name), ("Father's Name", FATHER[pan]), ("Date of Birth", date)]
+    else:
+        rows = [("Permanent Account Number", pan), ("Name", name), ("Date of Incorporation", date), ("Status of Taxpayer", category)]
     y = 160
     for label, value in rows:
         d.text((50, y), label, font=f_label, fill=70)

@@ -45,7 +45,36 @@ app = FastAPI(title="CSAP Government Gateway (simulated registries)", version="2
 
 
 def load(file: str) -> dict:
-    return json.loads((DATA_DIR / file).read_text(encoding="utf-8"))
+    ds = json.loads((DATA_DIR / file).read_text(encoding="utf-8"))
+    if file == "pan.json":
+        ds["records"] = ds["records"] + extra_pan_records()
+    return ds
+
+
+def extra_pan_records() -> list:
+    """Private test records (e.g. a team member's own PAN) from the PAN_EXTRA_RECORDS environment
+    variable, a JSON list of {pan, registered_name, status?, category?}. They live only in the
+    deployment's encrypted settings, never in the repository."""
+    try:
+        rows = json.loads(os.getenv("PAN_EXTRA_RECORDS", "[]"))
+    except json.JSONDecodeError:
+        return []
+    out = []
+    for i, r in enumerate(rows if isinstance(rows, list) else []):
+        if not isinstance(r, dict) or not PAN_RE.match(str(r.get("pan", "")).upper()) or not r.get("registered_name"):
+            continue
+        out.append({
+            "record_id": f"PANREG-PRIVATE-{i + 1}",
+            "pan": r["pan"].upper(),
+            "registered_name": str(r["registered_name"]).upper(),
+            "status": r.get("status", "VALID"),
+            "category": r.get("category", "Individual"),
+            "date_of_incorporation": r.get("date_of_birth"),
+            "aadhaar_seeding": r.get("aadhaar_seeding", "Y"),
+            "last_updated": r.get("last_updated", "2026-09-27"),
+            "remarks": "Private test record supplied through the deployment settings.",
+        })
+    return out
 
 
 def envelope(registry: str, ds: dict, file: str, started: float) -> dict:

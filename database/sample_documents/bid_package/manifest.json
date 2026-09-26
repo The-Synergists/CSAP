@@ -1,0 +1,542 @@
+[
+  {
+    "id": "DOC-101",
+    "bidId": "BID-001",
+    "requirement": "REQ-02",
+    "name": "GST Registration Certificate",
+    "text": "GSTIN: 33AABCA1234F1Z8 | Legal Name: ABC Industrial Solutions Pvt Ltd | Status: Active Regular",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-102",
+    "bidId": "BID-001",
+    "requirement": "REQ-05",
+    "name": "OEM Authorization Certificate",
+    "text": "Manufacturer: Dräger Safety India Ltd | Authorized Partner: ABC Industrial Solutions Pvt Ltd | Warranty: Back-to-back | Valid Until: 30 Oct 2026",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-103",
+    "bidId": "BID-001",
+    "requirement": "REQ-06",
+    "name": "EMD Payment Receipt",
+    "text": "Transaction ID: TXN458921 | Amount: INR 2,00,000.00 | Date: 02-Sep-2026 | Beneficiary: CPCL Manali",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-104",
+    "bidId": "BID-001",
+    "requirement": "REQ-01",
+    "name": "Audited Financial Statements (3 years)",
+    "text": "FY 2022-23: INR 5.20 Cr | FY 2023-24: INR 5.80 Cr | FY 2024-25: INR 6.40 Cr | UDIN: 24045812BGHY8941",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-105",
+    "bidId": "BID-001",
+    "requirement": "REQ-03",
+    "name": "Udyam Registration Certificate",
+    "text": "Udyam No: UDYAM-TN-02-0045812 | Enterprise: ABC Industrial Solutions Pvt Ltd | Category: Small (Manufacturing)",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-106",
+    "bidId": "BID-001",
+    "requirement": "REQ-04",
+    "name": "Make in India Self-Declaration",
+    "text": "Declared Local Content: 65.4% | Manufacturing Location: Ambattur, Chennai | Auditor Certified: Yes",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-107",
+    "bidId": "BID-001",
+    "requirement": "REQ-07",
+    "name": "PAN & ITR Acknowledgements",
+    "text": "PAN: AABCA1234F | ITR Acknowledgements: FY23 45812903, FY24 58912304, FY25 71209341",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-108",
+    "bidId": "BID-001",
+    "requirement": "REQ-08",
+    "name": "EPFO & ESIC Challans",
+    "text": "EPFO Code: TNMAS0045892000 | ESIC Code: 51000458920000101 | Latest ECR Paid: 15 Aug 2026",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-109",
+    "bidId": "BID-001",
+    "requirement": "REQ-09",
+    "name": "Past Performance Certificates",
+    "text": "PO: IOCL/2024/7812 Value: ₹1.82 Cr (Completed) | PO: BPCL/2025/1102 Value: ₹1.20 Cr (Completed)",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-110",
+    "bidId": "BID-001",
+    "requirement": "REQ-10",
+    "name": "NABL Test Reports — Breathing Apparatus",
+    "text": "Lab: National Test House (South) | Standard: IS 10245 / EN 137 | Verdict: PASS | Valid Until: Mar 2028",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-111",
+    "bidId": "BID-001",
+    "requirement": "REQ-11",
+    "name": "Non-Blacklisting & Integrity Pact Affidavit",
+    "text": "Affidavit Dated: 02-Sep-2026 | Stamp Paper: GRN-2026-98124 | Declaration: Not debarred by any PSU or Ministry",
+    "bidder": {
+      "name": "ABC Industrial Solutions Pvt. Ltd.",
+      "pan": "AABCA1234F",
+      "gstin": "33AABCA1234F1Z8"
+    }
+  },
+  {
+    "id": "DOC-201",
+    "bidId": "BID-002",
+    "requirement": "REQ-02",
+    "name": "GST Registration Certificate",
+    "text": "GSTIN: 33AABCB9876E1Z4 | Legal Name: Bharat Engineering Works | Status: Active Regular",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-202",
+    "bidId": "BID-002",
+    "requirement": "REQ-05",
+    "name": "OEM Authorization Certificate",
+    "text": "Manufacturer: Honeywell Safety Products India Pvt Ltd | Authorized Partner: Bharat Engineering Works | Warranty: Back-to-back | Valid Until: 15 Feb 2027",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-203",
+    "bidId": "BID-002",
+    "requirement": "REQ-06",
+    "name": "Bank Guarantee for EMD",
+    "text": "BG No: BG-CAN-2026-901 | Amount: INR 2,00,000.00 | Issuing Bank: Canara Bank, Gandhipuram | Valid Until: 15-Mar-2027",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-204",
+    "bidId": "BID-002",
+    "requirement": "REQ-01",
+    "name": "Audited Financial Statements (3 years)",
+    "text": "FY 2022-23: INR 5.05 Cr | FY 2023-24: INR 4.90 Cr | FY 2024-25: INR 5.10 Cr | UDIN: 24098124LKOP3109",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-205",
+    "bidId": "BID-002",
+    "requirement": "REQ-03",
+    "name": "Udyam Registration Certificate",
+    "text": "Udyam No: UDYAM-TN-03-0012984 | Enterprise: Bharat Engineering Works | Category: Medium",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-206",
+    "bidId": "BID-002",
+    "requirement": "REQ-04",
+    "name": "Make in India Self-Declaration",
+    "text": "Declared Local Content: 72.0% | Manufacturing Facility: Coimbatore, Tamil Nadu",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-207",
+    "bidId": "BID-002",
+    "requirement": "REQ-07",
+    "name": "PAN & ITR Acknowledgements",
+    "text": "PAN: AABCB9876E | Returns Filed: AY 2024-25, 2025-26, 2026-27",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-208",
+    "bidId": "BID-002",
+    "requirement": "REQ-08",
+    "name": "EPFO & ESIC Challans",
+    "text": "EPFO Code: TNCBE0098124 | Remittances: Up to July 2026",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-209",
+    "bidId": "BID-002",
+    "requirement": "REQ-09",
+    "name": "Past Performance Certificates",
+    "text": "PO: CPCL/2023/5102 Value: ₹1.45 Cr (Completed) | PO: HPCL/2024/9011 Value: ₹2.10 Cr (Completed)",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-210",
+    "bidId": "BID-002",
+    "requirement": "REQ-10",
+    "name": "NABL Test Reports",
+    "text": "Lab: CIPET Chennai | Standards: EN 137 / IS 10245 | Result: PASS",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-211",
+    "bidId": "BID-002",
+    "requirement": "REQ-11",
+    "name": "Non-Blacklisting Affidavit",
+    "text": "Affidavit Dated: 28-Aug-2026 | Declaration: Not debarred by any PSU or Ministry",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-212",
+    "bidId": "BID-002",
+    "requirement": "REQ-12",
+    "name": "Land Border Declaration",
+    "text": "Declaration: Not from a country sharing a land border with India | Signed: Proprietor",
+    "bidder": {
+      "name": "Bharat Engineering Works",
+      "pan": "AABCB9876E",
+      "gstin": "33AABCB9876E1Z4"
+    }
+  },
+  {
+    "id": "DOC-301",
+    "bidId": "BID-003",
+    "requirement": "REQ-02",
+    "name": "GST Registration Certificate",
+    "text": "GSTIN: 09AABCN5544K1Z2 | Legal Name: National Safety Systems | Status: Active Regular",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-302",
+    "bidId": "BID-003",
+    "requirement": "REQ-05",
+    "name": "OEM Authorization Letter",
+    "text": "Manufacturer: MSA Safety India | Authorized Partner: National Safety Systems | Valid Until: 31 Mar 2027 | Warranty Clause: Not stated",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-303",
+    "bidId": "BID-003",
+    "requirement": "REQ-06",
+    "name": "EMD Payment Receipt",
+    "text": "Transaction ID: TXN881294 | Amount: INR 1,50,000.00 | Date: 03-Sep-2026 | Beneficiary: CPCL Manali | Purpose: EMD GEM/2026/CPCL/001",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-304",
+    "bidId": "BID-003",
+    "requirement": "REQ-01",
+    "name": "Audited Financial Statements (3 years)",
+    "text": "FY 2022-23: INR 3.10 Cr | FY 2023-24: INR 3.40 Cr | FY 2024-25: INR 3.90 Cr",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-305",
+    "bidId": "BID-003",
+    "requirement": "REQ-03",
+    "name": "Udyam Registration Certificate",
+    "text": "Udyam No: UDYAM-UP-28-0091245 | Category: Medium (Trading & Services)",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-306",
+    "bidId": "BID-003",
+    "requirement": "REQ-04",
+    "name": "Make in India Self-Declaration",
+    "text": "Declared Local Content: 48.0% | Classification: Non-local supplier",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-307",
+    "bidId": "BID-003",
+    "requirement": "REQ-07",
+    "name": "PAN & ITR Acknowledgements",
+    "text": "PAN: AABCN5544K | Returns Filed: AY 2024-25, 2025-26, 2026-27",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-308",
+    "bidId": "BID-003",
+    "requirement": "REQ-08",
+    "name": "EPFO & ESIC Challans",
+    "text": "EPFO Code: UPNOI0078129 | Latest ECR Found: June 2026 | July 2026 ECR: Not found",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-309",
+    "bidId": "BID-003",
+    "requirement": "REQ-09",
+    "name": "Past Experience Work Orders",
+    "text": "PO: Private chemical plant, Greater Noida — ₹0.84 Cr | PO: Private chemical plant, Noida — ₹0.62 Cr",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-310",
+    "bidId": "BID-003",
+    "requirement": "REQ-12",
+    "name": "Land Border Declaration",
+    "text": "Declaration: Not from a country sharing a land border with India | Signed: Director",
+    "bidder": {
+      "name": "National Safety Systems",
+      "pan": "AABCN5544K",
+      "gstin": "09AABCN5544K1Z2"
+    }
+  },
+  {
+    "id": "DOC-401",
+    "bidId": "BID-004",
+    "requirement": "REQ-02",
+    "name": "GST Registration Certificate",
+    "text": "GSTIN: 33AAACP4419M1ZP | Legal Name: Prime Tech Solutions | Status: Active Regular",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-402",
+    "bidId": "BID-004",
+    "requirement": "REQ-05",
+    "name": "OEM Authorization Certificate",
+    "text": "Manufacturer: 3M India Ltd | Authorized Partner: Prime Tech Solutions | Warranty: Back-to-back | Valid Until: 31 Dec 2027",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-403",
+    "bidId": "BID-004",
+    "requirement": "REQ-06",
+    "name": "MSE EMD Exemption Claim",
+    "text": "Udyam No: UDYAM-TN-02-0089142 | Enterprise Type: Small (Manufacturing) | Exemption Claimed: EMD",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-404",
+    "bidId": "BID-004",
+    "requirement": "REQ-01",
+    "name": "Audited Financial Statements (3 years)",
+    "text": "FY 2022-23: INR 7.60 Cr | FY 2023-24: INR 8.40 Cr | FY 2024-25: INR 9.20 Cr | UDIN: 24089142PTS8812",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-405",
+    "bidId": "BID-004",
+    "requirement": "REQ-03",
+    "name": "Udyam Registration Certificate",
+    "text": "Udyam No: UDYAM-TN-02-0089142 | Category: Small (Manufacturing) | Status: Active",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-406",
+    "bidId": "BID-004",
+    "requirement": "REQ-04",
+    "name": "Make in India Self-Declaration",
+    "text": "Declared Local Content: 85.0% | Manufacturing Location: Chennai, Tamil Nadu",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-407",
+    "bidId": "BID-004",
+    "requirement": "REQ-07",
+    "name": "PAN & ITR Acknowledgements",
+    "text": "PAN: AAACP4419M | Returns Filed: AY 2024-25, 2025-26, 2026-27",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-408",
+    "bidId": "BID-004",
+    "requirement": "REQ-08",
+    "name": "EPFO & ESIC Returns",
+    "text": "EPFO Code: TNMAS0089142 | Latest ECR Paid: 14 Aug 2026 | Active Employees: 64",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-409",
+    "bidId": "BID-004",
+    "requirement": "REQ-09",
+    "name": "Past Performance Certificates",
+    "text": "PO: IOCL/2024/9102 Value: ₹2.40 Cr (Completed) | PO: ONGC/2025/3310 Value: ₹1.95 Cr (Completed)",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-410",
+    "bidId": "BID-004",
+    "requirement": "REQ-10",
+    "name": "NABL Test Certificates",
+    "text": "Lab: National Test House | Standards: EN 137 / IS 10245 | Verdict: PASS",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-411",
+    "bidId": "BID-004",
+    "requirement": "REQ-11",
+    "name": "Non-Blacklisting Affidavit",
+    "text": "Affidavit Dated: 01-Sep-2026 | Declaration: Not debarred by any PSU or Ministry",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  },
+  {
+    "id": "DOC-412",
+    "bidId": "BID-004",
+    "requirement": "REQ-12",
+    "name": "Land Border Declaration",
+    "text": "Declaration: Not from a country sharing a land border with India | Signed: Managing Partner",
+    "bidder": {
+      "name": "Prime Tech Solutions",
+      "pan": "AAACP4419M",
+      "gstin": "33AAACP4419M1ZP"
+    }
+  }
+]

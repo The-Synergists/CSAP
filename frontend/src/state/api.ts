@@ -1,7 +1,7 @@
 // Thin client for the CSAP backend (backend/). Holds the Supabase session tokens issued
 // through /api/auth/login and refreshes them transparently on a 401.
 
-import type { Database, DecisionType, DocumentVerificationRun, PortalVerification } from '@shared/domain/types';
+import type { Database, DecisionType, DocumentBatch, DocumentVerificationRun, PortalVerification } from '@shared/domain/types';
 import type { VerificationRun } from '@shared/domain/verification';
 
 /** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
@@ -137,5 +137,10 @@ export const api = {
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
   gstinProvider: () => call<GstinProviderStatus>('/api/gstin/provider'),
   gstinLive: (gstin: string) => call<RegistryAnswer>('/api/gstin/live', { method: 'POST', body: JSON.stringify({ gstin }) }),
+  deleteUpload: (runId: string) => call<DocumentVerificationRun>(`/api/document-verifications/${runId}/file`, { method: 'DELETE' }),
+  documentBatches: (bidId: string) => call<DocumentBatch[]>(`/api/bids/${bidId}/document-batches`),
+  batchRuns: (batchId: string) => call<DocumentVerificationRun[]>(`/api/document-batches/${batchId}/runs`),
+  startDocumentBatch: (bidId: string) =>
+    call<{ batch: DocumentBatch; runs: DocumentVerificationRun[] }>(`/api/bids/${bidId}/document-batches`, { method: 'POST' }),
   documentUrl: (path: string) => call<{ url: string }>(`/api/documents/url?path=${encodeURIComponent(path)}`),
 };

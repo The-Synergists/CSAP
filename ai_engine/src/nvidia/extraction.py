@@ -22,19 +22,93 @@ from src.nvidia.errors import NvidiaError, NvidiaNotConfigured
 
 PAN_RE = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
 
+# One schema per document type. Every schema names the entity the document is issued to, so
+# CSAP can check that all documents in a bid belong to the same bidder (cross-document check).
+NAME = "name of the bidder / enterprise / holder exactly as printed on the document, or null"
 SCHEMAS = {
+    # e-PAN letter of a company and the individual PAN card use the same schema.
     "PAN": {
         "pan": "10-character Permanent Account Number exactly as printed (5 letters, 4 digits, 1 letter)",
         "name": "name of the PAN holder exactly as printed",
-        "date_of_incorporation": "date of incorporation / birth as printed, or null",
+        "father_name": "father's name as printed (individual PAN cards only), or null",
+        "date_of_birth": "date of birth as printed (individual PAN cards only), or null",
+        "date_of_incorporation": "date of incorporation / formation as printed (companies and firms), or null",
         "category": "status of taxpayer (e.g. Company, Firm, Individual), or null",
-    }
+    },
+    "GST_CERTIFICATE": {
+        "gstin": "15-character GSTIN exactly as printed",
+        "legal_name": "legal name of business exactly as printed",
+        "trade_name": "trade name as printed, or null",
+        "registration_type": "type of registration or status as printed (e.g. Regular, Active), or null",
+        "address": "principal place of business as printed, or null",
+    },
+    "UDYAM_CERTIFICATE": {
+        "udyam_number": "Udyam registration number exactly as printed (UDYAM-XX-00-0000000)",
+        "enterprise_name": NAME,
+        "category": "enterprise type as printed (Micro, Small or Medium), or null",
+        "activity": "major activity as printed (Manufacturing, Services, Trading), or null",
+    },
+    "FINANCIAL_STATEMENTS": {
+        "entity_name": NAME,
+        "turnover_fy_2022_23": "turnover for FY 2022-23 exactly as printed, or null",
+        "turnover_fy_2023_24": "turnover for FY 2023-24 exactly as printed, or null",
+        "turnover_fy_2024_25": "turnover for FY 2024-25 exactly as printed, or null",
+        "udin": "UDIN of the auditor's certificate as printed, or null",
+    },
+    "MAKE_IN_INDIA": {
+        "entity_name": NAME,
+        "local_content_percent": "declared local content percentage exactly as printed",
+        "classification": "supplier class as printed (Class-I local, Class-II local, Non-local), or null",
+        "manufacturing_location": "manufacturing location as printed, or null",
+    },
+    "OEM_AUTHORIZATION": {
+        "manufacturer": "name of the manufacturer (OEM) as printed",
+        "authorized_partner": "name of the authorized dealer / partner as printed",
+        "valid_until": "validity end date as printed, or null",
+        "warranty": "warranty undertaking as printed (e.g. Back-to-back), or 'Not stated' if the text says so, or null",
+    },
+    "EMD": {
+        "entity_name": "name of the remitter / applicant / enterprise as printed, or null",
+        "instrument": "EMD instrument type only if printed (e.g. Bank Guarantee, MSE exemption), otherwise null",
+        "reference": "transaction ID, bank guarantee number or Udyam number as printed, or null",
+        "amount": "amount exactly as printed, or null",
+        "bank": "issuing / remitting bank as printed, or null",
+        "valid_until": "validity end date as printed (bank guarantees), or null",
+    },
+    "EPFO_ESIC": {
+        "entity_name": NAME,
+        "epfo_code": "EPFO establishment code exactly as printed, or null",
+        "esic_code": "ESIC employer code exactly as printed, or null",
+        "latest_return_month": "latest month for which the return / ECR was paid, as printed, or null",
+    },
+    "PAST_PERFORMANCE": {
+        "entity_name": NAME,
+        "order_1": "first purchase order: buyer, order number and value exactly as printed, or null",
+        "order_2": "second purchase order: buyer, order number and value exactly as printed, or null",
+    },
+    "TEST_REPORT": {
+        "entity_name": NAME,
+        "laboratory": "testing laboratory as printed",
+        "standard": "standard(s) tested against as printed, or null",
+        "result": "test result as printed (e.g. PASS), or null",
+    },
+    "AFFIDAVIT": {
+        "entity_name": NAME,
+        "date": "date of the affidavit as printed, or null",
+        "declaration": "the declaration made, as printed",
+    },
+    "LAND_BORDER": {
+        "entity_name": NAME,
+        "declaration": "the declaration made, as printed",
+        "signatory": "who signed, as printed, or null",
+    },
 }
 
 SYSTEM_PROMPT = (
     "You extract fields from OCR text of procurement documents. "
     "Use only information present in the text. If a field is absent, use null. "
     "Correct obvious OCR character confusions only when the document format makes the intended value certain. "
+    "Copy every value exactly as printed (same spelling, digits and punctuation); never compute, convert or reformat. "
     "Respond with a single JSON object and nothing else."
 )
 
@@ -76,7 +150,7 @@ def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
         "model": settings.nvidia_extraction_model,
         "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}],
         "temperature": 0,
-        "max_tokens": 400,
+        "max_tokens": 700,
         "stream": True,
         "chat_template_kwargs": {"enable_thinking": False},
     }
@@ -104,8 +178,9 @@ def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
 
     raw = _parse_json(content)
     fields = {key: raw.get(key) for key in schema}
-    if isinstance(fields.get("pan"), str):
-        fields["pan"] = fields["pan"].strip().upper().replace(" ", "")
+    for key in ("pan", "gstin", "udyam_number", "epfo_code", "esic_code"):
+        if isinstance(fields.get(key), str):
+            fields[key] = fields[key].strip().upper().replace(" ", "")
     grounding = {key: _grounded(value, ocr_text) for key, value in fields.items()}
     warnings = [f"'{k}' value not found verbatim in the OCR text" for k, ok in grounding.items() if not ok]
     if fields.get("pan") and not PAN_RE.match(fields["pan"]):

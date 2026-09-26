@@ -8,9 +8,10 @@ import { login, refresh } from '../services/auth.service.js';
 import { submitDecision, validateDecision } from '../services/decision.service.js';
 import { engineHealth } from '../services/engine.client.js';
 import { runVerification } from '../services/verification.service.js';
-import { listRuns, listSamples, signedUrl, startPanVerification, type DocumentSource } from '../services/documentPipeline.service.js';
+import { deleteUpload, listRuns, listSamples, signedUrl, startPanVerification, type DocumentSource } from '../services/documentPipeline.service.js';
 import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
+import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
 
@@ -157,6 +158,40 @@ router.post(
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     const run = await startPanVerification(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), source);
     res.status(202).json({ success: true, data: run });
+  }),
+);
+
+router.delete(
+  '/document-verifications/:id/file',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.json({ success: true, data: await deleteUpload(db, userId, String(req.params.id), profile?.full_name ?? 'Officer') });
+  }),
+);
+
+// ---------------------------------------------------------------- document intelligence (whole bid package)
+
+router.get(
+  '/bids/:id/document-batches',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await listBatches(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.get(
+  '/document-batches/:id/runs',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await listBatchRuns(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.post(
+  '/bids/:id/document-batches',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.status(202).json({ success: true, data: await startDocumentBatch(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
   }),
 );
 

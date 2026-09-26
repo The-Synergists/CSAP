@@ -40,7 +40,7 @@ export const mapRun = mapRunRow;
 
 export async function listRuns(db: SupabaseClient, bidId: string) {
   const rows = must<any[]>(
-    await db.from('document_verification_runs').select('*').eq('bid_id', bidId).order('started_at', { ascending: false }).limit(20),
+    await db.from('document_verification_runs').select('*').eq('bid_id', bidId).eq('document_type', 'PAN').order('started_at', { ascending: false }).limit(20),
     'document verification runs',
   );
   return rows.map(mapRun);
@@ -62,7 +62,7 @@ export async function signedUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-async function download(path: string): Promise<Buffer> {
+export async function download(path: string): Promise<Buffer> {
   const { data, error } = await serviceClient.storage.from(BUCKET).download(path);
   if (error || !data) throw new HttpError(404, `Document ${path} not found in storage.`, 'NOT_FOUND');
   return Buffer.from(await data.arrayBuffer());
@@ -98,7 +98,7 @@ async function resolveDocument(view: BidView, source: DocumentSource): Promise<{
   };
 }
 
-async function engine<T>(path: string, body: unknown): Promise<T> {
+export async function engine<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${config.aiEngineUrl}${path}`, {
@@ -191,7 +191,7 @@ export function compare(view: BidView, extraction: ExtractionResult, api: ApiRes
   return { rows, verdict, summary };
 }
 
-async function callPanApi(pan: string, name: string | null): Promise<{ request: ApiRequestRecord; response: ApiResponseRecord }> {
+export async function callPanApi(pan: string, name: string | null): Promise<{ request: ApiRequestRecord; response: ApiResponseRecord }> {
   const url = `${config.govGatewayUrl}/v1/pan/verify`;
   const body = { pan, name };
   const request: ApiRequestRecord = {
@@ -321,4 +321,31 @@ async function processRun(db: SupabaseClient, view: BidView, runId: string, byte
       .eq('id', runId);
     await audit('PAN verification failed', message);
   }
+}
+
+/** Deletes an officer-uploaded file from storage (e.g. a personal PAN card used for a test); the run keeps its results. */
+export async function deleteUpload(db: SupabaseClient, userId: string, runId: string, officerName: string) {
+  const run = must<any>(await db.from('document_verification_runs').select('id, bid_id, document').eq('id', runId).maybeSingle(), 'document verification run');
+  if (!run) throw new HttpError(404, 'Verification run not found.', 'NOT_FOUND');
+  const doc = run.document as PipelineDocument;
+  if (doc.source !== 'officer_upload') throw new HttpError(400, 'Only files uploaded by an officer can be deleted.', 'VALIDATION');
+  if (doc.deletedAt) return mapRun(run);
+  const { error } = await serviceClient.storage.from(BUCKET).remove([doc.path]);
+  if (error) throw new HttpError(502, `Storage error: ${error.message}`, 'STORAGE_ERROR');
+  const updated = must<any>(
+    await db.from('document_verification_runs').update({ document: { ...doc, deletedAt: new Date().toISOString() } }).eq('id', runId).select('*').single(),
+    'document verification run',
+  );
+  const { data: bid } = await db.from('bids').select('tender_id').eq('id', run.bid_id).maybeSingle();
+  await db.from('audit_events').insert({
+    bid_id: run.bid_id,
+    tender_id: bid?.tender_id ?? null,
+    actor_profile_id: userId,
+    actor_display_name: officerName,
+    actor_role: 'Procurement officer',
+    action_type: 'OFFICER_ACTION',
+    summary: 'Uploaded document deleted',
+    details: `${officerName} deleted the uploaded file ${doc.fileName} from storage (SHA-256 ${doc.sha256.slice(0, 16)}…). The verification result is kept.`,
+  });
+  return mapRun(updated);
 }

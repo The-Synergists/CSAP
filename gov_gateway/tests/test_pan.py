@@ -47,3 +47,12 @@ def test_api_key_required():
 def test_reference_example_from_brief():
     body = verify("ABCDE1234A", "ABC INDUSTRIAL SOLUTIONS PVT LTD").json()
     assert body["status"] == "VALID" and body["name_match"] == "MATCH"
+
+
+def test_private_pan_records_from_environment(monkeypatch):
+    monkeypatch.setenv("PAN_EXTRA_RECORDS", '[{"pan": "bqxps4821k", "registered_name": "Rahul Kumar Sharma"}, {"pan": "bad"}]')
+    body = client.post("/v1/pan/verify", json={"pan": "BQXPS4821K", "name": "RAHUL KUMAR SHARMA"}, headers=KEY).json()
+    assert body["status"] == "VALID"
+    assert body["category"] == "Individual"
+    assert body["name_match"] == "MATCH"
+    assert client.get("/v1/health").json()["records"] == 10  # the malformed entry is ignored
