@@ -1,7 +1,7 @@
 // Thin client for the CSAP backend (backend/). Holds the Supabase session tokens issued
 // through /api/auth/login and refreshes them transparently on a 401.
 
-import type { Database, DecisionType, DocumentVerificationRun } from '@shared/domain/types';
+import type { Database, DecisionType, DocumentVerificationRun, PortalVerification } from '@shared/domain/types';
 import type { VerificationRun } from '@shared/domain/verification';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
@@ -122,5 +122,7 @@ export const api = {
     source: { source: 'bid_package' } | { source: 'sample'; fileName: string } | { source: 'upload'; fileName: string; mimeType: string; contentBase64: string },
   ) => call<DocumentVerificationRun>(`/api/bids/${bidId}/document-verifications`, { method: 'POST', body: JSON.stringify(source) }),
   documentSamples: () => call<string[]>('/api/document-samples'),
+  portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
+  startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
   documentUrl: (path: string) => call<{ url: string }>(`/api/documents/url?path=${encodeURIComponent(path)}`),
 };

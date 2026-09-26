@@ -23,8 +23,8 @@ export const config = {
   aiEngineUrl: process.env.AI_ENGINE_URL ?? (vercelBase ? `${vercelBase}/api/engine` : 'http://localhost:8000'),
   /** Shared secret the engine requires on every call (protects the NVIDIA-backed endpoints). */
   engineApiKey: process.env.ENGINE_API_KEY ?? '',
-  /** Dummy PAN Verification API (pan_api/) — an external service from CSAP's point of view. */
-  panApiUrl: process.env.PAN_API_URL ?? (vercelBase ? `${vercelBase}/api/pan-registry` : 'http://localhost:8100'),
-  panApiKey: process.env.PAN_API_KEY ?? 'csap-demo-pan-key',
+  /** Government Gateway (gov_gateway/): simulated registries, external from CSAP's point of view. */
+  govGatewayUrl: process.env.GOV_GATEWAY_URL ?? process.env.PAN_API_URL ?? (vercelBase ? `${vercelBase}/api/gov` : 'http://localhost:8100'),
+  govGatewayKey: process.env.GOV_GATEWAY_KEY ?? process.env.PAN_API_KEY ?? 'csap-demo-pan-key',
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),
 };

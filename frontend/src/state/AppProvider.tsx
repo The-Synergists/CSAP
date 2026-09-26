@@ -9,13 +9,13 @@ import { appendAudit, applyDecision } from './demoStore';
 import { subscribeToTables } from './realtime';
 
 const SOURCE: DataSource = import.meta.env.VITE_DATA_SOURCE === 'demo' ? 'demo' : 'api';
-const DEMO_DB_KEY = 'csap.demo-db.v3';
+const DEMO_DB_KEY = 'csap.demo-db.v4';
 const DEMO_SESSION_KEY = 'csap.demo-session.v1';
 const STEP_MS = 450;
 
 const EMPTY_DB: Database = {
   users: [], tenders: [], requirements: [], bidders: [], bids: [], documents: [], emdTransactions: [],
-  complianceChecks: [], findings: [], riskFactors: [], recommendations: [], decisions: [], auditEvents: [],
+  complianceChecks: [], findings: [], riskFactors: [], recommendations: [], decisions: [], auditEvents: [], portalVerifications: [],
 };
 
 const read = <T,>(key: string): T | null => {
@@ -120,14 +120,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [isDemo, userId, logout]);
 
   // Realtime: when any officer (or the verification service) changes decisions, audit
-  // events or verification runs, refresh the workspace so every open screen stays current.
+  // events, verification runs or portal checks, refresh the workspace so every open screen stays current.
   const [realtimeLive, setRealtimeLive] = useState(false);
   useEffect(() => {
     if (isDemo || !userId) return;
     let timer: number | undefined;
     const unsubscribe = subscribeToTables(
       'workspace',
-      [{ table: 'officer_decisions' }, { table: 'audit_events' }, { table: 'ai_verification_runs' }],
+      [{ table: 'officer_decisions' }, { table: 'audit_events' }, { table: 'ai_verification_runs' }, { table: 'portal_verifications' }],
       () => {
         window.clearTimeout(timer);
         timer = window.setTimeout(() => {

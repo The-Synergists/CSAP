@@ -142,3 +142,30 @@ export const PAN_VERDICT: Record<string, { label: string; tone: Tone }> = {
   PAN_NOT_FOUND: { label: 'PAN not found', tone: 'danger' },
   ERROR: { label: 'Pipeline error', tone: 'danger' },
 };
+
+export const REGISTRY: Record<string, { name: string; authority: string }> = {
+  PAN: { name: 'PAN', authority: 'Income Tax Department' },
+  GSTN: { name: 'GST registration & returns', authority: 'GSTN' },
+  UDYAM: { name: 'Udyam / MSME', authority: 'Ministry of MSME' },
+  MCA21: { name: 'Company master data', authority: 'MCA21' },
+  EPFO: { name: 'EPFO', authority: 'Employees’ Provident Fund Organisation' },
+  ESIC: { name: 'ESIC', authority: 'Employees’ State Insurance Corporation' },
+  STARTUP_INDIA: { name: 'Startup India', authority: 'DPIIT' },
+  NSIC: { name: 'NSIC registration', authority: 'NSIC' },
+  DEBARMENT: { name: 'Blacklisting / debarment', authority: 'CPPP · GeM · MoPNG · CPCL' },
+  DIGILOCKER: { name: 'DigiLocker issued documents', authority: 'DigiLocker' },
+};
+
+export const PORTAL_STATUS: Record<string, { label: string; tone: Tone }> = {
+  VERIFIED: { label: 'Verified', tone: 'success' },
+  REVIEW: { label: 'Needs review', tone: 'warning' },
+  FAILED: { label: 'Failed', tone: 'danger' },
+  NOT_FOUND: { label: 'Not found', tone: 'danger' },
+  NOT_APPLICABLE: { label: 'Not applicable', tone: 'neutral' },
+  UNAVAILABLE: { label: 'Not verified', tone: 'neutral' },
+};
+
+export const REGISTRY_MODE: Record<string, { label: string; tone: Tone }> = {
+  SIMULATED: { label: 'Simulated registry', tone: 'neutral' },
+  LIVE_PROVIDER: { label: 'Live provider', tone: 'info' },
+};

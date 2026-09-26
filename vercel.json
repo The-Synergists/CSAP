@@ -5,14 +5,38 @@
   "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/index.ts": { "maxDuration": 60 },
-    "api/engine.py": { "maxDuration": 60, "includeFiles": "ai_engine/src/**" },
-    "api/pan.py": { "maxDuration": 15, "includeFiles": "pan_api/{app.py,data/**}" }
+    "api/index.ts": {
+      "maxDuration": 60
+    },
+    "api/engine.py": {
+      "maxDuration": 60,
+      "includeFiles": "ai_engine/src/**"
+    },
+    "api/gov.py": {
+      "maxDuration": 15,
+      "includeFiles": "gov_gateway/{app.py,data/*.json}"
+    }
   },
   "rewrites": [
-    { "source": "/api/engine/:route*", "destination": "/api/engine" },
-    { "source": "/api/pan-registry/:route*", "destination": "/api/pan" },
-    { "source": "/api/:route*", "destination": "/api/index" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/engine/:route*",
+      "destination": "/api/engine"
+    },
+    {
+      "source": "/api/gov/:route*",
+      "destination": "/api/gov"
+    },
+    {
+      "source": "/api/pan-registry/:route*",
+      "destination": "/api/gov"
+    },
+    {
+      "source": "/api/:route*",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "dataset": "CSAP simulated Startup India (DPIIT) recognition registry",
+  "description": "DPIIT recognition and validity. Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "dpiit_number": "DIPP145872",
+      "entity_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED",
+      "recognition_date": "2019-03-14",
+      "valid_until": "2027-03-13",
+      "sector": "Industrial safety",
+      "status": "Recognised"
+    },
+    {
+      "dpiit_number": "DIPP098765",
+      "entity_name": "ZENITH SAFETY CORPORATION PRIVATE LIMITED",
+      "recognition_date": "2016-05-02",
+      "valid_until": "2026-05-01",
+      "sector": "Safety equipment",
+      "status": "Expired"
+    }
+  ]
+}

@@ -18,9 +18,9 @@
     "seed": "npm --prefix database run seed",
     "test:engine": "node scripts/py.mjs -m pytest -q",
     "test:live": "npm --prefix backend run test:live",
-    "dev:pan-api": "node scripts/py.mjs --cwd pan_api -m uvicorn app:app --port 8100",
-    "test:pan-api": "node scripts/py.mjs --cwd pan_api -m pytest -q",
-    "migrate": "npm --prefix database run migrate"
+    "migrate": "npm --prefix database run migrate",
+    "dev:gateway": "node scripts/py.mjs --cwd gov_gateway -m uvicorn app:app --port 8100",
+    "test:gateway": "node scripts/py.mjs --cwd gov_gateway -m pytest -q"
   },
   "devDependencies": {
     "typescript": "~6.0.2"

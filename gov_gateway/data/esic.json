@@ -1,0 +1,36 @@
+{
+  "dataset": "CSAP simulated ESIC employer registry",
+  "description": "Employer status and latest contribution period. Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "employer_code": "51000458920000101",
+      "employer_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "status": "Active",
+      "latest_contribution_month": "2026-08",
+      "employees_covered": 38
+    },
+    {
+      "employer_code": "51000981240000102",
+      "employer_name": "BHARAT ENGINEERING WORKS",
+      "status": "Active",
+      "latest_contribution_month": "2026-07",
+      "employees_covered": 52
+    },
+    {
+      "employer_code": "69000781290000103",
+      "employer_name": "NATIONAL SAFETY SYSTEMS",
+      "status": "Active",
+      "latest_contribution_month": "2026-07",
+      "employees_covered": 21
+    },
+    {
+      "employer_code": "51000891420000104",
+      "employer_name": "PRIME TECH SOLUTIONS",
+      "status": "Active",
+      "latest_contribution_month": "2026-08",
+      "employees_covered": 64
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import { engineHealth } from '../services/engine.client.js';
 import { runVerification } from '../services/verification.service.js';
 import { listRuns, listSamples, signedUrl, startPanVerification, type DocumentSource } from '../services/documentPipeline.service.js';
 import { config } from '../config/env.js';
+import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get(
     const [db, engine, pan] = await Promise.all([
       serviceClient.from('tenders').select('id', { count: 'exact', head: true }).then(({ error }) => !error),
       engineHealth(),
-      fetch(`${config.panApiUrl}/v1/health`, { signal: AbortSignal.timeout(3000) })
+      fetch(`${config.govGatewayUrl}/v1/health`, { signal: AbortSignal.timeout(3000) })
         .then((r) => r.json() as Promise<{ records: number }>)
         .catch(() => null),
     ]);
@@ -32,6 +33,7 @@ router.get(
       verificationEngine: engine.ok ? `ok (${engine.version})` : 'unreachable',
       nvidiaOcr: engine.nvidia?.ocr?.configured ? `configured (${engine.nvidia.ocr.model})` : 'not configured',
       nvidiaExtraction: engine.nvidia?.extraction?.configured ? `configured (${engine.nvidia.extraction.model})` : 'not configured',
+      governmentGateway: pan ? `ok (${(pan as { registries?: string[] }).registries?.length ?? 0} registries, simulated)` : 'unreachable',
       panVerificationApi: pan ? `ok (${pan.records} records)` : 'unreachable',
       timestamp: new Date().toISOString(),
     });
@@ -152,6 +154,33 @@ router.post(
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     const run = await startPanVerification(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), source);
     res.status(202).json({ success: true, data: run });
+  }),
+);
+
+// ---------------------------------------------------------------- government portal verification
+
+router.get(
+  '/bids/:id/portal-checks',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await listPortalChecks(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.post(
+  '/bids/:id/portal-checks',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.status(202).json({ success: true, data: await startPortalChecks(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
+  }),
+);
+
+router.get(
+  '/registries',
+  asyncHandler(async (_req, res) => {
+    const r = await fetch(`${config.govGatewayUrl}/v1/registries`, { headers: { 'x-api-key': config.govGatewayKey }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new HttpError(502, 'Government Gateway not reachable.', 'GATEWAY_UNAVAILABLE');
+    res.json({ success: true, data: ((await r.json()) as { registries: unknown[] }).registries });
   }),
 );
 

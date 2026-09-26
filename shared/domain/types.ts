@@ -78,6 +78,12 @@ export interface Bidder {
   pan: string;
   udyamNumber: string;
   msmeCategory?: string;
+  /** Registry identifiers declared by the bidder (used for government portal checks). */
+  cin?: string;
+  epfoCode?: string;
+  esicCode?: string;
+  dpiitNumber?: string;
+  nsicNumber?: string;
   /** Audited turnover in ₹ crore, oldest first. */
   turnover: { financialYear: string; amountCr: number }[];
 }
@@ -215,6 +221,37 @@ export interface AuditEvent {
   details: string;
 }
 
+// ---------------------------------------------------------------- government portal verification
+
+export type RegistryId = 'PAN' | 'GSTN' | 'UDYAM' | 'MCA21' | 'EPFO' | 'ESIC' | 'STARTUP_INDIA' | 'NSIC' | 'DEBARMENT' | 'DIGILOCKER';
+export type RegistryMode = 'SIMULATED' | 'LIVE_PROVIDER';
+export type PortalStatus = 'VERIFIED' | 'REVIEW' | 'FAILED' | 'NOT_FOUND' | 'NOT_APPLICABLE' | 'UNAVAILABLE';
+
+/** One comparison CSAP made between the registry's answer and the bid. */
+export interface PortalCheck {
+  label: string;
+  expected?: string | null;
+  actual?: string | null;
+  ok: boolean | null;
+}
+
+export interface PortalVerification {
+  id: string;
+  runId: string;
+  bidId: string;
+  registry: RegistryId;
+  mode: RegistryMode;
+  identifier: string | null;
+  status: PortalStatus;
+  summary: string;
+  facts: { label: string; value: string }[];
+  checks: PortalCheck[];
+  request?: { method: string; url: string; body: unknown } | null;
+  response?: { httpStatus: number; body: unknown } | null;
+  latencyMs?: number | null;
+  checkedAt: string;
+}
+
 /** The whole prototype dataset. Each array is one "table". */
 export interface Database {
   users: User[];
@@ -230,6 +267,7 @@ export interface Database {
   recommendations: Recommendation[];
   decisions: OfficerDecision[];
   auditEvents: AuditEvent[];
+  portalVerifications: PortalVerification[];
 }
 
 // ---------------------------------------------------------------- document verification pipeline

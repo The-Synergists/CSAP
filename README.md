@@ -4,8 +4,9 @@ A procurement officer's workspace: select a tender, open a bid, see how it was c
 against every tender requirement, inspect the evidence for each exception, read the
 advisory AI recommendation, and record the decision — which is written to the audit trail.
 
-> Prototype. Tender data is illustrative. OCR and extraction run on live NVIDIA models; the PAN
-> Verification API is a dummy service with its own dataset; GSTN/bank integrations are simulated.
+> Prototype. Tender data is illustrative. OCR and extraction run on live NVIDIA models; government
+> registries (PAN, GSTN, Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment, DigiLocker) are a
+> simulated Government Gateway with one dataset per registry; bank integrations are simulated.
 > AI output is advisory; the designated procurement officer makes the final decision.
 
 ## Architecture
@@ -14,7 +15,7 @@ advisory AI recommendation, and record the decision — which is written to the 
 frontend/  React UI ──/api──► backend/ Express gateway ──► Supabase (Postgres, Auth, Storage, Realtime)
    ▲                             │
    │ Supabase Realtime           ├──► ai_engine/  FastAPI: rule engine + NVIDIA OCR + NVIDIA extraction
-   └─────────────────────────────┴──► pan_api/    Dummy PAN Verification API (own dataset file)
+   └─────────────────────────────┴──► gov_gateway/ Simulated government registries (one dataset file each)
 shared/    domain model, selectors, demo dataset — imported by frontend, backend, seed and tests
 database/  SQL migrations (+ runner), seed script, sample PAN documents, schema docs
 ```
@@ -24,7 +25,7 @@ database/  SQL migrations (+ runner), seed script, sample PAN documents, schema 
 ```
 PAN document (bucket bid-documents) → NVIDIA Nemotron OCR V2 → OCR text
   → NVIDIA extraction model → PAN, name, … (each value checked against the OCR text)
-  → POST pan_api /v1/pan/verify → lookup in pan_registry.json → response
+  → POST gov_gateway /v1/pan/verify → lookup in pan.json → response
   → CSAP compares document vs registry vs bid record → verdict
 ```
 
@@ -64,7 +65,7 @@ cp database/.env.example database/.env        # DATABASE_URL (for migrations)
 npm run migrate       # apply pending SQL migrations
 
 npm run dev:engine    # terminal 1 — http://localhost:8000
-npm run dev:pan-api   # terminal 2 — http://localhost:8100
+npm run dev:gateway   # terminal 2 — http://localhost:8100
 npm run dev:backend   # terminal 3 — http://localhost:5000/api/health
 npm run dev           # terminal 4 — http://localhost:5173
 ```
@@ -76,7 +77,7 @@ Demo login: employee ID `CPCL10421` (or `rk.ramanathan@cpcl.co.in`), password `C
 | Command | What it checks |
 | --- | --- |
 | `npm run test:engine` | Engine rules reproduce all four demo scenarios exactly; NVIDIA stages with mocked HTTP |
-| `npm run test:pan-api` | Dummy PAN API: valid, name mismatch, invalid, deactivated, not found, bad format, API key |
+| `npm run test:gateway` | Government Gateway: PAN cases, every registry lookup, debarment, DigiLocker, API key |
 | `npm run test:live` | Against the running backend + Supabase: every bid reads back identical to the demo dataset |
 | `npm run typecheck` / `npm run lint` / `npm run build` | Static checks and production build |
 

@@ -13,15 +13,15 @@ interface Health {
   nvidiaOcr?: string;
   nvidiaExtraction?: string;
   panVerificationApi?: string;
+  governmentGateway?: string;
   timestamp: string;
 }
 
 const INTEGRATIONS = [
   { name: 'NVIDIA Nemotron OCR V2', note: 'Reads uploaded PAN document images (PAN verification tab).', state: 'Live' },
   { name: 'NVIDIA information extraction', note: 'LLM that extracts PAN, name and other fields from the OCR text.', state: 'Live' },
-  { name: 'PAN Verification API', note: 'Dummy external service for the prototype; answers from its own dataset file (pan_registry.json).', state: 'Dummy API' },
+  { name: 'Government Gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker — each registry answers from its own dataset. Real APIs plug in behind the same adapters.', state: 'Simulated' },
   { name: 'GeM tender feed', note: 'Tenders and bids are loaded from the CSAP database.', state: 'Not connected' },
-  { name: 'GSTN / Udyam registries', note: 'Identifier format and GSTIN–PAN cross-check only; no live registry lookup.', state: 'Simulated' },
   { name: 'Bank / treasury (EMD)', note: 'EMD amounts compared with submitted instrument; no bank confirmation.', state: 'Simulated' },
   { name: 'Digital signature (DSC)', note: 'Decisions are recorded against the signed-in officer, not digitally signed.', state: 'Not connected' },
 ];
@@ -96,7 +96,7 @@ export const SettingsPage: React.FC = () => {
                   { label: 'Verification engine', value: health ? <Badge tone={tone(health.verificationEngine)}>{health.verificationEngine}</Badge> : '…' },
                   { label: 'NVIDIA OCR', value: health?.nvidiaOcr ? <Badge tone={health.nvidiaOcr.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaOcr}</Badge> : '…' },
                   { label: 'NVIDIA extraction', value: health?.nvidiaExtraction ? <Badge tone={health.nvidiaExtraction.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaExtraction}</Badge> : '…' },
-                  { label: 'PAN Verification API', value: health?.panVerificationApi ? <Badge tone={tone(health.panVerificationApi)}>{health.panVerificationApi}</Badge> : '…' },
+                  { label: 'Government Gateway', value: health?.governmentGateway ? <Badge tone={tone(health.governmentGateway)}>{health.governmentGateway}</Badge> : '…' },
                   { label: 'Realtime', value: <Badge tone={realtimeLive ? 'success' : 'warning'}>{realtimeLive ? 'connected' : 'not connected (polling)'}</Badge> },
                 ]
               : []),

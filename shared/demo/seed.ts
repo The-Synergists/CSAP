@@ -137,6 +137,9 @@ const bidders: Bidder[] = [
     pan: 'AABCA1234F',
     udyamNumber: 'UDYAM-TN-02-0045812',
     msmeCategory: 'Small (Manufacturing)',
+    cin: 'U29299TN2014PTC095871',
+    epfoCode: 'TNMAS0045892000',
+    esicCode: '51000458920000101',
     turnover: [
       { financialYear: 'FY 2022-23', amountCr: 5.2 },
       { financialYear: 'FY 2023-24', amountCr: 5.8 },
@@ -152,6 +155,8 @@ const bidders: Bidder[] = [
     pan: 'AABCB9876E',
     udyamNumber: 'UDYAM-TN-03-0012984',
     msmeCategory: 'Medium',
+    epfoCode: 'TNCBE0098124',
+    esicCode: '51000981240000102',
     turnover: [
       { financialYear: 'FY 2022-23', amountCr: 5.05 },
       { financialYear: 'FY 2023-24', amountCr: 4.9 },
@@ -167,6 +172,8 @@ const bidders: Bidder[] = [
     pan: 'AABCN5544K',
     udyamNumber: 'UDYAM-UP-28-0091245',
     msmeCategory: 'Medium (Trading & Services)',
+    epfoCode: 'UPNOI0078129',
+    esicCode: '69000781290000103',
     turnover: [
       { financialYear: 'FY 2022-23', amountCr: 3.1 },
       { financialYear: 'FY 2023-24', amountCr: 3.4 },
@@ -182,6 +189,9 @@ const bidders: Bidder[] = [
     pan: 'AAACP4419M',
     udyamNumber: 'UDYAM-TN-02-0089142',
     msmeCategory: 'Small (Manufacturing)',
+    epfoCode: 'TNMAS0089142',
+    esicCode: '51000891420000104',
+    nsicNumber: 'NSIC/SPRS/TN/2024/00481',
     turnover: [
       { financialYear: 'FY 2022-23', amountCr: 7.6 },
       { financialYear: 'FY 2023-24', amountCr: 8.4 },
@@ -798,4 +808,5 @@ export const seedDatabase = (): Database =>
     recommendations,
     decisions,
     auditEvents,
+    portalVerifications: [],
   });

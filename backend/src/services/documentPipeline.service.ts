@@ -192,7 +192,7 @@ export function compare(view: BidView, extraction: ExtractionResult, api: ApiRes
 }
 
 async function callPanApi(pan: string, name: string | null): Promise<{ request: ApiRequestRecord; response: ApiResponseRecord }> {
-  const url = `${config.panApiUrl}/v1/pan/verify`;
+  const url = `${config.govGatewayUrl}/v1/pan/verify`;
   const body = { pan, name };
   const request: ApiRequestRecord = {
     apiName: PAN_API_NAME,
@@ -207,12 +207,12 @@ async function callPanApi(pan: string, name: string | null): Promise<{ request: 
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': config.panApiKey },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': config.govGatewayKey },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    throw new Error(`PAN Verification API not reachable at ${config.panApiUrl}.`);
+    throw new Error(`PAN Verification API not reachable at ${config.govGatewayUrl}.`);
   }
   const json = (await res.json().catch(() => ({}))) as Record<string, any>;
   if (res.status === 401) throw new Error('PAN Verification API rejected the API key.');
@@ -285,7 +285,7 @@ async function processRun(db: SupabaseClient, view: BidView, runId: string, byte
       api_request: {
         apiName: PAN_API_NAME,
         method: 'POST',
-        url: `${config.panApiUrl}/v1/pan/verify`,
+        url: `${config.govGatewayUrl}/v1/pan/verify`,
         headers: { 'content-type': 'application/json', 'x-api-key': '••••••••' },
         body: { pan: extraction.fields.pan, name: extraction.fields.name },
         sentAt: new Date().toISOString(),

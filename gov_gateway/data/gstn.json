@@ -1,0 +1,394 @@
+{
+  "dataset": "CSAP simulated GSTN taxpayer registry",
+  "description": "Registration status and GSTR-3B filing history. Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "gstin": "33AABCA1234F1Z8",
+      "legal_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "trade_name": "ABC INDUSTRIAL SOLUTIONS",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Private Limited Company",
+      "registration_date": "2017-07-01",
+      "state": "Tamil Nadu",
+      "principal_address": "Plot 42, Ambattur Industrial Estate, Chennai 600058",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": "2026-06-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": "2026-07-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        }
+      ]
+    },
+    {
+      "gstin": "33AABCB9876E1Z4",
+      "legal_name": "BHARAT ENGINEERING WORKS",
+      "trade_name": "BHARAT ENGINEERING WORKS",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Partnership",
+      "registration_date": "2017-07-01",
+      "state": "Tamil Nadu",
+      "principal_address": "Industrial Area Phase 2, Coimbatore 641018",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": "2026-06-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": "2026-07-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        }
+      ]
+    },
+    {
+      "gstin": "09AABCN5544K1Z2",
+      "legal_name": "NATIONAL SAFETY SYSTEMS",
+      "trade_name": "NATIONAL SAFETY SYSTEMS",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Partnership",
+      "registration_date": "2018-02-14",
+      "state": "Uttar Pradesh",
+      "principal_address": "Sector 62, Noida 201301",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": "2026-06-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": "2026-07-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": "2026-08-28",
+          "status": "LATE"
+        }
+      ]
+    },
+    {
+      "gstin": "33AAACP4419M1ZP",
+      "legal_name": "PRIME TECH SOLUTIONS",
+      "trade_name": "PRIME TECH SOLUTIONS",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Partnership",
+      "registration_date": "2017-07-01",
+      "state": "Tamil Nadu",
+      "principal_address": "TIDEL Park, Taramani, Chennai 600113",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": "2026-06-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": "2026-07-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        }
+      ]
+    },
+    {
+      "gstin": "33AAECS7788K1Z9",
+      "legal_name": "SUNRISE SAFETY TRADERS",
+      "trade_name": "SUNRISE SAFETY TRADERS",
+      "status": "Cancelled",
+      "taxpayer_type": "Regular",
+      "constitution": "Proprietorship",
+      "registration_date": "2019-07-03",
+      "cancellation_date": "2026-05-31",
+      "state": "Tamil Nadu",
+      "principal_address": "Guindy, Chennai 600032",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-28",
+          "status": "LATE"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        }
+      ]
+    },
+    {
+      "gstin": "29AAGCK5566L1ZX",
+      "legal_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED",
+      "trade_name": "KAVERI SAFETY EQUIPMENT",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Private Limited Company",
+      "registration_date": "2017-09-12",
+      "state": "Karnataka",
+      "principal_address": "Peenya Industrial Area, Bengaluru 560058",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        }
+      ]
+    },
+    {
+      "gstin": "33AAFCR3322Q1Z1",
+      "legal_name": "RAJ FIRE SERVICES PRIVATE LIMITED",
+      "trade_name": "RAJ FIRE SERVICES",
+      "status": "Suspended",
+      "taxpayer_type": "Regular",
+      "constitution": "Private Limited Company",
+      "registration_date": "2017-07-01",
+      "state": "Tamil Nadu",
+      "principal_address": "Ennore, Chennai 600057",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        }
+      ]
+    }
+  ]
+}

@@ -15,7 +15,7 @@ def test_valid_pan_with_matching_name():
     assert body["status"] == "VALID"
     assert body["registered_name"] == "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED"
     assert body["name_match"] == "MATCH"
-    assert body["source"]["file"] == "pan_registry.json"
+    assert body["source"]["file"] == "pan.json"
 
 
 def test_valid_pan_but_name_does_not_match():

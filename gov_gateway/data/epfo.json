@@ -1,0 +1,48 @@
+{
+  "dataset": "CSAP simulated EPFO establishment registry",
+  "description": "Establishment status and latest ECR (monthly return). Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "establishment_code": "TNMAS0045892000",
+      "establishment_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "status": "Live",
+      "latest_ecr_month": "2026-08",
+      "latest_ecr_paid_on": "2026-09-12",
+      "employees_covered": 38
+    },
+    {
+      "establishment_code": "TNCBE0098124",
+      "establishment_name": "BHARAT ENGINEERING WORKS",
+      "status": "Live",
+      "latest_ecr_month": "2026-07",
+      "latest_ecr_paid_on": "2026-08-14",
+      "employees_covered": 52
+    },
+    {
+      "establishment_code": "UPNOI0078129",
+      "establishment_name": "NATIONAL SAFETY SYSTEMS",
+      "status": "Live",
+      "latest_ecr_month": "2026-06",
+      "latest_ecr_paid_on": "2026-07-29",
+      "employees_covered": 21
+    },
+    {
+      "establishment_code": "TNMAS0089142",
+      "establishment_name": "PRIME TECH SOLUTIONS",
+      "status": "Live",
+      "latest_ecr_month": "2026-08",
+      "latest_ecr_paid_on": "2026-09-10",
+      "employees_covered": 64
+    },
+    {
+      "establishment_code": "TNMAS0033221",
+      "establishment_name": "RAJ FIRE SERVICES PRIVATE LIMITED",
+      "status": "Closed",
+      "latest_ecr_month": "2023-03",
+      "latest_ecr_paid_on": "2023-04-15",
+      "employees_covered": 0
+    }
+  ]
+}

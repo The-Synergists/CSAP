@@ -1,0 +1,69 @@
+{
+  "dataset": "CSAP simulated Udyam registry",
+  "description": "MSME classification and activity. Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "udyam_number": "UDYAM-TN-02-0045812",
+      "enterprise_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "type": "Small",
+      "major_activity": "Manufacturing",
+      "nic_codes": [
+        "32901 Manufacture of safety equipment"
+      ],
+      "date_of_registration": "2020-09-18",
+      "classification_year": "2025-26",
+      "status": "Active"
+    },
+    {
+      "udyam_number": "UDYAM-TN-03-0012984",
+      "enterprise_name": "BHARAT ENGINEERING WORKS",
+      "type": "Medium",
+      "major_activity": "Manufacturing",
+      "nic_codes": [
+        "28299 Manufacture of other special-purpose machinery"
+      ],
+      "date_of_registration": "2020-10-02",
+      "classification_year": "2025-26",
+      "status": "Active"
+    },
+    {
+      "udyam_number": "UDYAM-UP-28-0091245",
+      "enterprise_name": "NATIONAL SAFETY SYSTEMS",
+      "type": "Medium",
+      "major_activity": "Services",
+      "nic_codes": [
+        "46699 Wholesale of other products"
+      ],
+      "date_of_registration": "2021-01-11",
+      "classification_year": "2025-26",
+      "status": "Active"
+    },
+    {
+      "udyam_number": "UDYAM-TN-02-0089142",
+      "enterprise_name": "PRIME TECH SOLUTIONS",
+      "type": "Small",
+      "major_activity": "Manufacturing",
+      "nic_codes": [
+        "32901 Manufacture of safety equipment"
+      ],
+      "date_of_registration": "2020-08-27",
+      "classification_year": "2025-26",
+      "status": "Active"
+    },
+    {
+      "udyam_number": "UDYAM-KR-03-0055667",
+      "enterprise_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED",
+      "type": "Medium",
+      "major_activity": "Manufacturing",
+      "nic_codes": [
+        "32901 Manufacture of safety equipment"
+      ],
+      "date_of_registration": "2020-11-05",
+      "classification_year": "2025-26",
+      "status": "Active",
+      "remarks": "Reclassified from Small to Medium in FY 2025-26."
+    }
+  ]
+}

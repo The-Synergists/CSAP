@@ -1,0 +1,28 @@
+{
+  "dataset": "CSAP simulated central debarment list (CPPP / GeM / MoPNG / CPCL)",
+  "description": "Entities debarred or suspended from public procurement. Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "entity_name": "RAJ FIRE SERVICES PRIVATE LIMITED",
+      "pan": "AAFCR3322Q",
+      "gstin": "33AAFCR3322Q1Z1",
+      "authority": "MoPNG",
+      "order_reference": "MoPNG/Vig/2024/117",
+      "debarred_from": "2025-01-01",
+      "debarred_until": "2027-12-31",
+      "reason": "Supply of sub-standard breathing apparatus"
+    },
+    {
+      "entity_name": "SUNRISE SAFETY TRADERS",
+      "pan": "AAECS7788K",
+      "gstin": "33AAECS7788K1Z9",
+      "authority": "GeM",
+      "order_reference": "GeM/SUSP/2024/5512",
+      "debarred_from": "2024-06-01",
+      "debarred_until": "2025-05-31",
+      "reason": "Repeated non-supply after order acceptance"
+    }
+  ]
+}

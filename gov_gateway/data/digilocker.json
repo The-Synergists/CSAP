@@ -1,0 +1,107 @@
+{
+  "dataset": "CSAP simulated DigiLocker issued-documents registry",
+  "description": "Documents as issued by the issuing authority (the authoritative copy an uploaded document is compared with). Fictitious demo data.",
+  "version": "2026.09.2",
+  "updated_at": "2026-09-26",
+  "records": [
+    {
+      "doc_type": "PANCR",
+      "doc_name": "PAN Verification Record",
+      "issuer": "Income Tax Department",
+      "identifier": "AABCA1234F",
+      "name_on_record": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "issued_on": "2014-06-02",
+      "uri": "in.gov.income-PANCR-AABCA1234F"
+    },
+    {
+      "doc_type": "GSTRC",
+      "doc_name": "GST Registration Certificate",
+      "issuer": "GSTN",
+      "identifier": "33AABCA1234F1Z8",
+      "name_on_record": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "issued_on": "2017-07-01",
+      "uri": "in.gov.gstn-GSTRC-33AABCA1234F1Z8"
+    },
+    {
+      "doc_type": "UDCER",
+      "doc_name": "Udyam Registration Certificate",
+      "issuer": "Ministry of MSME",
+      "identifier": "UDYAM-TN-02-0045812",
+      "name_on_record": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "issued_on": "2020-09-18",
+      "uri": "in.gov.ministry-UDCER-UDYAM-TN-02-0045812"
+    },
+    {
+      "doc_type": "PANCR",
+      "doc_name": "PAN Verification Record",
+      "issuer": "Income Tax Department",
+      "identifier": "AABCB9876E",
+      "name_on_record": "BHARAT ENGINEERING WORKS",
+      "issued_on": "2011-09-10",
+      "uri": "in.gov.income-PANCR-AABCB9876E"
+    },
+    {
+      "doc_type": "GSTRC",
+      "doc_name": "GST Registration Certificate",
+      "issuer": "GSTN",
+      "identifier": "33AABCB9876E1Z4",
+      "name_on_record": "BHARAT ENGINEERING WORKS",
+      "issued_on": "2017-07-01",
+      "uri": "in.gov.gstn-GSTRC-33AABCB9876E1Z4"
+    },
+    {
+      "doc_type": "UDCER",
+      "doc_name": "Udyam Registration Certificate",
+      "issuer": "Ministry of MSME",
+      "identifier": "UDYAM-TN-03-0012984",
+      "name_on_record": "BHARAT ENGINEERING WORKS",
+      "issued_on": "2020-10-02",
+      "uri": "in.gov.ministry-UDCER-UDYAM-TN-03-0012984"
+    },
+    {
+      "doc_type": "PANCR",
+      "doc_name": "PAN Verification Record",
+      "issuer": "Income Tax Department",
+      "identifier": "AABCN5544K",
+      "name_on_record": "NATIONAL SAFETY SYSTEMS",
+      "issued_on": "2018-01-22",
+      "uri": "in.gov.income-PANCR-AABCN5544K"
+    },
+    {
+      "doc_type": "GSTRC",
+      "doc_name": "GST Registration Certificate",
+      "issuer": "GSTN",
+      "identifier": "09AABCN5544K1Z2",
+      "name_on_record": "NATIONAL SAFETY SYSTEMS",
+      "issued_on": "2018-02-14",
+      "uri": "in.gov.gstn-GSTRC-09AABCN5544K1Z2"
+    },
+    {
+      "doc_type": "PANCR",
+      "doc_name": "PAN Verification Record",
+      "issuer": "Income Tax Department",
+      "identifier": "AAACP4419M",
+      "name_on_record": "PRIME TECH SOLUTIONS",
+      "issued_on": "2016-04-11",
+      "uri": "in.gov.income-PANCR-AAACP4419M"
+    },
+    {
+      "doc_type": "GSTRC",
+      "doc_name": "GST Registration Certificate",
+      "issuer": "GSTN",
+      "identifier": "33AAACP4419M1ZP",
+      "name_on_record": "PRIME TECH SOLUTIONS",
+      "issued_on": "2017-07-01",
+      "uri": "in.gov.gstn-GSTRC-33AAACP4419M1ZP"
+    },
+    {
+      "doc_type": "UDCER",
+      "doc_name": "Udyam Registration Certificate",
+      "issuer": "Ministry of MSME",
+      "identifier": "UDYAM-TN-02-0089142",
+      "name_on_record": "PRIME TECH SOLUTIONS",
+      "issued_on": "2020-08-27",
+      "uri": "in.gov.ministry-UDCER-UDYAM-TN-02-0089142"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import { EvidenceTab } from './tabs/EvidenceTab';
 import { DecisionTab } from './tabs/DecisionTab';
 import { ActivityTab } from './tabs/ActivityTab';
 import { PanVerificationTab } from './tabs/PanVerificationTab';
+import { PortalVerificationTab } from './tabs/PortalVerificationTab';
 import { BID_TAB_ALIASES as ALIASES, BID_TABS, type BidTab, type TabProps } from './bidTabs';
 
 
@@ -120,6 +121,15 @@ export const BidWorkspacePage: React.FC = () => {
         tabs={[
           { id: 'overview', label: 'Overview' },
           { id: 'documents', label: 'Documents', badge: <CountPill n={view.documents.length} /> },
+          {
+            id: 'portal',
+            label: 'Portal verification',
+            badge: view.portal.some((p) => p.status === 'FAILED' || p.status === 'NOT_FOUND')
+              ? <CountPill n={view.portal.filter((p) => p.status === 'FAILED' || p.status === 'NOT_FOUND').length} tone="danger" />
+              : view.portal.some((p) => p.status === 'REVIEW')
+                ? <CountPill n={view.portal.filter((p) => p.status === 'REVIEW').length} tone="warning" />
+                : undefined,
+          },
           { id: 'pan', label: 'PAN verification' },
           { id: 'emd', label: 'EMD' },
           { id: 'compliance', label: 'Compliance', badge: counts.exceptions ? <CountPill n={counts.exceptions} tone="warning" /> : undefined },
@@ -133,6 +143,7 @@ export const BidWorkspacePage: React.FC = () => {
       <div role="tabpanel">
         {activeTab === 'overview' && <OverviewTab {...tabProps} />}
         {activeTab === 'documents' && <DocumentsTab {...tabProps} />}
+        {activeTab === 'portal' && <PortalVerificationTab {...tabProps} />}
         {activeTab === 'pan' && <PanVerificationTab {...tabProps} />}
         {activeTab === 'emd' && <EmdTab {...tabProps} />}
         {activeTab === 'compliance' && <ComplianceTab {...tabProps} />}

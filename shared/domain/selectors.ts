@@ -13,6 +13,7 @@ import type {
   Finding,
   FindingSeverity,
   OfficerDecision,
+  PortalVerification,
   Recommendation,
   RiskFactor,
   Tender,
@@ -42,6 +43,8 @@ export interface BidView {
   latestDecision?: OfficerDecision;
   /** Newest first. */
   audit: AuditEvent[];
+  /** Government portal checks from the most recent run (one row per registry). */
+  portal: PortalVerification[];
   counts: { met: number; review: number; notMet: number; missing: number; total: number; exceptions: number };
   documentsRequired: number;
   averageTurnoverCr: number;
@@ -137,11 +140,24 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
     decisions,
     latestDecision: decisions[0],
     audit: db.auditEvents.filter((e) => e.bidId === bid.id).sort(byNewest((e) => e.timestamp)),
+    portal: latestPortalRun(db.portalVerifications ?? [], bid.id),
     counts,
     documentsRequired: requirements.length,
     averageTurnoverCr: bidder.turnover.reduce((s, t) => s + t.amountCr, 0) / (bidder.turnover.length || 1),
     flags,
   };
+};
+
+const REGISTRY_ORDER = ['PAN', 'GSTN', 'UDYAM', 'MCA21', 'EPFO', 'ESIC', 'STARTUP_INDIA', 'NSIC', 'DEBARMENT', 'DIGILOCKER'];
+
+/** Rows of the newest portal-check run for a bid, in a fixed registry order. */
+export const latestPortalRun = (rows: PortalVerification[], bidId: string): PortalVerification[] => {
+  const mine = rows.filter((r) => r.bidId === bidId);
+  if (!mine.length) return [];
+  const newest = mine.reduce((a, b) => (b.checkedAt > a.checkedAt ? b : a));
+  return mine
+    .filter((r) => r.runId === newest.runId)
+    .sort((a, b) => REGISTRY_ORDER.indexOf(a.registry) - REGISTRY_ORDER.indexOf(b.registry));
 };
 
 export const listBidViews = (db: Database, tenderId?: string): BidView[] =>

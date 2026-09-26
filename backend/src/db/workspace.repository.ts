@@ -18,6 +18,7 @@ import type {
   TenderRequirement,
   User,
 } from '../../../shared/domain/types.js';
+import { mapPortalRow } from '../../../shared/domain/portal.js';
 import { must } from '../lib/http.js';
 import {
   ACTOR_FROM_DB,
@@ -39,7 +40,7 @@ const byNewest = (key: string) => (a: Row, b: Row) => String(b[key] ?? '').local
 
 export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
   const q = (table: string, select = '*') => db.from(table).select(select);
-  const [profiles, tenders, requirements, companies, turnover, bids, documents, emd, checks, evidence, risks, recs, points, decisions, audit, runs] =
+  const [profiles, tenders, requirements, companies, turnover, bids, documents, emd, checks, evidence, risks, recs, points, decisions, audit, runs, portal] =
     await Promise.all([
       q('profiles'),
       q('tenders').order('id'),
@@ -57,6 +58,7 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       q('officer_decisions'),
       q('audit_events'),
       q('ai_verification_runs', 'id, bid_id, status, steps, started_at, completed_at'),
+      q('portal_verifications').order('checked_at', { ascending: false }).limit(500),
     ]);
 
   const P = must<Row[]>(profiles, 'profiles');
@@ -75,6 +77,7 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
   const OD = must<Row[]>(decisions, 'decisions');
   const AU = must<Row[]>(audit, 'audit events');
   const RN = must<Row[]>(runs, 'verification runs');
+  const PV = must<Row[]>(portal, 'portal verifications');
 
   const bidById = new Map(B.map((b) => [b.id, b]));
   const companyById = new Map(C.map((c) => [c.id, c]));
@@ -173,6 +176,11 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       pan: c.pan,
       udyamNumber: c.udyam_number ?? '',
       msmeCategory: category,
+      cin: c.cin ?? undefined,
+      epfoCode: c.epfo_code ?? undefined,
+      esicCode: c.esic_code ?? undefined,
+      dpiitNumber: c.dpiit_number ?? undefined,
+      nsicNumber: c.nsic_number ?? undefined,
       turnover: TO.filter((t) => t.company_id === c.id)
         .map((t) => ({ financialYear: t.financial_year, amountCr: Number(t.turnover_amount) / 1e7 }))
         .sort((a, b) => a.financialYear.localeCompare(b.financialYear)),
@@ -332,5 +340,6 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
     recommendations: recsOut,
     decisions: decisionsOut,
     auditEvents: auditOut,
+    portalVerifications: PV.map(mapPortalRow),
   };
 }

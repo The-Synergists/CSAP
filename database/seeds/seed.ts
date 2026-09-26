@@ -106,6 +106,8 @@ async function main() {
   const companies = ok(await sb.from('companies').upsert(demo.bidders.map((b) => ({
     vendor_code: b.id, company_name: b.companyName, incorporation_date: b.incorporationDate,
     registered_address: b.registeredAddress, gstin: b.gstin, pan: b.pan, udyam_number: b.udyamNumber || null,
+    cin: b.cin ?? null, epfo_code: b.epfoCode ?? null, esic_code: b.esicCode ?? null,
+    dpiit_number: b.dpiitNumber ?? null, nsic_number: b.nsicNumber ?? null,
   })), { onConflict: 'vendor_code' }).select('id, vendor_code'), 'companies');
   const companyId = new Map(companies.map((c) => [c.vendor_code, c.id]));
   ok(await sb.from('company_turnover').delete().in('company_id', [...companyId.values()]), 'clear turnover');
