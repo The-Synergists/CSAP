@@ -30,6 +30,7 @@ interface ProcurementContextType {
   startAiVerification: (bidId: string) => Promise<void>;
   submitOfficerDecision: (decision: OfficerDecisionRecord) => Promise<void>;
   metrics: DashboardMetrics;
+  reloadData: () => Promise<void>;
   currentUser: {
     name: string;
     designation: string;
@@ -37,6 +38,7 @@ interface ProcurementContextType {
     badgeId: string;
     email: string;
   };
+  userId: string | null;
   isAuthenticated: boolean;
   /** True once the initial Supabase session check has resolved (whichever way). Route
    *  guards must wait for this before redirecting, or a hard reload of a deep link
@@ -320,10 +322,12 @@ export const ProcurementProvider: React.FC<{ children: ReactNode }> = ({ childre
         submitOfficerDecision,
         metrics,
         currentUser,
+        userId,
         isAuthenticated,
         authChecked,
         dataLoaded,
         logout,
+        reloadData,
       }}
     >
       {children}

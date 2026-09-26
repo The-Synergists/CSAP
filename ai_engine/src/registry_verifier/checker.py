@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 class StatutoryRegistryChecker:
     """Verifies entities against statutory databases: GSTN, MCA21, EPFO, ESIC, Income Tax."""
@@ -11,7 +11,7 @@ class StatutoryRegistryChecker:
             "check_type": "GSTIN_STATUS",
             "identifier": gstin,
             "status": "VERIFIED" if valid else "MISMATCH",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": {
                 "active_status": "Active",
                 "taxpayer_type": "Regular",
@@ -27,7 +27,7 @@ class StatutoryRegistryChecker:
             "check_type": "UDYAM_STATUS",
             "identifier": udyam_number,
             "status": "VERIFIED" if valid else "EXEMPTED",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": {
                 "enterprise_type": "Small/Medium",
                 "classification_year": "2025-2026"
@@ -40,7 +40,7 @@ class StatutoryRegistryChecker:
             "check_type": "STATUTORY_WAGE_COMPLIANCE",
             "identifier": identifier,
             "status": "VERIFIED",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "details": {
                 "active_members_count": 142,
                 "last_ecr_filed_date": "2026-08-15",

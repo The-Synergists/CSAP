@@ -7,7 +7,9 @@ const __dirname = path.dirname(__filename);
 
 // Load .env from backend or root directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 export const config = {
   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,7 +10,6 @@ import {
   AlertOctagon,
   Eye,
   Clock,
-  RefreshCw,
   CheckCircle2,
   XCircle,
   Bot,
@@ -20,12 +19,17 @@ import {
   ShieldCheck,
   Loader2,
   X,
+  Upload,
+  Zap,
 } from 'lucide-react';
 import { useProcurement } from '../../context/ProcurementContext';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { RiskBadge } from '../../components/ui/RiskBadge';
+import { supabase } from '../../lib/supabaseClient';
 import type { BidderDocument, OfficerDecisionType, VerificationStatus } from '../../types';
 import { findBidById, toTenderSlug } from '../../types';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:5000';
 
 /** Renders a single verification-summary pill, driven entirely by the bid's actual data. */
 const VerificationPill: React.FC<{ status: VerificationStatus }> = ({ status }) => {
@@ -92,10 +96,10 @@ export const BidderWorkspacePage: React.FC = () => {
     activeTender,
     setActiveBidId,
     setActiveTenderId,
-    verificationProgress,
-    startAiVerification,
     submitOfficerDecision,
     currentUser,
+    userId,
+    reloadData,
   } = useProcurement();
 
   const [activeTab, setActiveTab] = useState<
@@ -112,9 +116,15 @@ export const BidderWorkspacePage: React.FC = () => {
   // Document Viewer State
   const [viewingDocument, setViewingDocument] = useState<BidderDocument | null>(null);
 
-  // Verification Complete Summary — shown briefly once the pipeline finishes a run
-  const [completionSummary, setCompletionSummary] = useState<{ verified: number; flagged: number } | null>(null);
-  const wasRunningRef = useRef(false);
+  // Live verification run status (from Supabase real-time)
+  const [liveRunSteps, setLiveRunSteps] = useState<{ name: string; status: string }[] | null>(null);
+  const [liveRunStatus, setLiveRunStatus] = useState<'RUNNING' | 'COMPLETED' | null>(null);
+
+  // Document upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const targetId = bidId || bidderId;
   const currentBidder = findBidById(bids, targetId) || bids[0];
@@ -161,24 +171,78 @@ export const BidderWorkspacePage: React.FC = () => {
     navigate(`/bids/${currentBidder.id}/${newTab}`);
   };
 
-  // Detect the isRunning -> !isRunning edge to surface a clear "run finished" summary,
-  // instead of the progress panel silently vanishing.
+  // Subscribe to Supabase real-time for ai_verification_runs updates for this bid
   useEffect(() => {
-    const wasRunning = wasRunningRef.current;
-    wasRunningRef.current = verificationProgress.isRunning;
-    if (wasRunning && !verificationProgress.isRunning) {
-      const verified = verificationProgress.steps.filter((s) => s.status === 'completed').length;
-      const flagged = verificationProgress.steps.filter((s) => s.status === 'flagged').length;
-      setCompletionSummary({ verified, flagged });
-      const dismissTimer = window.setTimeout(() => setCompletionSummary(null), 8000);
-      return () => window.clearTimeout(dismissTimer);
-    }
-  }, [verificationProgress.isRunning, verificationProgress.steps]);
+    const targetBidId = currentBidder?.id;
+    if (!targetBidId) return;
 
-  const handleRunAiVerification = () => {
-    setCompletionSummary(null);
-    startAiVerification(currentBidder.id);
-  };
+    const channel = supabase
+      .channel(`verification-run-${targetBidId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_verification_runs',
+          filter: `bid_id=eq.${targetBidId}`,
+        },
+        (payload) => {
+          const row = payload.new as { status?: string; steps?: { name: string; status: string }[] };
+          if (row?.steps) setLiveRunSteps(row.steps);
+          if (row?.status === 'COMPLETED') {
+            setLiveRunStatus('COMPLETED');
+            // Reload bid data so the UI reflects new evidence/recommendations
+            reloadData?.();
+          } else if (row?.status === 'RUNNING') {
+            setLiveRunStatus('RUNNING');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentBidder?.id, reloadData]);
+
+  // Document upload handler — sends to backend which triggers AI pipeline automatically
+  const handleDocumentUpload = useCallback(async (file: File) => {
+    if (!currentBidder?.id) return;
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(false);
+    setLiveRunStatus('RUNNING');
+    setLiveRunSteps([
+      { name: 'Documents OCR Extraction', status: 'in-progress' },
+      { name: 'Government Registry Cross-Check (GSTN / MCA21)', status: 'pending' },
+      { name: 'EMD & Payment Gateway Reconciliation', status: 'pending' },
+      { name: 'Tender Rule & Eligibility Evaluation', status: 'pending' },
+      { name: 'Discrepancy & Deficit Detection', status: 'pending' },
+      { name: 'Compliance & Multi-Vector Risk Calculation', status: 'pending' },
+    ]);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('bidId', currentBidder.id);
+      form.append('tenderId', currentBidder.tenderId ?? '');
+      if (userId) {
+        form.append('userId', userId);
+      }
+      const res = await fetch(`${BACKEND_URL}/api/documents/upload`, {
+        method: 'POST',
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Upload failed' }));
+        throw new Error(err.message ?? 'Upload failed');
+      }
+      setUploadSuccess(true);
+    } catch (err: any) {
+      setUploadError(err.message ?? 'Upload failed');
+      setLiveRunStatus(null);
+      setLiveRunSteps(null);
+    } finally {
+      setUploading(false);
+    }
+  }, [currentBidder?.id, currentBidder?.tenderId, userId]);
 
   const handleConfirmDecision = (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,18 +340,20 @@ export const BidderWorkspacePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Buttons: Run AI Verification & Officer Decision */}
+          {/* Action Button: Officer Decision */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleRunAiVerification}
-              disabled={verificationProgress.isRunning}
-              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 text-indigo-600 ${verificationProgress.isRunning ? 'animate-spin' : ''}`} />
-              <span>{verificationProgress.isRunning ? 'Analyzing Bid...' : 'Run AI Verification'}</span>
-            </button>
-
+            {liveRunStatus === 'RUNNING' && (
+              <span className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded text-xs font-semibold flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin" />
+                AI Pipeline Running...
+              </span>
+            )}
+            {liveRunStatus === 'COMPLETED' && (
+              <span className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-semibold flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Verification Complete
+              </span>
+            )}
             <button
               type="button"
               onClick={handleOpenDecisionModal}
@@ -299,95 +365,46 @@ export const BidderWorkspacePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Verification Progress: minimal government-portal scanning panel (while running) */}
-        {verificationProgress.isRunning && (
+        {/* Live Pipeline Progress Panel — driven by Supabase real-time, not a manual button */}
+        {liveRunStatus === 'RUNNING' && liveRunSteps && (
           <div className="mt-4 bg-white border border-slate-200 rounded overflow-hidden">
             <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="text-xs font-semibold text-slate-700">
-                  Connecting to Government Verification Portals
+                  AI Pipeline — Connecting to Government Verification Portals
                 </span>
               </div>
               <span className="font-mono text-[11px] text-slate-400">
-                {verificationProgress.currentStep} / {verificationProgress.steps.length}
+                {liveRunSteps.filter(s => s.status === 'completed' || s.status === 'flagged').length} / {liveRunSteps.length}
               </span>
             </div>
-
             <div className="h-1 bg-slate-100">
               <div
                 className="h-full bg-blue-600 transition-all duration-500 ease-out"
-                style={{
-                  width: `${(verificationProgress.currentStep / verificationProgress.steps.length) * 100}%`,
-                }}
+                style={{ width: `${(liveRunSteps.filter(s => s.status === 'completed' || s.status === 'flagged').length / liveRunSteps.length) * 100}%` }}
               />
             </div>
-
             <div className="divide-y divide-slate-100">
-              {verificationProgress.steps.map((step) => (
+              {liveRunSteps.map((step) => (
                 <div key={step.name} className="flex items-center justify-between px-3.5 py-2 text-xs">
                   <div className="flex items-center gap-2.5">
-                    {step.status === 'completed' && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    )}
-                    {step.status === 'flagged' && (
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    )}
-                    {step.status === 'in-progress' && (
-                      <Loader2 className="w-3.5 h-3.5 text-blue-600 shrink-0 animate-spin" />
-                    )}
-                    {step.status === 'pending' && (
-                      <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-200 shrink-0" />
-                    )}
-                    <span className={step.status === 'pending' ? 'text-slate-400' : 'text-slate-700 font-medium'}>
-                      {step.name}
-                    </span>
+                    {step.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                    {step.status === 'flagged' && <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                    {step.status === 'in-progress' && <Loader2 className="w-3.5 h-3.5 text-blue-600 shrink-0 animate-spin" />}
+                    {step.status === 'pending' && <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-200 shrink-0" />}
+                    <span className={step.status === 'pending' ? 'text-slate-400' : 'text-slate-700 font-medium'}>{step.name}</span>
                   </div>
-                  <span
-                    className={`font-mono text-[10px] uppercase font-semibold tracking-wide ${
-                      step.status === 'completed'
-                        ? 'text-emerald-600'
-                        : step.status === 'flagged'
-                        ? 'text-amber-600'
-                        : step.status === 'in-progress'
-                        ? 'text-blue-600'
-                        : 'text-slate-300'
-                    }`}
-                  >
-                    {step.status === 'completed'
-                      ? 'Verified'
-                      : step.status === 'flagged'
-                      ? 'Flagged'
-                      : step.status === 'in-progress'
-                      ? 'Scanning...'
-                      : 'Queued'}
+                  <span className={`font-mono text-[10px] uppercase font-semibold tracking-wide ${
+                    step.status === 'completed' ? 'text-emerald-600' :
+                    step.status === 'flagged' ? 'text-amber-600' :
+                    step.status === 'in-progress' ? 'text-blue-600' : 'text-slate-300'
+                  }`}>
+                    {step.status === 'completed' ? 'Verified' : step.status === 'flagged' ? 'Flagged' : step.status === 'in-progress' ? 'Scanning...' : 'Queued'}
                   </span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Verification Complete Summary — replaces the panel once a run finishes */}
-        {!verificationProgress.isRunning && completionSummary && (
-          <div className="mt-4 flex items-center justify-between gap-3 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded text-xs">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-semibold text-emerald-900">
-                Verification complete — {completionSummary.verified} of {completionSummary.verified + completionSummary.flagged} checks passed
-                {completionSummary.flagged > 0 && (
-                  <span className="text-amber-700"> · {completionSummary.flagged} flagged for review</span>
-                )}
-                .
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCompletionSummary(null)}
-              className="text-emerald-700 hover:underline font-semibold shrink-0"
-            >
-              Dismiss
-            </button>
           </div>
         )}
 
@@ -663,35 +680,111 @@ export const BidderWorkspacePage: React.FC = () => {
 
       {/* TAB 2: DOCUMENTS */}
       {activeTab === 'documents' && (
-        <div className="bg-white border border-slate-200 rounded-md shadow-2xs overflow-hidden">
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Submitted Tender Documents & Automated OCR Extraction
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Total {currentBidder.documents.length} files scanned and cross-verified against tender clauses
-              </p>
+        <div className="space-y-4">
+
+          {/* ── Document Upload Panel ────────────────────────────────────────── */}
+          <div className="bg-white border border-slate-200 rounded-md shadow-2xs overflow-hidden">
+            <div className="p-4 bg-indigo-50 border-b border-indigo-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-indigo-600" />
+                <div>
+                  <h2 className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
+                    Auto-Verification Upload
+                  </h2>
+                  <p className="text-xs text-indigo-700 mt-0.5">
+                    Upload a document — OCR extraction and full AI pipeline start automatically
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-semibold bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded">
+                {currentBidder.documents.length} / {currentBidder.documentsCount.required} Submitted
+              </span>
             </div>
-            <span className="text-xs font-mono font-semibold bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded">
-              {currentBidder.documents.length} / {currentBidder.documentsCount.required} Submitted
-            </span>
+
+            <div className="p-4">
+              {/* Upload Drop Zone */}
+              <div
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleDocumentUpload(file);
+                }}
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                  uploading
+                    ? 'border-indigo-300 bg-indigo-50/60 cursor-not-allowed'
+                    : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.tiff"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleDocumentUpload(file);
+                    e.target.value = '';
+                  }}
+                />
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+                    <span className="text-xs font-semibold text-indigo-700">Uploading and triggering AI pipeline...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-6 h-6 text-slate-400" />
+                    <span className="text-xs font-semibold text-slate-700">Drop PDF / image here or click to browse</span>
+                    <span className="text-[11px] text-slate-400">Supported: PDF, JPG, PNG, TIFF • Max 20 MB</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Status messages */}
+              {uploadSuccess && !uploading && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-emerald-700 font-semibold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Document received. AI verification pipeline started — watch the progress bar above.
+                </div>
+              )}
+              {uploadError && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-rose-700 font-semibold">
+                  <AlertTriangle className="w-4 h-4" />
+                  {uploadError}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="divide-y divide-slate-200">
-            {currentBidder.documents.map((doc) => (
-              <div key={doc.id} className="p-4 hover:bg-slate-50/80 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-xs text-slate-900">{doc.name}</span>
-                      <span className="text-[11px] font-mono text-slate-400">({doc.fileName} • {doc.fileSize})</span>
-                      <StatusBadge status={doc.verificationStatus} size="sm" />
+          {/* ── Existing Documents List ──────────────────────────────────────── */}
+          <div className="bg-white border border-slate-200 rounded-md shadow-2xs overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Submitted Tender Documents & Automated OCR Extraction
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Total {currentBidder.documents.length} files scanned and cross-verified against tender clauses
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-200">
+              {currentBidder.documents.map((doc) => (
+                <div key={doc.id} className="p-4 hover:bg-slate-50/80 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-xs text-slate-900">{doc.name}</span>
+                        <span className="text-[11px] font-mono text-slate-400">({doc.fileName} • {doc.fileSize})</span>
+                        <StatusBadge status={doc.verificationStatus} size="sm" />
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-1">
+                        Target Clause: <span className="font-medium text-slate-700">{doc.tenderClauseReference}</span>
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-1">
-                      Target Clause: <span className="font-medium text-slate-700">{doc.tenderClauseReference}</span>
-                    </div>
-                  </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-center">
                     <button
@@ -735,7 +828,9 @@ export const BidderWorkspacePage: React.FC = () => {
             ))}
           </div>
         </div>
+        </div>
       )}
+
 
       {/* TAB 3: EMD VERIFICATION */}
       {activeTab === 'emd' && (
