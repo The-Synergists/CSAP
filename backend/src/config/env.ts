@@ -29,6 +29,9 @@ export const config = {
   /** Live GSTIN provider (gstinapi.in). Empty key = GSTN stays simulated only. */
   gstinProviderUrl: (process.env.GSTIN_PROVIDER_URL ?? 'https://www.gstinapi.in').replace(/\/+$/, ''),
   gstinProviderKey: process.env.GSTIN_PROVIDER_KEY ?? '',
+  /** Backup provider (gstinapi.com), used only when the primary cannot answer (no credits, outage). */
+  gstinFallbackUrl: (process.env.GSTIN_FALLBACK_URL ?? 'https://gstinapi.com/api').replace(/\/+$/, ''),
+  gstinFallbackKey: process.env.GSTIN_FALLBACK_KEY ?? '',
   /** Live answers are reused for this many days so repeated checks spend no credits. */
   gstinCacheDays: Number(process.env.GSTIN_CACHE_DAYS ?? 30),
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),

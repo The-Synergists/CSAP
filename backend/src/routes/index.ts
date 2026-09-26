@@ -11,7 +11,7 @@ import { runVerification } from '../services/verification.service.js';
 import { listRuns, listSamples, signedUrl, startPanVerification, type DocumentSource } from '../services/documentPipeline.service.js';
 import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
-import { isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
+import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
 
 const router = Router();
@@ -36,7 +36,7 @@ router.get(
       nvidiaOcr: engine.nvidia?.ocr?.configured ? `configured (${engine.nvidia.ocr.model})` : 'not configured',
       nvidiaExtraction: engine.nvidia?.extraction?.configured ? `configured (${engine.nvidia.extraction.model})` : 'not configured',
       governmentGateway: pan ? `ok (${(pan as { registries?: string[] }).registries?.length ?? 0} registries, simulated)` : 'unreachable',
-      liveGstinProvider: providerConfigured() ? 'configured (gstinapi.in)' : 'not configured',
+      liveGstinProvider: providerConfigured() ? `configured (gstinapi.in${backupConfigured() ? ' + backup gstinapi.com' : ''})` : backupConfigured() ? 'configured (gstinapi.com)' : 'not configured',
       panVerificationApi: pan ? `ok (${pan.records} records)` : 'unreachable',
       timestamp: new Date().toISOString(),
     });
@@ -194,7 +194,7 @@ router.get(
   '/gstin/provider',
   asyncHandler(async (_req, res) => {
     const { count } = await serviceClient.from('gstin_live_cache').select('gstin', { count: 'exact', head: true });
-    res.json({ success: true, data: { provider: 'gstinapi.in', configured: providerConfigured(), cacheDays: config.gstinCacheDays, cachedAnswers: count ?? 0, usage: await providerUsage() } });
+    res.json({ success: true, data: { provider: 'gstinapi.in', configured: providerConfigured() || backupConfigured(), backup: backupConfigured() ? 'gstinapi.com' : null, cacheDays: config.gstinCacheDays, cachedAnswers: count ?? 0, usage: await providerUsage() } });
   }),
 );
 
@@ -204,7 +204,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const gstin = String(req.body?.gstin ?? '').trim().toUpperCase();
     if (!isValidGstin(gstin)) throw new HttpError(400, `${gstin || 'This'} is not a valid GSTIN (format or check digit). No credit was used.`, 'VALIDATION');
-    if (!providerConfigured()) throw new HttpError(503, 'Live GSTIN provider is not configured.', 'PROVIDER_NOT_CONFIGURED');
+    if (!providerConfigured() && !backupConfigured()) throw new HttpError(503, 'Live GSTIN provider is not configured.', 'PROVIDER_NOT_CONFIGURED');
     try {
       res.json({ success: true, data: await liveGstn(gstin) });
     } catch (err) {

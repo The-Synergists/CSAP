@@ -3,7 +3,7 @@
 // by the officer's stand-alone "Live GSTIN lookup".
 
 import { check, nameMatches, worst, type RegistryResult } from './adapters.js';
-import { fetchProfile, fetchReturns, financialYear, gstr3bFilings, ProviderUnavailable, type ProviderCall } from './gstinProvider.js';
+import { backupConfigured, fetchBackup, fetchProfile, fetchReturns, financialYear, fromBackup, gstr3bFilings, ProviderUnavailable, type ProviderCall } from './gstinProvider.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -25,7 +25,23 @@ function duePeriods(asOf: string, fy: string): string[] {
 
 export async function liveGstn(gstin: string, bid?: { name: string; pan: string }): Promise<RegistryResult> {
   const asOf = new Date().toISOString().slice(0, 10);
-  const profile = await fetchProfile(gstin); // ProviderUnavailable propagates: reported as "not verified"
+  const fy = financialYear(asOf);
+  let provider = 'gstinapi.in';
+  let profile: ProviderCall;
+  let returns: ProviderCall | null = null;
+  let returnsNote: string | null = null;
+  try {
+    profile = await fetchProfile(gstin);
+  } catch (err) {
+    // Primary out of credits or down: the backup answers profile and filings in one call.
+    // If both are unavailable, ProviderUnavailable propagates and the check reads "not verified".
+    if (!(err instanceof ProviderUnavailable) || !backupConfigured()) throw err;
+    const b = await fetchBackup(gstin);
+    const n = fromBackup(b.body);
+    provider = 'gstinapi.com (backup provider)';
+    profile = { ...b, body: n.profile };
+    returns = b.httpStatus === 200 ? { ...b, body: n.returns, latencyMs: 0 } : null;
+  }
   const source = (c: ProviderCall) => (c.cached ? `cached answer from ${dateLabel(c.fetchedAt)} (no credit used)` : 'live call (1 credit)');
   const base = {
     registry: 'GSTN' as const,
@@ -41,7 +57,7 @@ export async function liveGstn(gstin: string, bid?: { name: string; pan: string 
       response: { httpStatus: 404, body: { profile: profile.body, cached: profile.cached } },
       status: 'NOT_FOUND',
       summary: `${gstin} is not registered on the GST portal (live lookup).`,
-      facts: [{ label: 'Source', value: `gstinapi.in · ${source(profile)}` }],
+      facts: [{ label: 'Source', value: `${provider} · ${source(profile)}` }],
       checks: [check('Registration exists', false, 'Registered', 'Not found on GST portal')],
     };
   }
@@ -51,16 +67,17 @@ export async function liveGstn(gstin: string, bid?: { name: string; pan: string 
   const active = /^active$/i.test(status);
 
   // Returns are best-effort: if the provider cannot answer, the filing checks stay open (not passed).
-  const fy = financialYear(asOf);
-  let returns: ProviderCall | null = null;
-  let returnsNote: string | null = null;
-  try {
-    returns = await fetchReturns(gstin, fy);
-  } catch (err) {
-    if (!(err instanceof ProviderUnavailable)) throw err;
-    returnsNote = err.message;
+  if (provider === 'gstinapi.in') {
+    try {
+      returns = await fetchReturns(gstin, fy);
+    } catch (err) {
+      if (!(err instanceof ProviderUnavailable)) throw err;
+      returnsNote = err.message;
+    }
   }
-  const filings = returns?.httpStatus === 200 ? gstr3bFilings(returns.body) : [];
+  const fyStart = `${fy.slice(0, 4)}-04`;
+  const fyEnd = `${Number(fy.slice(0, 4)) + 1}-03`;
+  const filings = returns?.httpStatus === 200 ? gstr3bFilings(returns.body).filter((f) => f.period >= fyStart && f.period <= fyEnd) : [];
   const filed = filings.filter((f) => f.filedOn);
   const quarterly = filed.length > 0 && filed.every((f) => ['03', '06', '09', '12'].includes(f.period.slice(5)));
   const due = duePeriods(asOf, fy).filter((p) => !quarterly || ['03', '06', '09', '12'].includes(p.slice(5)));
@@ -97,7 +114,7 @@ export async function liveGstn(gstin: string, bid?: { name: string; pan: string 
   return {
     ...base,
     latencyMs: profile.latencyMs + (returns?.latencyMs ?? 0),
-    response: { httpStatus: profile.httpStatus, body: { profile: profile.body, returns: returns?.body ?? null, cached: profile.cached && (returns?.cached ?? true) } },
+    response: { httpStatus: profile.httpStatus, body: { provider, profile: profile.body, returns: returns?.body ?? null, cached: profile.cached && (returns?.cached ?? true) } },
     status: verdict === 'VERIFIED' && openFiling ? 'REVIEW' : verdict,
     summary: cancelled
       ? `GST registration is ${status}${d.cancellation_date ? ` since ${d.cancellation_date}` : ''} (live GST portal data).`
@@ -113,11 +130,15 @@ export async function liveGstn(gstin: string, bid?: { name: string; pan: string 
       ...(d.trade_name ? [{ label: 'Trade name', value: d.trade_name }] : []),
       { label: 'Status', value: status },
       ...(d.taxpayer_type ? [{ label: 'Taxpayer type', value: d.taxpayer_type }] : []),
+      ...((d.business_constitution ?? d.constitution) ? [{ label: 'Constitution', value: d.business_constitution ?? d.constitution }] : []),
       ...(d.registration_date ? [{ label: 'Registered', value: d.registration_date }] : []),
       ...(d.cancellation_date ? [{ label: 'Cancelled', value: d.cancellation_date }] : []),
       ...(d.address ? [{ label: 'Address', value: [d.address, d.pincode].filter(Boolean).join(' — ') }] : []),
       ...(haveReturns && filed.length ? [{ label: `GSTR-3B FY ${fy}`, value: filed.map((f) => `${monthLabel(f.period)}: ${f.onTime === false ? 'late' : 'on time'}`).join(' · ') }] : []),
-      { label: 'Source', value: `gstinapi.in (live GST portal data) · profile: ${source(profile)}${returns ? ` · returns: ${source(returns)}` : ''}` },
+      {
+        label: 'Source',
+        value: `${provider} (live GST portal data) · ${provider === 'gstinapi.in' ? `profile: ${source(profile)}${returns ? ` · returns: ${source(returns)}` : ''}` : source(profile)}`,
+      },
     ],
     checks,
   };

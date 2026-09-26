@@ -6,7 +6,7 @@ import type { BidView } from '../../../shared/domain/selectors.js';
 import type { PortalCheck, PortalStatus, RegistryId, RegistryMode } from '../../../shared/domain/types.js';
 import { config } from '../config/env.js';
 import { liveGstn } from './gstnLive.js';
-import { isValidGstin, providerConfigured } from './gstinProvider.js';
+import { backupConfigured, isValidGstin, providerConfigured } from './gstinProvider.js';
 
 export interface RegistryResult {
   registry: RegistryId;
@@ -161,7 +161,7 @@ const gstn: RegistryAdapter = {
       };
     });
     // GSTINs the simulated registry does not hold (i.e. real ones) go to the live provider.
-    if (simulated.status === 'NOT_FOUND' && providerConfigured() && isValidGstin(id)) {
+    if (simulated.status === 'NOT_FOUND' && (providerConfigured() || backupConfigured()) && isValidGstin(id)) {
       return liveGstn(id, { name: v.bidder.companyName, pan: v.bidder.pan });
     }
     return simulated;
