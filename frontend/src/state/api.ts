@@ -7,6 +7,30 @@ import type { VerificationRun } from '@shared/domain/verification';
 /** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
 export type RegistryAnswer = Omit<PortalVerification, 'id' | 'runId' | 'bidId' | 'checkedAt'>;
 
+export interface GatewayOverview {
+  baseUrl: string;
+  healthy: boolean;
+  auth: string;
+  liveGstinProvider: string | null;
+  registries: { registry: string; name: string; file: string; dataset: string; version: string; records: number; mode: string; endpoint: string | null }[];
+}
+
+export interface GatewayCall {
+  id: string;
+  bidId: string | null;
+  source: string;
+  registry: string;
+  mode: string;
+  method: string;
+  url: string;
+  requestBody: unknown;
+  httpStatus: number | null;
+  responseBody: unknown;
+  latencyMs: number | null;
+  at: string;
+  outcome: string | null;
+}
+
 export interface GstinProviderStatus {
   provider: string;
   configured: boolean;
@@ -135,6 +159,14 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
+  gateway: () => call<GatewayOverview>('/api/gateway'),
+  gatewayCalls: () => call<GatewayCall[]>('/api/gateway/calls'),
+  gatewayRecords: (registry: string) => call<{ registry: string; file: string; dataset: string; version: string; records: Record<string, unknown>[] }>(`/api/gateway/${registry}/records`),
+  gatewayTry: (registry: string, identifier: string) =>
+    call<{ request: { method: string; url: string; headers: Record<string, string>; body: unknown; sentAt: string }; response: { httpStatus: number; body: unknown; latencyMs: number } }>(
+      `/api/gateway/${registry}/try`,
+      { method: 'POST', body: JSON.stringify({ identifier }) },
+    ),
   gstinProvider: () => call<GstinProviderStatus>('/api/gstin/provider'),
   gstinLive: (gstin: string) => call<RegistryAnswer>('/api/gstin/live', { method: 'POST', body: JSON.stringify({ gstin }) }),
   deleteUpload: (runId: string) => call<DocumentVerificationRun>(`/api/document-verifications/${runId}/file`, { method: 'DELETE' }),

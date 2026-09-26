@@ -129,6 +129,21 @@ def registries(x_api_key: Optional[str] = Header(default=None)):
     return {"registries": out}
 
 
+DATASET_FILES = {"pan": "pan.json", **{k: v[0] for k, v in LOOKUP_REGISTRIES.items()}, "debarment": "debarment.json", "digilocker": "digilocker.json"}
+
+
+@app.get("/v1/{registry}/records")
+def records(registry: str, x_api_key: Optional[str] = Header(default=None)):
+    """The whole simulated dataset of one registry, so anyone can see exactly what it holds."""
+    _auth(x_api_key)
+    if registry not in DATASET_FILES:
+        raise HTTPException(status_code=404, detail={"error": "UNKNOWN_REGISTRY", "message": f"No registry '{registry}'."})
+    file = DATASET_FILES[registry]
+    ds = load(file)
+    rows = [r for r in ds["records"] if not str(r.get("record_id", "")).startswith("PANREG-PRIVATE")]  # private test PANs stay private
+    return {"registry": registry, "file": file, "dataset": ds["dataset"], "version": ds["version"], "records": rows}
+
+
 # Kept backwards compatible with the PAN pipeline (/v1/pan/verify).
 class PanRequest(BaseModel):
     pan: str

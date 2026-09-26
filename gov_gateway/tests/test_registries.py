@@ -60,3 +60,13 @@ def test_digilocker_returns_issuer_documents():
 def test_unknown_registry_and_key_required():
     assert lookup("unknown", "X").status_code == 404
     assert client.post("/v1/gstn/lookup", json={"identifier": "33AABCA1234F1Z8"}).status_code == 401
+
+
+def test_records_endpoint_lists_dataset_and_hides_private_pans(monkeypatch):
+    monkeypatch.setenv("PAN_EXTRA_RECORDS", '[{"pan": "BQXPS4821K", "registered_name": "Private Person"}]')
+    body = client.get("/v1/pan/records", headers=KEY).json()
+    assert body["file"] == "pan.json" and len(body["records"]) == 9
+    assert all(r["pan"] != "BQXPS4821K" for r in body["records"])
+    assert client.get("/v1/gstn/records", headers=KEY).json()["file"] == "gstn.json"
+    assert client.get("/v1/nope/records", headers=KEY).status_code == 404
+    assert client.get("/v1/pan/records").status_code == 401

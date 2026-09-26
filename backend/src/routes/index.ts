@@ -14,6 +14,7 @@ import { listPortalChecks, startPortalChecks } from '../services/portal.service.
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
+import { gatewayOverview, recentCalls, registryRecords, tryRegistryCall } from '../services/gatewayConsole.service.js';
 
 const router = Router();
 
@@ -219,6 +220,36 @@ router.get(
     const r = await fetch(`${config.govGatewayUrl}/v1/registries`, { headers: { 'x-api-key': config.govGatewayKey }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) throw new HttpError(502, 'Government Gateway not reachable.', 'GATEWAY_UNAVAILABLE');
     res.json({ success: true, data: ((await r.json()) as { registries: unknown[] }).registries });
+  }),
+);
+
+// ---------------------------------------------------------------- Government Gateway console
+
+router.get(
+  '/gateway',
+  asyncHandler(async (_req, res) => {
+    res.json({ success: true, data: await gatewayOverview() });
+  }),
+);
+
+router.get(
+  '/gateway/calls',
+  asyncHandler(async (_req, res) => {
+    res.json({ success: true, data: await recentCalls(authOf(res).db) });
+  }),
+);
+
+router.get(
+  '/gateway/:registry/records',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await registryRecords(String(req.params.registry)) });
+  }),
+);
+
+router.post(
+  '/gateway/:registry/try',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await tryRegistryCall(String(req.params.registry), String(req.body?.identifier ?? '')) });
   }),
 );
 

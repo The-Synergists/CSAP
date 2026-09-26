@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Globe2, Loader2, MinusCircle, RefreshCw, Search, XCircle } from 'lucide-react';
 import { mapPortalRow } from '@shared/domain/portal';
 import { latestPortalRun } from '@shared/domain/selectors';
@@ -257,6 +258,10 @@ export const PortalVerificationTab: React.FC<TabProps> = ({ view }) => {
             {shown[0] && !inProgress && <span className="text-slate-500">· checked {formatDateTime(shown[0].checkedAt)}</span>}
           </div>
         )}
+        <p className="mt-2 text-[11px] text-slate-500">
+          Each check is a real HTTPS call to the Government Gateway API; the registries answer from simulated datasets.{' '}
+          <Link to="/gateway" className="font-medium text-blue-700 hover:underline">See the APIs, datasets and call log</Link>
+        </p>
       </Card>
 
       {(shown.length > 0 || inProgress) && (

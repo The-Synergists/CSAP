@@ -8,6 +8,7 @@ import {
   History,
   LayoutDashboard,
   MessageSquareText,
+  Network,
   Settings,
   Users,
 } from 'lucide-react';
@@ -93,6 +94,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
           <div className="space-y-1 border-t border-slate-800 pt-2">
           <NavSection label="System">
             <NavItem to="/audit" icon={<History className="h-4 w-4" />} label="Audit Trail" onNavigate={onClose} />
+            <NavItem to="/gateway" icon={<Network className="h-4 w-4" />} label="Govt. Gateway" onNavigate={onClose} />
             <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" onNavigate={onClose} />
           </NavSection>
           </div>

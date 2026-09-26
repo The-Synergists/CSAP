@@ -14,6 +14,7 @@ import { MyReviewsPage } from './pages/work/MyReviewsPage';
 import { AlertsPage } from './pages/work/AlertsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { AuditTrailPage } from './pages/audit/AuditTrailPage';
+import { GatewayPage } from './pages/gateway/GatewayPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotFoundPage } from './pages/common/NotFoundPage';
 import { bidPath } from './lib/format';
@@ -75,6 +76,7 @@ export const App: React.FC = () => (
             <Route path="alerts" element={<AlertsPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="audit" element={<AuditTrailPage />} />
+            <Route path="gateway" element={<GatewayPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<Navigate to="/settings" replace />} />
             <Route path="*" element={<NotFoundPage />} />
