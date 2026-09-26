@@ -65,6 +65,18 @@ const NAME_FIELD: Record<DocumentType, string> = {
 
 const CONCURRENCY = 3;
 
+/** Network calls from a serverless function occasionally drop ("fetch failed"); retry each step. */
+async function retry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i >= attempts) throw err;
+      await new Promise((r) => setTimeout(r, 700 * i));
+    }
+  }
+}
+
 const num = (s: string | null | undefined): number | null => {
   const m = (s ?? '').replace(/,/g, '').match(/\d+(?:\.\d+)?/);
   return m ? Number(m[0]) : null;
@@ -264,18 +276,19 @@ async function processBatch(db: SupabaseClient, view: BidView, batchId: string, 
 
 /** One document through OCR → extraction → comparison. Returns null when it could not be read. */
 async function readOne(db: SupabaseClient, view: BidView, run: ReturnType<typeof mapRunRow>) {
-  const update = async (patch: Record<string, unknown>) => {
-    const { error } = await db.from('document_verification_runs').update(patch).eq('id', run.id);
-    if (error) throw new Error(`Could not save progress: ${error.message}`);
-  };
+  const update = (patch: Record<string, unknown>) =>
+    retry(async () => {
+      const { error } = await db.from('document_verification_runs').update(patch).eq('id', run.id);
+      if (error) throw new Error(`Could not save progress: ${error.message}`);
+    });
   const meta = run.document as PipelineDocument;
   try {
-    const bytes = await download(meta.path);
+    const bytes = await retry(() => download(meta.path));
     const doc = { ...meta, sizeBytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
     await update({ status: 'OCR_RUNNING', document: doc });
-    const ocr = await engine<OcrResult>('/api/v1/documents/ocr', { fileName: doc.fileName, mimeType: doc.mimeType, contentBase64: bytes.toString('base64') });
+    const ocr = await retry(() => engine<OcrResult>('/api/v1/documents/ocr', { fileName: doc.fileName, mimeType: doc.mimeType, contentBase64: bytes.toString('base64') }));
     await update({ ocr_result: ocr, status: 'EXTRACTING' });
-    const extraction = await engine<ExtractionResult>('/api/v1/documents/extract', { documentType: run.documentType, ocrText: ocr.text });
+    const extraction = await retry(() => engine<ExtractionResult>('/api/v1/documents/extract', { documentType: run.documentType, ocrText: ocr.text }));
     await update({ extraction_result: extraction });
 
     let rows: ComparisonRow[];
@@ -284,7 +297,8 @@ async function readOne(db: SupabaseClient, view: BidView, run: ReturnType<typeof
     if (run.documentType === 'PAN') {
       if (!extraction.fields.pan) throw new Error('The extraction model did not find a PAN in the document.');
       await update({ status: 'CALLING_API' });
-      const { request, response } = await callPanApi(extraction.fields.pan, extraction.fields.name);
+      const pan = extraction.fields.pan;
+      const { request, response } = await retry(() => callPanApi(pan, extraction.fields.name));
       await db.from('external_api_calls').insert({
         run_id: run.id,
         bid_id: view.bid.id,

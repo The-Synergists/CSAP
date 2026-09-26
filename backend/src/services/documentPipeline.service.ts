@@ -64,7 +64,7 @@ export async function signedUrl(path: string): Promise<string> {
 
 export async function download(path: string): Promise<Buffer> {
   const { data, error } = await serviceClient.storage.from(BUCKET).download(path);
-  if (error || !data) throw new HttpError(404, `Document ${path} not found in storage.`, 'NOT_FOUND');
+  if (error || !data) throw new HttpError(404, `Document ${path} could not be downloaded from storage (${error?.message || 'no data'}).`, 'NOT_FOUND');
   return Buffer.from(await data.arrayBuffer());
 }
 
