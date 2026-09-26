@@ -1,0 +1,950 @@
+[
+  {
+    "payload": {
+      "bidId": "BID-001",
+      "tender": {
+        "id": "GEM/2026/CPCL/001",
+        "title": "Industrial Safety Equipment Procurement",
+        "technicalOpeningDate": "2026-09-05",
+        "emdAmount": 200000
+      },
+      "requirements": [
+        {
+          "code": "REQ-01",
+          "title": "Minimum average turnover",
+          "category": "FINANCIAL",
+          "criterion": "Average annual turnover over the last 3 audited financial years must be at least ₹5.00 crore.",
+          "benchmark": "≥ ₹5.00 Cr average",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-02",
+          "title": "GST registration",
+          "category": "STATUTORY",
+          "criterion": "Active GSTIN with regular GSTR-3B filings for the preceding 6 months.",
+          "benchmark": "Active registration",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-03",
+          "title": "Udyam / MSME registration",
+          "category": "POLICY",
+          "criterion": "Valid Udyam certificate, required only when claiming MSE benefits such as EMD exemption.",
+          "benchmark": "Required for MSE benefits",
+          "mandatory": false
+        },
+        {
+          "code": "REQ-04",
+          "title": "Make in India local content",
+          "category": "POLICY",
+          "criterion": "Minimum 50% local content (Class-I local supplier) per the Public Procurement (Make in India) Order.",
+          "benchmark": "≥ 50% local content",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-05",
+          "title": "OEM authorization",
+          "category": "TECHNICAL",
+          "criterion": "Manufacturer authorization with back-to-back warranty, valid for at least 90 days after technical bid opening.",
+          "benchmark": "Valid ≥ 90 days after opening",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-06",
+          "title": "Earnest Money Deposit (EMD)",
+          "category": "EMD",
+          "criterion": "EMD of ₹2,00,000 by online payment or bank guarantee from a scheduled bank. Bids with short EMD are liable for rejection. MSEs may claim exemption.",
+          "benchmark": "₹2,00,000 or MSE exemption",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-07",
+          "title": "PAN & income tax returns",
+          "category": "STATUTORY",
+          "criterion": "Valid PAN and ITR acknowledgements for FY 2023-24, 2024-25 and 2025-26.",
+          "benchmark": "3 years filed",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-08",
+          "title": "EPFO & ESIC compliance",
+          "category": "STATUTORY",
+          "criterion": "Active EPFO and ESIC codes with the latest monthly electronic challan (ECR).",
+          "benchmark": "Active with recent ECR",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-09",
+          "title": "Past execution record",
+          "category": "TECHNICAL",
+          "criterion": "At least 2 completed contracts for similar safety equipment to PSU or oil & gas customers.",
+          "benchmark": "2 completed POs",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-10",
+          "title": "Product test certificates",
+          "category": "TECHNICAL",
+          "criterion": "NABL-accredited lab test certificates for EN 137 / IS 10245 respiratory equipment.",
+          "benchmark": "NABL certificates",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-11",
+          "title": "Non-blacklisting undertaking",
+          "category": "POLICY",
+          "criterion": "Affidavit confirming no debarment by CPPP, MoPNG or CPCL.",
+          "benchmark": "Signed affidavit",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-12",
+          "title": "Land border declaration",
+          "category": "POLICY",
+          "criterion": "Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).",
+          "benchmark": "Signed declaration",
+          "mandatory": true
+        }
+      ],
+      "bidder": {
+        "companyName": "ABC Industrial Solutions Pvt. Ltd.",
+        "gstin": "33AABCA1234F1Z8",
+        "pan": "AABCA1234F",
+        "udyamNumber": "UDYAM-TN-02-0045812",
+        "msmeCategory": "Small (Manufacturing)",
+        "turnover": [
+          {
+            "financialYear": "FY 2022-23",
+            "amountCr": 5.2
+          },
+          {
+            "financialYear": "FY 2023-24",
+            "amountCr": 5.8
+          },
+          {
+            "financialYear": "FY 2024-25",
+            "amountCr": 6.4
+          }
+        ]
+      },
+      "makeInIndiaPercentage": 65,
+      "documents": [
+        {
+          "id": "DOC-101",
+          "requirementCode": "REQ-02",
+          "name": "GST Registration Certificate",
+          "fileName": "GST_Certificate_ABC_Ind.pdf",
+          "extractedText": "GSTIN: 33AABCA1234F1Z8 | Legal Name: ABC Industrial Solutions Pvt Ltd | Status: Active Regular"
+        },
+        {
+          "id": "DOC-102",
+          "requirementCode": "REQ-05",
+          "name": "OEM Authorization Certificate",
+          "fileName": "OEM_Authorization.pdf",
+          "extractedText": "Manufacturer: Dräger Safety India Ltd | Authorized Partner: ABC Industrial Solutions Pvt Ltd | Warranty: Back-to-back | Valid Until: 30 Oct 2026"
+        },
+        {
+          "id": "DOC-103",
+          "requirementCode": "REQ-06",
+          "name": "EMD Payment Receipt",
+          "fileName": "EMD_Payment_Challan_TXN458921.pdf",
+          "extractedText": "Transaction ID: TXN458921 | Amount: INR 2,00,000.00 | Date: 02-Sep-2026 | Beneficiary: CPCL Manali"
+        },
+        {
+          "id": "DOC-104",
+          "requirementCode": "REQ-01",
+          "name": "Audited Financial Statements (3 years)",
+          "fileName": "Audited_Balance_Sheet_3Yrs.pdf",
+          "extractedText": "FY 2022-23: INR 5.20 Cr | FY 2023-24: INR 5.80 Cr | FY 2024-25: INR 6.40 Cr | UDIN: 24045812BGHY8941"
+        },
+        {
+          "id": "DOC-105",
+          "requirementCode": "REQ-03",
+          "name": "Udyam Registration Certificate",
+          "fileName": "Udyam_Registration_Certificate.pdf",
+          "extractedText": "Udyam No: UDYAM-TN-02-0045812 | Enterprise: ABC Industrial Solutions Pvt Ltd | Category: Small (Manufacturing)"
+        },
+        {
+          "id": "DOC-106",
+          "requirementCode": "REQ-04",
+          "name": "Make in India Self-Declaration",
+          "fileName": "Make_In_India_Affidavit.pdf",
+          "extractedText": "Declared Local Content: 65.4% | Manufacturing Location: Ambattur, Chennai | Auditor Certified: Yes"
+        },
+        {
+          "id": "DOC-107",
+          "requirementCode": "REQ-07",
+          "name": "PAN & ITR Acknowledgements",
+          "fileName": "PAN_and_ITR_3Years.pdf",
+          "extractedText": "PAN: AABCA1234F | ITR Acknowledgements: FY23 45812903, FY24 58912304, FY25 71209341"
+        },
+        {
+          "id": "DOC-108",
+          "requirementCode": "REQ-08",
+          "name": "EPFO & ESIC Challans",
+          "fileName": "EPFO_ESIC_Challans.pdf",
+          "extractedText": "EPFO Code: TNMAS0045892000 | ESIC Code: 51000458920000101 | Latest ECR Paid: 15 Aug 2026"
+        },
+        {
+          "id": "DOC-109",
+          "requirementCode": "REQ-09",
+          "name": "Past Performance Certificates",
+          "fileName": "Past_Performance_IOCL_BPCL.pdf",
+          "extractedText": "PO: IOCL/2024/7812 Value: ₹1.82 Cr (Completed) | PO: BPCL/2025/1102 Value: ₹1.20 Cr (Completed)"
+        },
+        {
+          "id": "DOC-110",
+          "requirementCode": "REQ-10",
+          "name": "NABL Test Reports — Breathing Apparatus",
+          "fileName": "NABL_Test_Certificates_SCBA.pdf",
+          "extractedText": "Lab: National Test House (South) | Standard: IS 10245 / EN 137 | Verdict: PASS | Valid Until: Mar 2028"
+        },
+        {
+          "id": "DOC-111",
+          "requirementCode": "REQ-11",
+          "name": "Non-Blacklisting & Integrity Pact Affidavit",
+          "fileName": "Non_Blacklisting_Integrity_Pact.pdf",
+          "extractedText": "Affidavit Dated: 02-Sep-2026 | Stamp Paper: GRN-2026-98124 | Declaration: Not debarred by any PSU or Ministry"
+        }
+      ],
+      "emd": {
+        "requiredAmount": 200000,
+        "submittedAmount": 200000,
+        "instrument": "NEFT_RTGS",
+        "reference": "TXN458921",
+        "bankName": "State Bank of India"
+      }
+    },
+    "expected": {
+      "checks": {
+        "REQ-01": "MET",
+        "REQ-02": "MET",
+        "REQ-03": "MET",
+        "REQ-04": "MET",
+        "REQ-05": "REVIEW",
+        "REQ-06": "MET",
+        "REQ-07": "MET",
+        "REQ-08": "MET",
+        "REQ-09": "MET",
+        "REQ-10": "MET",
+        "REQ-11": "MET",
+        "REQ-12": "REVIEW"
+      },
+      "riskLevel": "LOW",
+      "suggestedDecision": "REQUEST_CLARIFICATION"
+    }
+  },
+  {
+    "payload": {
+      "bidId": "BID-002",
+      "tender": {
+        "id": "GEM/2026/CPCL/001",
+        "title": "Industrial Safety Equipment Procurement",
+        "technicalOpeningDate": "2026-09-05",
+        "emdAmount": 200000
+      },
+      "requirements": [
+        {
+          "code": "REQ-01",
+          "title": "Minimum average turnover",
+          "category": "FINANCIAL",
+          "criterion": "Average annual turnover over the last 3 audited financial years must be at least ₹5.00 crore.",
+          "benchmark": "≥ ₹5.00 Cr average",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-02",
+          "title": "GST registration",
+          "category": "STATUTORY",
+          "criterion": "Active GSTIN with regular GSTR-3B filings for the preceding 6 months.",
+          "benchmark": "Active registration",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-03",
+          "title": "Udyam / MSME registration",
+          "category": "POLICY",
+          "criterion": "Valid Udyam certificate, required only when claiming MSE benefits such as EMD exemption.",
+          "benchmark": "Required for MSE benefits",
+          "mandatory": false
+        },
+        {
+          "code": "REQ-04",
+          "title": "Make in India local content",
+          "category": "POLICY",
+          "criterion": "Minimum 50% local content (Class-I local supplier) per the Public Procurement (Make in India) Order.",
+          "benchmark": "≥ 50% local content",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-05",
+          "title": "OEM authorization",
+          "category": "TECHNICAL",
+          "criterion": "Manufacturer authorization with back-to-back warranty, valid for at least 90 days after technical bid opening.",
+          "benchmark": "Valid ≥ 90 days after opening",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-06",
+          "title": "Earnest Money Deposit (EMD)",
+          "category": "EMD",
+          "criterion": "EMD of ₹2,00,000 by online payment or bank guarantee from a scheduled bank. Bids with short EMD are liable for rejection. MSEs may claim exemption.",
+          "benchmark": "₹2,00,000 or MSE exemption",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-07",
+          "title": "PAN & income tax returns",
+          "category": "STATUTORY",
+          "criterion": "Valid PAN and ITR acknowledgements for FY 2023-24, 2024-25 and 2025-26.",
+          "benchmark": "3 years filed",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-08",
+          "title": "EPFO & ESIC compliance",
+          "category": "STATUTORY",
+          "criterion": "Active EPFO and ESIC codes with the latest monthly electronic challan (ECR).",
+          "benchmark": "Active with recent ECR",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-09",
+          "title": "Past execution record",
+          "category": "TECHNICAL",
+          "criterion": "At least 2 completed contracts for similar safety equipment to PSU or oil & gas customers.",
+          "benchmark": "2 completed POs",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-10",
+          "title": "Product test certificates",
+          "category": "TECHNICAL",
+          "criterion": "NABL-accredited lab test certificates for EN 137 / IS 10245 respiratory equipment.",
+          "benchmark": "NABL certificates",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-11",
+          "title": "Non-blacklisting undertaking",
+          "category": "POLICY",
+          "criterion": "Affidavit confirming no debarment by CPPP, MoPNG or CPCL.",
+          "benchmark": "Signed affidavit",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-12",
+          "title": "Land border declaration",
+          "category": "POLICY",
+          "criterion": "Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).",
+          "benchmark": "Signed declaration",
+          "mandatory": true
+        }
+      ],
+      "bidder": {
+        "companyName": "Bharat Engineering Works",
+        "gstin": "33AABCB9876E1Z4",
+        "pan": "AABCB9876E",
+        "udyamNumber": "UDYAM-TN-03-0012984",
+        "msmeCategory": "Medium",
+        "turnover": [
+          {
+            "financialYear": "FY 2022-23",
+            "amountCr": 5.05
+          },
+          {
+            "financialYear": "FY 2023-24",
+            "amountCr": 4.9
+          },
+          {
+            "financialYear": "FY 2024-25",
+            "amountCr": 5.1
+          }
+        ]
+      },
+      "makeInIndiaPercentage": 72,
+      "documents": [
+        {
+          "id": "DOC-201",
+          "requirementCode": "REQ-02",
+          "name": "GST Registration Certificate",
+          "fileName": "GST_Bharat_Eng_Works.pdf",
+          "extractedText": "GSTIN: 33AABCB9876E1Z4 | Legal Name: Bharat Engineering Works | Status: Active Regular"
+        },
+        {
+          "id": "DOC-202",
+          "requirementCode": "REQ-05",
+          "name": "OEM Authorization Certificate",
+          "fileName": "OEM_MAF_Honeywell_Safety.pdf",
+          "extractedText": "Manufacturer: Honeywell Safety Products India Pvt Ltd | Authorized Partner: Bharat Engineering Works | Warranty: Back-to-back | Valid Until: 15 Feb 2027"
+        },
+        {
+          "id": "DOC-203",
+          "requirementCode": "REQ-06",
+          "name": "Bank Guarantee for EMD",
+          "fileName": "EMD_Bank_Guarantee_Canara.pdf",
+          "extractedText": "BG No: BG-CAN-2026-901 | Amount: INR 2,00,000.00 | Issuing Bank: Canara Bank, Gandhipuram | Valid Until: 15-Mar-2027"
+        },
+        {
+          "id": "DOC-204",
+          "requirementCode": "REQ-01",
+          "name": "Audited Financial Statements (3 years)",
+          "fileName": "Audited_Accounts_3Yrs_Bharat.pdf",
+          "extractedText": "FY 2022-23: INR 5.05 Cr | FY 2023-24: INR 4.90 Cr | FY 2024-25: INR 5.10 Cr | UDIN: 24098124LKOP3109"
+        },
+        {
+          "id": "DOC-205",
+          "requirementCode": "REQ-03",
+          "name": "Udyam Registration Certificate",
+          "fileName": "Udyam_Bharat_Eng.pdf",
+          "extractedText": "Udyam No: UDYAM-TN-03-0012984 | Enterprise: Bharat Engineering Works | Category: Medium"
+        },
+        {
+          "id": "DOC-206",
+          "requirementCode": "REQ-04",
+          "name": "Make in India Self-Declaration",
+          "fileName": "Make_In_India_Declaration_BEW.pdf",
+          "extractedText": "Declared Local Content: 72.0% | Manufacturing Facility: Coimbatore, Tamil Nadu"
+        },
+        {
+          "id": "DOC-207",
+          "requirementCode": "REQ-07",
+          "name": "PAN & ITR Acknowledgements",
+          "fileName": "PAN_ITR_Returns_BEW.pdf",
+          "extractedText": "PAN: AABCB9876E | Returns Filed: AY 2024-25, 2025-26, 2026-27"
+        },
+        {
+          "id": "DOC-208",
+          "requirementCode": "REQ-08",
+          "name": "EPFO & ESIC Challans",
+          "fileName": "Labour_Compliance_ECR.pdf",
+          "extractedText": "EPFO Code: TNCBE0098124 | Remittances: Up to July 2026"
+        },
+        {
+          "id": "DOC-209",
+          "requirementCode": "REQ-09",
+          "name": "Past Performance Certificates",
+          "fileName": "Past_Performance_CPCL_HPCL.pdf",
+          "extractedText": "PO: CPCL/2023/5102 Value: ₹1.45 Cr (Completed) | PO: HPCL/2024/9011 Value: ₹2.10 Cr (Completed)"
+        },
+        {
+          "id": "DOC-210",
+          "requirementCode": "REQ-10",
+          "name": "NABL Test Reports",
+          "fileName": "NABL_Test_Reports_SafetyGear.pdf",
+          "extractedText": "Lab: CIPET Chennai | Standards: EN 137 / IS 10245 | Result: PASS"
+        },
+        {
+          "id": "DOC-211",
+          "requirementCode": "REQ-11",
+          "name": "Non-Blacklisting Affidavit",
+          "fileName": "Non_Blacklisting_Affidavit_BEW.pdf",
+          "extractedText": "Affidavit Dated: 28-Aug-2026 | Declaration: Not debarred by any PSU or Ministry"
+        },
+        {
+          "id": "DOC-212",
+          "requirementCode": "REQ-12",
+          "name": "Land Border Declaration",
+          "fileName": "Rule144xi_Land_Border_Declaration.pdf",
+          "extractedText": "Declaration: Not from a country sharing a land border with India | Signed: Proprietor"
+        }
+      ],
+      "emd": {
+        "requiredAmount": 200000,
+        "submittedAmount": 200000,
+        "instrument": "BANK_GUARANTEE",
+        "reference": "BG-CAN-2026-901",
+        "bankName": "Canara Bank",
+        "validUntil": "2027-03-15"
+      }
+    },
+    "expected": {
+      "checks": {
+        "REQ-01": "REVIEW",
+        "REQ-02": "MET",
+        "REQ-03": "MET",
+        "REQ-04": "MET",
+        "REQ-05": "MET",
+        "REQ-06": "MET",
+        "REQ-07": "MET",
+        "REQ-08": "MET",
+        "REQ-09": "MET",
+        "REQ-10": "MET",
+        "REQ-11": "MET",
+        "REQ-12": "MET"
+      },
+      "riskLevel": "MEDIUM",
+      "suggestedDecision": "APPROVE"
+    }
+  },
+  {
+    "payload": {
+      "bidId": "BID-003",
+      "tender": {
+        "id": "GEM/2026/CPCL/001",
+        "title": "Industrial Safety Equipment Procurement",
+        "technicalOpeningDate": "2026-09-05",
+        "emdAmount": 200000
+      },
+      "requirements": [
+        {
+          "code": "REQ-01",
+          "title": "Minimum average turnover",
+          "category": "FINANCIAL",
+          "criterion": "Average annual turnover over the last 3 audited financial years must be at least ₹5.00 crore.",
+          "benchmark": "≥ ₹5.00 Cr average",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-02",
+          "title": "GST registration",
+          "category": "STATUTORY",
+          "criterion": "Active GSTIN with regular GSTR-3B filings for the preceding 6 months.",
+          "benchmark": "Active registration",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-03",
+          "title": "Udyam / MSME registration",
+          "category": "POLICY",
+          "criterion": "Valid Udyam certificate, required only when claiming MSE benefits such as EMD exemption.",
+          "benchmark": "Required for MSE benefits",
+          "mandatory": false
+        },
+        {
+          "code": "REQ-04",
+          "title": "Make in India local content",
+          "category": "POLICY",
+          "criterion": "Minimum 50% local content (Class-I local supplier) per the Public Procurement (Make in India) Order.",
+          "benchmark": "≥ 50% local content",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-05",
+          "title": "OEM authorization",
+          "category": "TECHNICAL",
+          "criterion": "Manufacturer authorization with back-to-back warranty, valid for at least 90 days after technical bid opening.",
+          "benchmark": "Valid ≥ 90 days after opening",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-06",
+          "title": "Earnest Money Deposit (EMD)",
+          "category": "EMD",
+          "criterion": "EMD of ₹2,00,000 by online payment or bank guarantee from a scheduled bank. Bids with short EMD are liable for rejection. MSEs may claim exemption.",
+          "benchmark": "₹2,00,000 or MSE exemption",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-07",
+          "title": "PAN & income tax returns",
+          "category": "STATUTORY",
+          "criterion": "Valid PAN and ITR acknowledgements for FY 2023-24, 2024-25 and 2025-26.",
+          "benchmark": "3 years filed",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-08",
+          "title": "EPFO & ESIC compliance",
+          "category": "STATUTORY",
+          "criterion": "Active EPFO and ESIC codes with the latest monthly electronic challan (ECR).",
+          "benchmark": "Active with recent ECR",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-09",
+          "title": "Past execution record",
+          "category": "TECHNICAL",
+          "criterion": "At least 2 completed contracts for similar safety equipment to PSU or oil & gas customers.",
+          "benchmark": "2 completed POs",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-10",
+          "title": "Product test certificates",
+          "category": "TECHNICAL",
+          "criterion": "NABL-accredited lab test certificates for EN 137 / IS 10245 respiratory equipment.",
+          "benchmark": "NABL certificates",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-11",
+          "title": "Non-blacklisting undertaking",
+          "category": "POLICY",
+          "criterion": "Affidavit confirming no debarment by CPPP, MoPNG or CPCL.",
+          "benchmark": "Signed affidavit",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-12",
+          "title": "Land border declaration",
+          "category": "POLICY",
+          "criterion": "Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).",
+          "benchmark": "Signed declaration",
+          "mandatory": true
+        }
+      ],
+      "bidder": {
+        "companyName": "National Safety Systems",
+        "gstin": "09AABCN5544K1Z2",
+        "pan": "AABCN5544K",
+        "udyamNumber": "UDYAM-UP-28-0091245",
+        "msmeCategory": "Medium (Trading & Services)",
+        "turnover": [
+          {
+            "financialYear": "FY 2022-23",
+            "amountCr": 3.1
+          },
+          {
+            "financialYear": "FY 2023-24",
+            "amountCr": 3.4
+          },
+          {
+            "financialYear": "FY 2024-25",
+            "amountCr": 3.9
+          }
+        ]
+      },
+      "makeInIndiaPercentage": 48,
+      "documents": [
+        {
+          "id": "DOC-301",
+          "requirementCode": "REQ-02",
+          "name": "GST Registration Certificate",
+          "fileName": "GST_National_Safety.pdf",
+          "extractedText": "GSTIN: 09AABCN5544K1Z2 | Legal Name: National Safety Systems | Status: Active Regular"
+        },
+        {
+          "id": "DOC-302",
+          "requirementCode": "REQ-05",
+          "name": "OEM Authorization Letter",
+          "fileName": "OEM_Auth_MSA_Safety.pdf",
+          "extractedText": "Manufacturer: MSA Safety India | Authorized Partner: National Safety Systems | Valid Until: 31 Mar 2027 | Warranty Clause: Not stated"
+        },
+        {
+          "id": "DOC-303",
+          "requirementCode": "REQ-06",
+          "name": "EMD Payment Receipt",
+          "fileName": "HDFC_Challan_TXN881294.pdf",
+          "extractedText": "Transaction ID: TXN881294 | Amount: INR 1,50,000.00 | Date: 03-Sep-2026 | Beneficiary: CPCL Manali | Purpose: EMD GEM/2026/CPCL/001"
+        },
+        {
+          "id": "DOC-304",
+          "requirementCode": "REQ-01",
+          "name": "Audited Financial Statements (3 years)",
+          "fileName": "Audited_Accounts_NSS_3Yrs.pdf",
+          "extractedText": "FY 2022-23: INR 3.10 Cr | FY 2023-24: INR 3.40 Cr | FY 2024-25: INR 3.90 Cr"
+        },
+        {
+          "id": "DOC-305",
+          "requirementCode": "REQ-03",
+          "name": "Udyam Registration Certificate",
+          "fileName": "Udyam_Certificate_NSS.pdf",
+          "extractedText": "Udyam No: UDYAM-UP-28-0091245 | Category: Medium (Trading & Services)"
+        },
+        {
+          "id": "DOC-306",
+          "requirementCode": "REQ-04",
+          "name": "Make in India Self-Declaration",
+          "fileName": "Make_In_India_Declaration_NSS.pdf",
+          "extractedText": "Declared Local Content: 48.0% | Classification: Non-local supplier"
+        },
+        {
+          "id": "DOC-307",
+          "requirementCode": "REQ-07",
+          "name": "PAN & ITR Acknowledgements",
+          "fileName": "PAN_ITR_NSS.pdf",
+          "extractedText": "PAN: AABCN5544K | Returns Filed: AY 2024-25, 2025-26, 2026-27"
+        },
+        {
+          "id": "DOC-308",
+          "requirementCode": "REQ-08",
+          "name": "EPFO & ESIC Challans",
+          "fileName": "EPFO_ESIC_Challans_NSS.pdf",
+          "extractedText": "EPFO Code: UPNOI0078129 | Latest ECR Found: June 2026 | July 2026 ECR: Not found"
+        },
+        {
+          "id": "DOC-309",
+          "requirementCode": "REQ-09",
+          "name": "Past Experience Work Orders",
+          "fileName": "Past_Supply_Orders_Private.pdf",
+          "extractedText": "PO: Private chemical plant, Greater Noida — ₹0.84 Cr | PO: Private chemical plant, Noida — ₹0.62 Cr"
+        },
+        {
+          "id": "DOC-310",
+          "requirementCode": "REQ-12",
+          "name": "Land Border Declaration",
+          "fileName": "Land_Border_Declaration_NSS.pdf",
+          "extractedText": "Declaration: Not from a country sharing a land border with India | Signed: Director"
+        }
+      ],
+      "emd": {
+        "requiredAmount": 200000,
+        "submittedAmount": 150000,
+        "instrument": "NEFT_RTGS",
+        "reference": "TXN881294",
+        "bankName": "HDFC Bank"
+      }
+    },
+    "expected": {
+      "checks": {
+        "REQ-01": "NOT_MET",
+        "REQ-02": "MET",
+        "REQ-03": "MET",
+        "REQ-04": "NOT_MET",
+        "REQ-05": "REVIEW",
+        "REQ-06": "NOT_MET",
+        "REQ-07": "MET",
+        "REQ-08": "REVIEW",
+        "REQ-09": "REVIEW",
+        "REQ-10": "MISSING",
+        "REQ-11": "MISSING",
+        "REQ-12": "MET"
+      },
+      "riskLevel": "HIGH",
+      "suggestedDecision": "REJECT"
+    }
+  },
+  {
+    "payload": {
+      "bidId": "BID-004",
+      "tender": {
+        "id": "GEM/2026/CPCL/001",
+        "title": "Industrial Safety Equipment Procurement",
+        "technicalOpeningDate": "2026-09-05",
+        "emdAmount": 200000
+      },
+      "requirements": [
+        {
+          "code": "REQ-01",
+          "title": "Minimum average turnover",
+          "category": "FINANCIAL",
+          "criterion": "Average annual turnover over the last 3 audited financial years must be at least ₹5.00 crore.",
+          "benchmark": "≥ ₹5.00 Cr average",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-02",
+          "title": "GST registration",
+          "category": "STATUTORY",
+          "criterion": "Active GSTIN with regular GSTR-3B filings for the preceding 6 months.",
+          "benchmark": "Active registration",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-03",
+          "title": "Udyam / MSME registration",
+          "category": "POLICY",
+          "criterion": "Valid Udyam certificate, required only when claiming MSE benefits such as EMD exemption.",
+          "benchmark": "Required for MSE benefits",
+          "mandatory": false
+        },
+        {
+          "code": "REQ-04",
+          "title": "Make in India local content",
+          "category": "POLICY",
+          "criterion": "Minimum 50% local content (Class-I local supplier) per the Public Procurement (Make in India) Order.",
+          "benchmark": "≥ 50% local content",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-05",
+          "title": "OEM authorization",
+          "category": "TECHNICAL",
+          "criterion": "Manufacturer authorization with back-to-back warranty, valid for at least 90 days after technical bid opening.",
+          "benchmark": "Valid ≥ 90 days after opening",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-06",
+          "title": "Earnest Money Deposit (EMD)",
+          "category": "EMD",
+          "criterion": "EMD of ₹2,00,000 by online payment or bank guarantee from a scheduled bank. Bids with short EMD are liable for rejection. MSEs may claim exemption.",
+          "benchmark": "₹2,00,000 or MSE exemption",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-07",
+          "title": "PAN & income tax returns",
+          "category": "STATUTORY",
+          "criterion": "Valid PAN and ITR acknowledgements for FY 2023-24, 2024-25 and 2025-26.",
+          "benchmark": "3 years filed",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-08",
+          "title": "EPFO & ESIC compliance",
+          "category": "STATUTORY",
+          "criterion": "Active EPFO and ESIC codes with the latest monthly electronic challan (ECR).",
+          "benchmark": "Active with recent ECR",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-09",
+          "title": "Past execution record",
+          "category": "TECHNICAL",
+          "criterion": "At least 2 completed contracts for similar safety equipment to PSU or oil & gas customers.",
+          "benchmark": "2 completed POs",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-10",
+          "title": "Product test certificates",
+          "category": "TECHNICAL",
+          "criterion": "NABL-accredited lab test certificates for EN 137 / IS 10245 respiratory equipment.",
+          "benchmark": "NABL certificates",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-11",
+          "title": "Non-blacklisting undertaking",
+          "category": "POLICY",
+          "criterion": "Affidavit confirming no debarment by CPPP, MoPNG or CPCL.",
+          "benchmark": "Signed affidavit",
+          "mandatory": true
+        },
+        {
+          "code": "REQ-12",
+          "title": "Land border declaration",
+          "category": "POLICY",
+          "criterion": "Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).",
+          "benchmark": "Signed declaration",
+          "mandatory": true
+        }
+      ],
+      "bidder": {
+        "companyName": "Prime Tech Solutions",
+        "gstin": "33AAACP4419M1ZP",
+        "pan": "AAACP4419M",
+        "udyamNumber": "UDYAM-TN-02-0089142",
+        "msmeCategory": "Small (Manufacturing)",
+        "turnover": [
+          {
+            "financialYear": "FY 2022-23",
+            "amountCr": 7.6
+          },
+          {
+            "financialYear": "FY 2023-24",
+            "amountCr": 8.4
+          },
+          {
+            "financialYear": "FY 2024-25",
+            "amountCr": 9.2
+          }
+        ]
+      },
+      "makeInIndiaPercentage": 85,
+      "documents": [
+        {
+          "id": "DOC-401",
+          "requirementCode": "REQ-02",
+          "name": "GST Registration Certificate",
+          "fileName": "GST_Prime_Tech_Solutions.pdf",
+          "extractedText": "GSTIN: 33AAACP4419M1ZP | Legal Name: Prime Tech Solutions | Status: Active Regular"
+        },
+        {
+          "id": "DOC-402",
+          "requirementCode": "REQ-05",
+          "name": "OEM Authorization Certificate",
+          "fileName": "OEM_MAF_3M_Safety.pdf",
+          "extractedText": "Manufacturer: 3M India Ltd | Authorized Partner: Prime Tech Solutions | Warranty: Back-to-back | Valid Until: 31 Dec 2027"
+        },
+        {
+          "id": "DOC-403",
+          "requirementCode": "REQ-06",
+          "name": "MSE EMD Exemption Claim",
+          "fileName": "MSME_EMD_Exemption_Udyam.pdf",
+          "extractedText": "Udyam No: UDYAM-TN-02-0089142 | Enterprise Type: Small (Manufacturing) | Exemption Claimed: EMD"
+        },
+        {
+          "id": "DOC-404",
+          "requirementCode": "REQ-01",
+          "name": "Audited Financial Statements (3 years)",
+          "fileName": "Audited_Financials_3Yrs_PTS.pdf",
+          "extractedText": "FY 2022-23: INR 7.60 Cr | FY 2023-24: INR 8.40 Cr | FY 2024-25: INR 9.20 Cr | UDIN: 24089142PTS8812"
+        },
+        {
+          "id": "DOC-405",
+          "requirementCode": "REQ-03",
+          "name": "Udyam Registration Certificate",
+          "fileName": "Udyam_Certificate_PTS.pdf",
+          "extractedText": "Udyam No: UDYAM-TN-02-0089142 | Category: Small (Manufacturing) | Status: Active"
+        },
+        {
+          "id": "DOC-406",
+          "requirementCode": "REQ-04",
+          "name": "Make in India Self-Declaration",
+          "fileName": "Make_In_India_Declaration_PTS.pdf",
+          "extractedText": "Declared Local Content: 85.0% | Manufacturing Location: Chennai, Tamil Nadu"
+        },
+        {
+          "id": "DOC-407",
+          "requirementCode": "REQ-07",
+          "name": "PAN & ITR Acknowledgements",
+          "fileName": "PAN_ITR_3Years_PTS.pdf",
+          "extractedText": "PAN: AAACP4419M | Returns Filed: AY 2024-25, 2025-26, 2026-27"
+        },
+        {
+          "id": "DOC-408",
+          "requirementCode": "REQ-08",
+          "name": "EPFO & ESIC Returns",
+          "fileName": "EPFO_ESIC_Receipts_PTS.pdf",
+          "extractedText": "EPFO Code: TNMAS0089142 | Latest ECR Paid: 14 Aug 2026 | Active Employees: 64"
+        },
+        {
+          "id": "DOC-409",
+          "requirementCode": "REQ-09",
+          "name": "Past Performance Certificates",
+          "fileName": "Past_Performance_IOCL_ONGC.pdf",
+          "extractedText": "PO: IOCL/2024/9102 Value: ₹2.40 Cr (Completed) | PO: ONGC/2025/3310 Value: ₹1.95 Cr (Completed)"
+        },
+        {
+          "id": "DOC-410",
+          "requirementCode": "REQ-10",
+          "name": "NABL Test Certificates",
+          "fileName": "NABL_Test_Reports_3M_Gear.pdf",
+          "extractedText": "Lab: National Test House | Standards: EN 137 / IS 10245 | Verdict: PASS"
+        },
+        {
+          "id": "DOC-411",
+          "requirementCode": "REQ-11",
+          "name": "Non-Blacklisting Affidavit",
+          "fileName": "Non_Blacklisting_Affidavit_PTS.pdf",
+          "extractedText": "Affidavit Dated: 01-Sep-2026 | Declaration: Not debarred by any PSU or Ministry"
+        },
+        {
+          "id": "DOC-412",
+          "requirementCode": "REQ-12",
+          "name": "Land Border Declaration",
+          "fileName": "Land_Border_Declaration_PTS.pdf",
+          "extractedText": "Declaration: Not from a country sharing a land border with India | Signed: Managing Partner"
+        }
+      ],
+      "emd": {
+        "requiredAmount": 200000,
+        "submittedAmount": 0,
+        "instrument": "MSME_EXEMPTION",
+        "reference": "UDYAM-TN-02-0089142",
+        "bankName": "—"
+      }
+    },
+    "expected": {
+      "checks": {
+        "REQ-01": "MET",
+        "REQ-02": "MET",
+        "REQ-03": "MET",
+        "REQ-04": "MET",
+        "REQ-05": "MET",
+        "REQ-06": "EXEMPTED",
+        "REQ-07": "MET",
+        "REQ-08": "MET",
+        "REQ-09": "MET",
+        "REQ-10": "MET",
+        "REQ-11": "MET",
+        "REQ-12": "MET"
+      },
+      "riskLevel": "LOW",
+      "suggestedDecision": "APPROVE"
+    }
+  }
+]

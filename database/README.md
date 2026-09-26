@@ -1,41 +1,15 @@
-# CSAP Database
-
-This directory houses the PostgreSQL database schema migrations, database seeding scripts, and data architecture reference for the Central Statutory Authentication Platform (CSAP).
-
-## Directory Structure
+# BidSure database
 
 ```
-database/
-├── migrations/                     # SQL migration scripts for Supabase / PostgreSQL
-│   ├── 20260907140000_csap_schema.sql
-│   └── 20260907141000_csap_schema_fixes.sql
-├── seeds/                          # Data seeding scripts and fixtures
-│   └── seed.ts                     # TypeScript seed script using @supabase/supabase-js
-├── schema/                         # Architecture and ERD documentation
-│   └── schema_documentation.md
-├── package.json
-└── README.md
+migrations/   Supabase SQL schema (tables, views, RLS, submit_officer_decision RPC)
+seeds/        seed.ts — loads the shared demo dataset; export-engine-fixtures.ts
+schema/       schema documentation, including the storage conventions the backend uses
+backups/      JSON backups written by the seed script (git-ignored)
 ```
 
-## Setup & Execution
-
-### 1. Environment Configuration
-Ensure `.env.local` exists in the repository root or in this folder with:
 ```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+npm run seed                     # reads ../backend/.env; backs up every table first
+npm run export-engine-fixtures   # refresh ai_engine test fixtures from the demo dataset
 ```
 
-### 2. Running Migrations
-If using Supabase CLI:
-```bash
-supabase db push
-# or
-supabase migration up
-```
-
-### 3. Seeding the Database
-To populate the database with tenders, bids, companies, and evaluation records:
-```bash
-npm run seed
-```
+Apply migrations with the Supabase CLI (`supabase db push`) or the SQL editor.

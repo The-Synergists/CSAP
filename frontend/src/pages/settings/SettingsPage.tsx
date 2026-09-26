@@ -1,267 +1,143 @@
-import React, { useState } from 'react';
-import {
-  Settings,
-  Shield,
-  Key,
-  Sliders,
-  CheckCircle2,
-  Save,
-  Server,
-} from 'lucide-react';
-import { useProcurement } from '../../context/ProcurementContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { LogOut, RefreshCw } from 'lucide-react';
+import { useApp } from '../../state/appContext';
+import { Badge } from '../../components/ui/Badge';
+import { Button, Card, DetailList, Modal, PageHeader } from '../../components/ui/primitives';
+import { useToast } from '../../components/ui/toast';
+
+interface Health {
+  status: string;
+  database: string;
+  verificationEngine: string;
+  nvidiaOcr?: string;
+  nvidiaExtraction?: string;
+  panVerificationApi?: string;
+  timestamp: string;
+}
+
+const INTEGRATIONS = [
+  { name: 'NVIDIA Nemotron OCR V2', note: 'Reads uploaded PAN document images (PAN verification tab).', state: 'Live' },
+  { name: 'NVIDIA information extraction', note: 'LLM that extracts PAN, name and other fields from the OCR text.', state: 'Live' },
+  { name: 'PAN Verification API', note: 'Dummy external service for the prototype; answers from its own dataset file (pan_registry.json).', state: 'Dummy API' },
+  { name: 'GeM tender feed', note: 'Tenders and bids are loaded from the CSAP database.', state: 'Not connected' },
+  { name: 'GSTN / Udyam registries', note: 'Identifier format and GSTIN–PAN cross-check only; no live registry lookup.', state: 'Simulated' },
+  { name: 'Bank / treasury (EMD)', note: 'EMD amounts compared with submitted instrument; no bank confirmation.', state: 'Simulated' },
+  { name: 'Digital signature (DSC)', note: 'Decisions are recorded against the signed-in officer, not digitally signed.', state: 'Not connected' },
+];
 
 export const SettingsPage: React.FC = () => {
-  const { currentUser } = useProcurement();
-  const [ocrConfidence, setOcrConfidence] = useState('95');
-  const [makeInIndiaThreshold, setMakeInIndiaThreshold] = useState('50');
-  const [validityDays, setValidityDays] = useState('90');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { currentUser, source, logout, resetDemoData, reload, realtimeLive } = useApp();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [health, setHealth] = useState<Health | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+  const fetchHealth = useCallback(
+    () =>
+      fetch(`${import.meta.env.VITE_API_URL ?? ''}/api/health`)
+        .then((res) => res.json() as Promise<Health>)
+        .then((h) => {
+          setHealth(h);
+          setHealthError(null);
+        })
+        .catch(() => setHealthError('Backend not reachable.')),
+    [],
+  );
+
+  const checkHealth = async () => {
+    setChecking(true);
+    await fetchHealth();
+    setChecking(false);
   };
 
+  useEffect(() => {
+    if (source === 'api') void fetchHealth();
+  }, [source, fetchHealth]);
+
+  const tone = (s?: string) => (s?.startsWith('ok') ? 'success' : 'danger');
+
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-blue-600" />
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Procurement Officer & System Settings
-            </h1>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Configure verification thresholds and review connected data source status
-          </p>
-        </div>
+    <div className="max-w-4xl space-y-5">
+      <PageHeader title="Profile & settings" />
 
-        {saveSuccess && (
-          <span className="text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 px-3 py-1 rounded flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            Configuration Saved Successfully
-          </span>
+      <Card title="Your profile" subtitle="Maintained by the system administrator" actions={
+        <Button size="sm" onClick={() => { logout(); navigate('/login', { replace: true }); toast({ kind: 'info', title: 'Signed out' }); }}>
+          <LogOut className="h-3.5 w-3.5" /> Sign out
+        </Button>
+      }>
+        {currentUser && (
+          <DetailList
+            rows={[
+              { label: 'Name', value: currentUser.name },
+              { label: 'Designation', value: currentUser.designation || '—' },
+              { label: 'Employee ID', value: <span className="font-mono text-xs">{currentUser.employeeId || '—'}</span> },
+              { label: 'Email', value: currentUser.email },
+              { label: 'Organisation', value: currentUser.organization || '—' },
+              { label: 'Role', value: currentUser.role },
+            ]}
+          />
         )}
-      </div>
+      </Card>
 
-      <form onSubmit={handleSave} className="space-y-5">
-        {/* Section 1: Designated Officer Profile */}
-        <div className="bg-white border border-slate-200 rounded-md p-5 shadow-2xs">
-          <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-200">
-            <Shield className="w-4 h-4 text-blue-600" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              Designated Officer & Statutory Authority
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Officer Name</label>
-              <input
-                type="text"
-                value={currentUser.name}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-medium text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Designation</label>
-              <input
-                type="text"
-                value={currentUser.designation}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-medium text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Employee Badge / GeM ID</label>
-              <input
-                type="text"
-                value={currentUser.badgeId}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-mono font-medium text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Department / Division</label>
-              <input
-                type="text"
-                value="Commercial & Contracts, Manali Refinery"
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-medium text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Organization</label>
-              <input
-                type="text"
-                value={currentUser.organization}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-medium text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-500 font-medium mb-1">Official Email</label>
-              <input
-                type="text"
-                value={currentUser.email}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded font-medium text-slate-800"
-              />
-            </div>
-          </div>
+      <Card
+        title="System status"
+        actions={source === 'api' && <Button size="sm" onClick={() => void checkHealth()} disabled={checking}><RefreshCw className={`h-3.5 w-3.5 ${checking ? 'animate-spin' : ''}`} /> Check again</Button>}
+      >
+        <DetailList
+          rows={[
+            { label: 'Data source', value: source === 'api' ? 'CSAP backend (Supabase database)' : 'Built-in demo dataset in this browser' },
+            ...(source === 'api'
+              ? [
+                  { label: 'Backend', value: healthError ? <Badge tone="danger">{healthError}</Badge> : health ? <Badge tone={health.status === 'ok' ? 'success' : 'warning'}>{health.status}</Badge> : '…' },
+                  { label: 'Database', value: health ? <Badge tone={tone(health.database)}>{health.database}</Badge> : '…' },
+                  { label: 'Verification engine', value: health ? <Badge tone={tone(health.verificationEngine)}>{health.verificationEngine}</Badge> : '…' },
+                  { label: 'NVIDIA OCR', value: health?.nvidiaOcr ? <Badge tone={health.nvidiaOcr.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaOcr}</Badge> : '…' },
+                  { label: 'NVIDIA extraction', value: health?.nvidiaExtraction ? <Badge tone={health.nvidiaExtraction.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaExtraction}</Badge> : '…' },
+                  { label: 'PAN Verification API', value: health?.panVerificationApi ? <Badge tone={tone(health.panVerificationApi)}>{health.panVerificationApi}</Badge> : '…' },
+                  { label: 'Realtime', value: <Badge tone={realtimeLive ? 'success' : 'warning'}>{realtimeLive ? 'connected' : 'not connected (polling)'}</Badge> },
+                ]
+              : []),
+          ]}
+        />
+        <div className="mt-3 flex gap-2">
+          {source === 'api' ? (
+            <Button size="sm" onClick={() => void reload().then(() => toast({ kind: 'success', title: 'Data refreshed' }))}>Reload data</Button>
+          ) : (
+            <Button size="sm" variant="danger" onClick={() => setConfirmReset(true)}>Reset demo data</Button>
+          )}
         </div>
+      </Card>
 
-        {/* Section 2: Officer Sign-off Identity */}
-        <div className="bg-white border border-slate-200 rounded-md p-5 shadow-2xs">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <Key className="w-4 h-4 text-slate-600" />
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                Officer Decision Sign-off
-              </h2>
-            </div>
-            <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-300 px-2 py-0.5 rounded">
-              DSC Not Configured
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Officer decisions are recorded against the signed-in officer's name and designation and
-            written to the audit trail. Configure a Digital Signature Certificate (DSC) provider below
-            to enable legally binding sign-off on officer determinations.
-          </p>
-        </div>
-
-        {/* Section 3: AI Scrutiny Engine Sensitivity Thresholds */}
-        <div className="bg-white border border-slate-200 rounded-md p-5 shadow-2xs">
-          <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-200">
-            <Sliders className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              Verification Thresholds
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs">
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                OCR Confidence Threshold (%):
-              </label>
-              <input
-                type="number"
-                min="80"
-                max="99"
-                value={ocrConfidence}
-                onChange={(e) => setOcrConfidence(e.target.value)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Flag documents for manual review if OCR confidence is below threshold
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Make in India Threshold (%):
-              </label>
-              <input
-                type="number"
-                min="20"
-                max="80"
-                value={makeInIndiaThreshold}
-                onChange={(e) => setMakeInIndiaThreshold(e.target.value)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Class-I Local Supplier minimum domestic value addition (DPIIT)
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                OEM Form Validity Window (Days):
-              </label>
-              <input
-                type="number"
-                min="30"
-                max="180"
-                value={validityDays}
-                onChange={(e) => setValidityDays(e.target.value)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded font-mono text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Mandatory minimum authorization days post-bid technical opening
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 4: Data Source References */}
-        <div className="bg-white border border-slate-200 rounded-md p-5 shadow-2xs">
-          <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-200">
-            <Server className="w-4 h-4 text-slate-600" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              Reference Data Sources
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mb-3">
-            Submissions are cross-verified against these government registries during AI verification.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
+      <Card title="Integrations" subtitle="What this prototype does and does not connect to" padded={false}>
+        <ul className="divide-y divide-slate-100">
+          {INTEGRATIONS.map((i) => (
+            <li key={i.name} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="font-semibold text-slate-800">GeM Portal</div>
-                <div className="text-[10px] text-slate-400">Tender Ingestion</div>
+                <p className="text-xs font-medium text-slate-900">{i.name}</p>
+                <p className="text-xs text-slate-500">{i.note}</p>
               </div>
-              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Connected</span>
-            </div>
+              <Badge tone={i.state === 'Live' ? 'success' : i.state === 'Simulated' || i.state === 'Dummy API' ? 'warning' : 'neutral'}>{i.state}</Badge>
+            </li>
+          ))}
+        </ul>
+      </Card>
 
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-slate-800">GSTN</div>
-                <div className="text-[10px] text-slate-400">GST Registration Check</div>
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Connected</span>
-            </div>
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-slate-800">Ministry of MSME</div>
-                <div className="text-[10px] text-slate-400">Udyam Registration</div>
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Connected</span>
-            </div>
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-slate-800">CPCL Treasury</div>
-                <div className="text-[10px] text-slate-400">EMD Reconciliation</div>
-              </div>
-              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Connected</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Save Button */}
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="submit"
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save Configuration</span>
-          </button>
-        </div>
-      </form>
+      <Modal
+        open={confirmReset}
+        onClose={() => setConfirmReset(false)}
+        title="Reset demo data?"
+        footer={
+          <>
+            <Button onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button variant="danger" onClick={() => { resetDemoData?.(); setConfirmReset(false); toast({ kind: 'success', title: 'Demo data reset' }); }}>Reset</Button>
+          </>
+        }
+      >
+        <p className="text-xs text-slate-700">All decisions and audit events recorded in this browser session will be removed and the four demo bids restored.</p>
+      </Modal>
     </div>
   );
 };

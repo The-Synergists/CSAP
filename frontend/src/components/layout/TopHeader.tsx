@@ -1,311 +1,248 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Menu, Search, Bell, User, LogOut, Settings, FileText, Users, ChevronDown } from 'lucide-react';
-import { useProcurement } from '../../context/ProcurementContext';
 import { useNavigate } from 'react-router-dom';
-import { toTenderSlug } from '../../types';
-import { getActiveAlerts } from '../../utils/alerts';
+import { Bell, ChevronDown, FileText, LogOut, Menu, Search, Settings, Users } from 'lucide-react';
+import { useApp } from '../../state/appContext';
+import { getAlerts } from '@shared/domain/selectors';
+import { bidPath, tenderPath } from '../../lib/format';
+import { useToast } from '../ui/toast';
 
-interface TopHeaderProps {
-  onToggleSidebar: () => void;
-}
-
-export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
-  const { currentUser, logout, activeTender, tenders, bids, selectBid, selectTender } = useProcurement();
-  const navigate = useNavigate();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-
-  const searchRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
-
-  const alerts = getActiveAlerts(bids);
-
-  // Close any open dropdown on outside click
+/** Closes a popover when the user clicks outside it or presses Escape. */
+const useDismiss = (ref: React.RefObject<HTMLElement | null>, open: boolean, close: () => void) => {
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchFocused(false);
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) setNotificationsOpen(false);
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) close();
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [ref, open, close]);
+};
 
-  const searchResults = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return { tenderMatches: [], bidMatches: [] };
+export const TopHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) => {
+  const { db, currentUser, logout, source, activeTenderId } = useApp();
+  const activeTender = db.tenders.find((t) => t.id === activeTenderId);
+  const navigate = useNavigate();
+  const toast = useToast();
 
-    const tenderMatches = tenders
-      .filter((t) => t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
-      .slice(0, 4);
+  const [term, setTerm] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  useDismiss(searchRef, searchOpen, () => setSearchOpen(false));
+  useDismiss(bellRef, bellOpen, () => setBellOpen(false));
+  useDismiss(profileRef, profileOpen, () => setProfileOpen(false));
 
-    const bidMatches = bids
-      .filter(
-        (b) =>
-          b.companyName.toLowerCase().includes(q) ||
-          b.id.toLowerCase().includes(q) ||
-          b.gstin.toLowerCase().includes(q)
-      )
-      .slice(0, 4);
+  const alerts = getAlerts(db);
 
-    return { tenderMatches, bidMatches };
-  }, [searchTerm, tenders, bids]);
+  const results = useMemo(() => {
+    const q = term.trim().toLowerCase();
+    if (!q) return [];
+    const tenders = db.tenders
+      .filter((t) => [t.id, t.title, t.division].some((s) => s.toLowerCase().includes(q)))
+      .slice(0, 4)
+      .map((t) => ({ key: t.id, kind: 'Tender' as const, primary: t.title, secondary: t.id, to: tenderPath(t.id) }));
+    const bids = db.bids
+      .map((b) => ({ bid: b, bidder: db.bidders.find((x) => x.id === b.bidderId)! }))
+      .filter(({ bid, bidder }) => [bid.id, bidder.companyName, bidder.gstin, bidder.id].some((s) => s.toLowerCase().includes(q)))
+      .slice(0, 5)
+      .map(({ bid, bidder }) => ({ key: bid.id, kind: 'Bid' as const, primary: bidder.companyName, secondary: `${bid.id} · ${bidder.gstin}`, to: bidPath(bid.id) }));
+    return [...tenders, ...bids];
+  }, [term, db]);
 
-  const hasResults = searchResults.tenderMatches.length > 0 || searchResults.bidMatches.length > 0;
-
-  const handleOpenTender = (tenderId: string) => {
-    selectTender(tenderId);
-    navigate(`/tenders/${toTenderSlug(tenderId)}`);
-    setSearchTerm('');
-    setSearchFocused(false);
-  };
-
-  const handleOpenBid = (bidId: string, tenderId: string) => {
-    selectBid(bidId, tenderId);
-    navigate(`/bids/${bidId}`);
-    setSearchTerm('');
-    setSearchFocused(false);
+  const go = (to: string) => {
+    navigate(to);
+    setTerm('');
+    setSearchOpen(false);
   };
 
   const handleLogout = () => {
+    setProfileOpen(false);
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
+    toast({ kind: 'info', title: 'Signed out', message: 'Your prototype session has ended.' });
   };
 
-  const handleOpenActiveTender = () => {
-    if (activeTender) {
-      navigate(`/tenders/${toTenderSlug(activeTender.id)}`);
-    }
-  };
-
-  const initials = currentUser.name
-    .split(' ')
+  const initials = (currentUser?.name ?? '')
+    .split(/[\s.]+/)
+    .filter(Boolean)
     .map((p) => p[0])
+    .slice(-2)
     .join('')
-    .slice(0, 2)
     .toUpperCase();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
-      {/* Left side: Hamburger & Active Tender Context */}
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-2xs sm:px-6">
+      <button type="button" onClick={onToggleSidebar} aria-label="Open navigation" className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100 lg:hidden">
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {activeTender ? (
         <button
           type="button"
-          onClick={onToggleSidebar}
-          className="p-1.5 rounded-md text-slate-600 hover:bg-slate-100 lg:hidden focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          aria-label="Toggle navigation"
+          onClick={() => navigate(tenderPath(activeTender.id))}
+          className="hidden shrink-0 items-center gap-2 text-xs transition-opacity hover:opacity-80 xl:flex"
+          title="Open active tender workspace"
         >
-          <Menu className="w-5 h-5" />
+          <span className="font-medium text-slate-400">Active Case:</span>
+          <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono font-semibold text-blue-800">{activeTender.id}</span>
         </button>
+      ) : (
+        <button type="button" onClick={() => navigate('/tenders')} className="hidden shrink-0 items-center gap-2 text-xs xl:flex">
+          <span className="font-medium text-slate-400">No tender case selected</span>
+          <span className="font-semibold text-blue-700 hover:underline">Select a Case</span>
+        </button>
+      )}
 
-        {activeTender ? (
-          <div
-            onClick={handleOpenActiveTender}
-            className="hidden md:flex items-center gap-2 text-xs cursor-pointer hover:opacity-80 transition-opacity"
-            title="Open active tender workspace"
-          >
-            <span className="text-slate-400 font-medium">Active Case:</span>
-            <span className="font-mono bg-blue-50 text-blue-800 px-2 py-0.5 rounded border border-blue-200 font-semibold hover:bg-blue-100 transition-colors">
-              {activeTender.id}
-            </span>
-            <span className="text-slate-500 truncate max-w-xs">{activeTender.title}</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => navigate('/tenders')}
-            className="hidden md:flex items-center gap-2 text-xs"
-            title="Select a tender case"
-          >
-            <span className="text-slate-400 font-medium">No tender case selected</span>
-            <span className="font-semibold text-blue-700 hover:underline">Select a Case</span>
-          </button>
-        )}
-      </div>
-
-      {/* Center: Search input */}
-      <div className="flex-1 max-w-md mx-4 hidden sm:block relative" ref={searchRef}>
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search tenders, bidders, GSTIN, GEM ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-600 focus:border-blue-600 text-slate-900 placeholder:text-slate-400"
-          />
-        </div>
-
-        {searchFocused && searchTerm.trim() && (
-          <div className="absolute top-full mt-1.5 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden z-40 text-xs">
-            {!hasResults ? (
-              <div className="p-3 text-slate-500">No matches for "{searchTerm}".</div>
+      <div ref={searchRef} className="relative mx-auto w-full max-w-md">
+        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <input
+          type="search"
+          aria-label="Search tenders and bidders"
+          placeholder="Search tenders, bidders, GSTIN, GEM ID..."
+          value={term}
+          onChange={(e) => {
+            setTerm(e.target.value);
+            setSearchOpen(true);
+          }}
+          onFocus={() => setSearchOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && results[0]) go(results[0].to);
+          }}
+          className="w-full rounded border border-slate-300 bg-slate-50 py-1.5 pl-9 pr-4 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+        />
+        {searchOpen && term.trim() && (
+          <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-lg">
+            {results.length === 0 ? (
+              <p className="px-3 py-3 text-slate-500">No tenders or bidders match “{term.trim()}”.</p>
             ) : (
-              <div className="max-h-80 overflow-y-auto">
-                {searchResults.tenderMatches.length > 0 && (
-                  <div>
-                    <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Tenders
-                    </div>
-                    {searchResults.tenderMatches.map((t) => (
-                      <div
-                        key={t.id}
-                        onClick={() => handleOpenTender(t.id)}
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <div>
-                          <div className="font-mono font-semibold text-blue-700">{t.id}</div>
-                          <div className="text-slate-600">{t.title}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {searchResults.bidMatches.length > 0 && (
-                  <div className="border-t border-slate-100">
-                    <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Bidders
-                    </div>
-                    {searchResults.bidMatches.map((b) => (
-                      <div
-                        key={b.id}
-                        onClick={() => handleOpenBid(b.id, b.tenderId)}
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center gap-2"
-                      >
-                        <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <div>
-                          <div className="font-semibold text-slate-800">{b.companyName}</div>
-                          <div className="text-slate-400 font-mono">
-                            {b.id} • {b.gstin}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ul className="max-h-80 overflow-y-auto py-1">
+                {results.map((r) => (
+                  <li key={r.key}>
+                    <button type="button" onClick={() => go(r.to)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-50">
+                      {r.kind === 'Tender' ? <FileText className="h-4 w-4 shrink-0 text-slate-400" /> : <Users className="h-4 w-4 shrink-0 text-slate-400" />}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-slate-900">{r.primary}</span>
+                        <span className="block truncate font-mono text-xs text-slate-500">{r.secondary}</span>
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400">{r.kind}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
       </div>
 
-      {/* Right side: Officer Badge, Notifications, Actions */}
-      <div className="flex items-center gap-3">
-        {/* Notifications */}
-        <div className="relative" ref={notificationsRef}>
+      <div className="ml-auto flex items-center gap-3">
+        <span
+          className="hidden rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 2xl:inline"
+          title={source === 'api' ? 'Prototype connected to the CSAP test database. Tender data is illustrative.' : 'Prototype running on built-in demo data in this browser.'}
+        >
+          {source === 'api' ? 'Prototype · test database' : 'Prototype · demo data'}
+        </span>
+
+        <div ref={bellRef} className="relative">
           <button
             type="button"
-            onClick={() => setNotificationsOpen((prev) => !prev)}
-            className="relative p-2 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-hidden"
-            title="Notifications"
-            aria-label="Notifications"
-            aria-expanded={notificationsOpen}
+            onClick={() => setBellOpen((o) => !o)}
+            aria-label={`Alerts (${alerts.length} open)`}
+            aria-expanded={bellOpen}
+            className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="h-4 w-4" />
             {alerts.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+              <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">
+                {alerts.length}
+              </span>
             )}
           </button>
-
-          {notificationsOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-md shadow-lg z-40 text-xs overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-100 font-bold uppercase tracking-wider text-[11px] text-slate-600 flex items-center justify-between">
-                <span>Alerts</span>
-                <span className="text-slate-400 font-normal normal-case">{alerts.length} open</span>
-              </div>
+          {bellOpen && (
+            <div className="absolute right-0 top-full z-40 mt-1 w-80 overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-lg">
+              <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Open alerts</div>
               {alerts.length === 0 ? (
-                <div className="p-3 text-slate-500">No open alerts.</div>
+                <p className="px-3 py-3 text-slate-500">No open alerts.</p>
               ) : (
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                  {alerts.slice(0, 5).map((alert) => (
-                    <div
-                      key={alert.id}
-                      onClick={() => {
-                        selectBid(alert.bidId, alert.tenderId);
-                        navigate(`/bids/${alert.bidId}/${alert.actionTab}`);
-                        setNotificationsOpen(false);
-                      }}
-                      className="px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`font-semibold ${alert.severity === 'HIGH' ? 'text-rose-800' : 'text-amber-800'}`}>
-                          {alert.title}
+                <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto">
+                  {alerts.map((a) => (
+                    <li key={a.bidId}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBellOpen(false);
+                          navigate(`${bidPath(a.bidId, 'evidence')}?finding=${a.findingId}`);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-50"
+                      >
+                        <span className={`block font-medium ${a.severity === 'HIGH' ? 'text-rose-800' : 'text-slate-900'}`}>{a.title}</span>
+                        <span className="block text-xs text-slate-500">
+                          {a.companyName} · {a.bidId}
+                          {a.openCount > 1 && ` · +${a.openCount - 1} more`}
                         </span>
-                        <span className="font-mono text-[10px] text-slate-400">{alert.bidId}</span>
-                      </div>
-                      <div className="text-slate-500 mt-0.5">{alert.companyName}</div>
-                    </div>
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
               <button
                 type="button"
                 onClick={() => {
+                  setBellOpen(false);
                   navigate('/alerts');
-                  setNotificationsOpen(false);
                 }}
-                className="w-full text-center py-2 text-blue-700 hover:bg-blue-50 font-semibold border-t border-slate-100"
+                className="w-full border-t border-slate-100 py-2 text-center text-sm font-medium text-blue-700 hover:bg-blue-50"
               >
-                View All Alerts
+                View all alerts
               </button>
             </div>
           )}
         </div>
 
-        {/* Officer Profile Pill */}
-        <div className="relative flex items-center gap-1 pl-3 border-l border-slate-200" ref={profileRef}>
+        <div ref={profileRef} className="relative border-l border-slate-200 pl-3">
           <button
             type="button"
-            onClick={() => setProfileOpen((prev) => !prev)}
+            onClick={() => setProfileOpen((o) => !o)}
             aria-expanded={profileOpen}
-            className="flex items-center gap-2.5 hover:bg-slate-50 rounded p-1 -m-1 transition-colors"
+            aria-label="Account menu"
+            className="flex items-center gap-2 rounded p-1 hover:bg-slate-100"
           >
-            <div className="w-8 h-8 rounded-full bg-[#0A2540] text-white flex items-center justify-center font-bold text-xs shrink-0">
-              {initials || <User className="w-4 h-4" />}
-            </div>
-            <div className="hidden xl:flex flex-col text-left">
-              <span className="text-xs font-semibold text-slate-900 leading-tight">
-                {currentUser.name}
-              </span>
-              <span className="text-[10px] text-slate-500 leading-tight">
-                {currentUser.designation}
-              </span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden xl:block" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0A2540] text-xs font-bold text-white">{initials}</span>
+            <span className="hidden text-left leading-tight xl:block">
+              <span className="block text-xs font-semibold leading-tight text-slate-900">{currentUser?.name}</span>
+              <span className="block text-[10px] leading-tight text-slate-500">{currentUser?.designation}</span>
+            </span>
+            <ChevronDown aria-hidden className="hidden h-4 w-4 text-slate-400 xl:block" />
           </button>
-
-          {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-md shadow-lg z-40 text-xs overflow-hidden">
-              <div className="p-3 border-b border-slate-100">
-                <div className="font-semibold text-slate-900">{currentUser.name}</div>
-                <div className="text-slate-500">{currentUser.designation}</div>
-                <div className="text-slate-400 font-mono mt-1">{currentUser.badgeId}</div>
-                <div className="text-slate-400 mt-0.5 truncate">{currentUser.email}</div>
+          {profileOpen && currentUser && (
+            <div className="absolute right-0 top-full z-40 mt-1 w-72 overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-lg">
+              <div className="space-y-0.5 border-b border-slate-100 px-3 py-3">
+                <p className="font-semibold text-slate-900">{currentUser.name}</p>
+                <p className="text-slate-600">{currentUser.designation}</p>
+                <p className="text-xs text-slate-500">{currentUser.division}</p>
+                <p className="pt-1 font-mono text-xs text-slate-500">
+                  {currentUser.employeeId} · {currentUser.email}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  navigate('/settings');
                   setProfileOpen(false);
+                  navigate('/settings');
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-slate-700 font-medium"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-slate-700 hover:bg-slate-50"
               >
-                <Settings className="w-3.5 h-3.5 text-slate-400" />
-                <span>Settings</span>
+                <Settings className="h-4 w-4 text-slate-400" /> Profile & settings
               </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-rose-50 text-rose-600 font-medium border-t border-slate-100"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+              <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2 text-left text-rose-700 hover:bg-rose-50">
+                <LogOut className="h-4 w-4" /> Sign out
               </button>
             </div>
           )}

@@ -1,0 +1,72 @@
+import React from 'react';
+import type { BidView } from '@shared/domain/selectors';
+import type { BidDocument } from '@shared/domain/types';
+import { CheckBadge } from '../../components/ui/Badge';
+import { Button, DetailList, Modal } from '../../components/ui/primitives';
+import { formatDateTime } from '../../lib/format';
+
+const parseFields = (text: string) =>
+  text
+    .split('|')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      const i = p.indexOf(':');
+      return i === -1 ? { label: 'Detail', value: p } : { label: p.slice(0, i).trim(), value: p.slice(i + 1).trim() };
+    });
+
+/** Shows the fields extracted from a bid document and how it was assessed. */
+export const DocumentViewer: React.FC<{
+  view: BidView;
+  doc: BidDocument | null;
+  onClose: () => void;
+  onViewFinding: (findingId: string) => void;
+}> = ({ view, doc, onClose, onViewFinding }) => {
+  const check = doc ? view.checks.find((c) => c.requirementId === doc.requirementId) : undefined;
+  return (
+    <Modal
+      open={!!doc}
+      onClose={onClose}
+      size="lg"
+      title={doc?.name}
+      description={doc && `${doc.fileName} · ${doc.fileSize} · uploaded ${formatDateTime(doc.uploadedAt)}`}
+      footer={
+        <>
+          {check?.findingId && (
+            <Button onClick={() => onViewFinding(check.findingId!)}>View related finding</Button>
+          )}
+          <Button variant="primary" onClick={onClose}>
+            Close
+          </Button>
+        </>
+      }
+    >
+      {doc && (
+        <div className="space-y-4 text-xs">
+          <div className="rounded border border-slate-200">
+            <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">Fields extracted from the document</div>
+            <div className="px-3">
+              <DetailList rows={parseFields(doc.extractedText).map((f, i) => ({ label: f.label || `Field ${i + 1}`, value: <span className="font-mono text-xs">{f.value}</span> }))} />
+            </div>
+          </div>
+          {check && (
+            <div className="rounded border border-slate-200 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-slate-900">
+                  {check.requirement.code} · {check.requirement.title}
+                </span>
+                <CheckBadge status={check.status} />
+              </div>
+              <p className="mt-1 text-slate-600">Required: {check.requirement.benchmark}</p>
+              <p className="text-slate-600">Found: {check.submitted}</p>
+              <p className="mt-1 text-slate-800">{check.note}</p>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">
+            Preview shows extracted fields only. The original PDF is not stored in this prototype.
+          </p>
+        </div>
+      )}
+    </Modal>
+  );
+};

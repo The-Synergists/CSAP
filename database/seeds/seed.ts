@@ -1,423 +1,243 @@
 /**
- * One-off seed script — run manually via `npx tsx scripts/seed.ts`.
- * Not part of the app build; imports the existing mock fixtures directly from
- * src/data/mockData.ts so the seeded DB is guaranteed 1:1 with what the
- * prototype already shows, and any relationship mismatch fails loudly (FK
- * violation) instead of silently. See supabase/migrations for the schema and
- * the plan doc for the full design rationale.
+ * Loads the BidSure demo dataset (shared/demo/seed.ts — the single source of the demo
+ * scenarios) into Supabase using the storage conventions in backend/src/db/conventions.ts.
+ *
+ *   npm run seed            # from /database; reads ../backend/.env
+ *
+ * Before changing anything it writes a JSON backup of every table to database/backups/.
+ * Only rows belonging to the demo tenders / bids / companies are replaced.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
-import { mockTenders, mockBids } from '../../frontend/src/data/mockData';
-import type { Bid, Tender, VerificationStatus } from '../../frontend/src/types';
+import { DEMO_PASSWORD, seedDatabase } from '../../shared/demo/seed.js';
+import type { EngineCheck } from '../../shared/domain/enginePayload.js';
+import { getBidView } from '../../shared/domain/selectors.js';
+import { buildSteps } from '../../shared/domain/verification.js';
+import {
+  ACTOR_TO_DB,
+  CHECK_TO_DB,
+  complianceNotes,
+  docClauseRef,
+  EMD_TO_DB,
+  evidenceRequirementTitle,
+  SEVERITY_TO_FINDING_TYPE,
+  type StoredRun,
+} from '../../backend/src/db/conventions.js';
 
-// --- minimal .env.local loader (no extra dependency for 3 lines of parsing) ---
-function loadEnvLocal() {
-  const possiblePaths = [
-    new URL('../../.env.local', import.meta.url),
-    new URL('../.env.local', import.meta.url),
-    new URL('../../frontend/.env.local', import.meta.url),
-  ];
-  for (const envUrl of possiblePaths) {
-    if (existsSync(envUrl)) {
-      const raw = readFileSync(envUrl, 'utf8');
-      for (const line of raw.split(/\r?\n/)) {
-        const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
-        if (m) process.env[m[1]] = m[2];
-      }
-      break;
-    }
+function loadEnv() {
+  const file = new URL('../../backend/.env', import.meta.url);
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   }
 }
-loadEnvLocal();
+loadEnv();
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('Error: Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');
-  process.exit(1);
-}
+const URL_ = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!URL_ || !KEY) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in backend/.env');
+const sb = createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
-
-// --- date parsing: mock data uses 'DD Mon YYYY' and 'DD Mon YYYY HH:MM AM/PM' ---
-const MONTHS: Record<string, number> = {
-  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+const ok = <T>(r: { data: T; error: { message: string } | null }, what: string): T => {
+  if (r.error) throw new Error(`${what}: ${r.error.message}`);
+  return r.data;
 };
-function parseDateOnly(s: string): string | null {
-  const m = /^(\d{1,2})\s+(\w{3})\s+(\d{4})/.exec(s);
-  if (!m) return null;
-  const month = MONTHS[m[2]];
-  if (month === undefined) return null;
-  return new Date(Date.UTC(+m[3], month, +m[1])).toISOString().slice(0, 10);
-}
-function parseTimestamp(s: string): string | null {
-  const m = /^(\d{1,2})\s+(\w{3})\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i.exec(s);
-  if (!m) return null;
-  const month = MONTHS[m[2]];
-  if (month === undefined) return null;
-  let hour = parseInt(m[4], 10) % 12;
-  if (m[6].toUpperCase() === 'PM') hour += 12;
-  return new Date(Date.UTC(+m[3], month, +m[1], hour, +m[5])).toISOString();
-}
-function parseTurnover(s: string): { financial_year: string; turnover_amount: number } | null {
-  // e.g. '₹6.40 Cr (FY25)'
-  const m = /₹\s*([\d.]+)\s*Cr[^(]*\(FY(\d{2})\)/i.exec(s);
-  if (!m) return null;
-  return { financial_year: `FY${m[2]}`, turnover_amount: Math.round(parseFloat(m[1]) * 1e7) };
+
+const TABLES = [
+  'profiles', 'companies', 'company_turnover', 'tenders', 'tender_requirements', 'bids', 'evidence_items',
+  'bid_documents', 'bid_emd', 'compliance_check_items', 'risk_factors', 'ai_verification_runs',
+  'gov_portal_verification_log', 'ai_recommendations', 'ai_recommendation_points', 'officer_decisions', 'audit_events',
+];
+
+async function backup() {
+  const out: Record<string, unknown> = {};
+  for (const t of TABLES) out[t] = ok(await sb.from(t).select('*'), `backup ${t}`);
+  const dir = new URL('../backups/', import.meta.url);
+  mkdirSync(dir, { recursive: true });
+  const file = new URL(`backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`, dir);
+  writeFileSync(file, JSON.stringify(out, null, 2));
+  console.log(`Backup written: ${file.pathname}`);
 }
 
 async function main() {
-  console.log('Seeding CSAP database…');
+  const demo = seedDatabase();
+  await backup();
 
-  // 1. Officer account (no public sign-up in the app — provisioned here only)
-  const officerEmail = 'rk.ramanathan@cpcl.co.in';
-  const officerPassword = 'Cpcl@2026';
-  const { data: existingUsers } = await db.auth.admin.listUsers();
-  let officerId = existingUsers.users.find((u) => u.email === officerEmail)?.id;
+  // 1. Officer account (no public sign-up; provisioned here).
+  const demoUser = demo.users[0];
+  const users = ok(await sb.auth.admin.listUsers(), 'list users');
+  let officerId = users.users.find((u) => u.email === demoUser.email)?.id;
   if (!officerId) {
-    const { data, error } = await db.auth.admin.createUser({
-      email: officerEmail,
-      password: officerPassword,
-      email_confirm: true,
-    });
-    if (error) throw error;
-    officerId = data.user.id;
-    console.log(`Created officer auth user ${officerEmail}`);
-  } else {
-    console.log(`Officer auth user ${officerEmail} already exists, reusing`);
+    const created = ok(await sb.auth.admin.createUser({ email: demoUser.email, password: DEMO_PASSWORD, email_confirm: true }), 'create user');
+    officerId = created.user!.id;
+    console.log(`Created officer ${demoUser.email}`);
   }
-  const { error: profileErr } = await db
-    .from('profiles')
-    .update({
-      full_name: 'R. K. Ramanathan',
-      designation: 'Chief Procurement Officer (CPO)',
-      organization: 'Chennai Petroleum Corporation Limited (CPCL)',
-      badge_id: 'CPCL-PROC-0841',
-    })
-    .eq('id', officerId);
-  if (profileErr) throw profileErr;
+  ok(
+    await sb.from('profiles').update({
+      full_name: demoUser.name,
+      designation: demoUser.designation,
+      organization: demoUser.organization,
+      badge_id: demoUser.employeeId,
+    }).eq('id', officerId),
+    'update profile',
+  );
+  const userIdMap = new Map([[demoUser.id, officerId]]);
 
-  // 2. Companies (deduped by GSTIN) + turnover
-  const companyIdByGstin = new Map<string, string>();
-  for (const bid of mockBids as Bid[]) {
-    if (companyIdByGstin.has(bid.gstin)) continue;
-    const { data, error } = await db
-      .from('companies')
-      .upsert(
-        {
-          vendor_code: bid.vendorCode,
-          company_name: bid.companyName,
-          incorporation_date: parseDateOnly(bid.incorporationDate),
-          registered_address: bid.registeredAddress,
-          gstin: bid.gstin,
-          pan: bid.pan,
-          udyam_number: bid.udyamNumber || null,
-        },
-        { onConflict: 'gstin' }
-      )
-      .select('id')
-      .single();
-    if (error) throw error;
-    companyIdByGstin.set(bid.gstin, data.id);
+  // 2. Clear demo rows (bid children cascade from bids).
+  const bidIds = demo.bids.map((b) => b.id);
+  const tenderIds = demo.tenders.map((t) => t.id);
+  ok(await sb.from('audit_events').delete().in('tender_id', tenderIds), 'clear tender audit');
+  ok(await sb.from('audit_events').delete().in('bid_id', bidIds), 'clear bid audit');
+  ok(await sb.from('bids').delete().in('id', bidIds), 'clear bids');
+  ok(await sb.from('tender_requirements').delete().in('tender_id', tenderIds), 'clear requirements');
 
-    const turnoverRows = bid.turnoverLast3Years
-      .map(parseTurnover)
-      .filter((t): t is NonNullable<typeof t> => t !== null)
-      .map((t) => ({ company_id: data.id, ...t }));
-    if (turnoverRows.length) {
-      const { error: tErr } = await db.from('company_turnover').upsert(turnoverRows, {
-        onConflict: 'company_id,financial_year',
-      });
-      if (tErr) throw tErr;
+  // 3. Master data.
+  ok(await sb.from('tenders').upsert(demo.tenders.map((t) => ({
+    id: t.id, title: t.title, category: t.category, division: t.division, estimated_value: t.estimatedValue,
+    emd_amount: t.emdAmount, publish_date: t.publishDate, deadline_date: t.deadlineDate,
+    technical_opening_date: t.technicalOpeningDate, status: t.status, description: t.description, officer_in_charge: t.officerInCharge,
+  }))), 'tenders');
+
+  ok(await sb.from('tender_requirements').insert(demo.requirements.map((r) => ({
+    tender_id: r.tenderId, display_code: r.code, category: r.category, title: r.title,
+    criterion: r.criterion, mandatory: r.mandatory, benchmark_value: r.benchmark,
+  }))), 'requirements');
+
+  const companies = ok(await sb.from('companies').upsert(demo.bidders.map((b) => ({
+    vendor_code: b.id, company_name: b.companyName, incorporation_date: b.incorporationDate,
+    registered_address: b.registeredAddress, gstin: b.gstin, pan: b.pan, udyam_number: b.udyamNumber || null,
+  })), { onConflict: 'vendor_code' }).select('id, vendor_code'), 'companies');
+  const companyId = new Map(companies.map((c) => [c.vendor_code, c.id]));
+  ok(await sb.from('company_turnover').delete().in('company_id', [...companyId.values()]), 'clear turnover');
+  ok(await sb.from('company_turnover').insert(demo.bidders.flatMap((b) => b.turnover.map((t) => ({
+    company_id: companyId.get(b.id), financial_year: t.financialYear, turnover_amount: Math.round(t.amountCr * 1e7),
+  })))), 'turnover');
+
+  const reqCode = new Map(demo.requirements.map((r) => [r.id, r]));
+
+  // 4. Bids and everything that hangs off them.
+  for (const bid of demo.bids) {
+    const view = getBidView(demo, bid.id)!;
+    ok(await sb.from('bids').insert({
+      id: bid.id, tender_id: bid.tenderId, company_id: companyId.get(bid.bidderId),
+      make_in_india_percentage: bid.makeInIndiaPercentage, overall_compliance_score: bid.complianceScore,
+      risk_level: bid.riskLevel, risk_score: bid.riskScore, primary_concern: bid.primaryConcern, submission_timestamp: bid.submittedAt,
+    }), `bid ${bid.id}`);
+
+    const evidence = ok(await sb.from('evidence_items').insert(view.findings.map((f) => {
+      const req = reqCode.get(f.requirementId)!;
+      return {
+        bid_id: bid.id, display_code: f.id, requirement_title: evidenceRequirementTitle(req.code, req.title),
+        finding_type: SEVERITY_TO_FINDING_TYPE[f.severity], ai_finding: f.title,
+        submitted_document_name: view.documents.find((d) => d.id === f.documentId)?.fileName ?? '—',
+        document_snippet: f.evidenceExcerpt, tender_clause_requirement: f.expected, verification_timestamp: f.detectedAt,
+        source: f.evidenceSource, resolution_status: 'OPEN',
+      };
+    })).select('id, display_code'), `evidence ${bid.id}`);
+    const evidenceUuid = new Map(evidence.map((e) => [e.display_code, e.id]));
+
+    ok(await sb.from('bid_documents').insert(view.documents.map((d) => {
+      const req = reqCode.get(d.requirementId)!;
+      const check = view.checks.find((c) => c.requirementId === d.requirementId);
+      return {
+        bid_id: bid.id, display_code: d.id, name: d.name, doc_type: req.category, file_name: d.fileName, file_size: d.fileSize,
+        upload_timestamp: d.uploadedAt, ocr_status: 'COMPLETED', verification_status: CHECK_TO_DB[check?.status ?? 'MET'],
+        status_message: check?.note ?? null, extracted_snippet: d.extractedText, tender_clause_reference: docClauseRef(req.code, req.clause),
+        evidence_item_id: check?.findingId ? evidenceUuid.get(check.findingId) : null,
+      };
+    })), `documents ${bid.id}`);
+
+    if (view.emd) {
+      const e = view.emd;
+      ok(await sb.from('bid_emd').insert({
+        bid_id: bid.id, required_amount: e.requiredAmount, submitted_amount: e.submittedAmount, instrument_type: e.instrument,
+        transaction_or_bg_no: e.reference, bank_name: e.bankName, issuing_branch: e.branch ?? null, valid_until: e.validUntil ?? null,
+        payment_date: e.paymentDate, payment_status: e.instrument === 'MSME_EXEMPTION' ? 'EXEMPTED' : 'SUCCESSFUL',
+        bidder_match: e.remitterMatchesBidder, verification_result: EMD_TO_DB[e.result], officer_note: e.note,
+      }), `emd ${bid.id}`);
     }
-  }
-  console.log(`Seeded ${companyIdByGstin.size} companies`);
 
-  // 3. Tenders + requirements
-  for (const tender of mockTenders as Tender[]) {
-    const { error } = await db.from('tenders').upsert({
-      id: tender.id,
-      title: tender.title,
-      category: tender.category,
-      division: tender.division,
-      estimated_value: tender.estimatedValue,
-      emd_amount: tender.emdAmount,
-      publish_date: parseDateOnly(tender.publishDate),
-      deadline_date: parseDateOnly(tender.deadlineDate),
-      technical_opening_date: parseDateOnly(tender.technicalOpeningDate),
-      status: tender.status,
-      description: tender.description,
-      officer_in_charge: tender.officerInCharge,
-    });
-    if (error) throw error;
+    ok(await sb.from('compliance_check_items').insert(view.checks.map((c) => ({
+      bid_id: bid.id, display_code: c.requirement.code, requirement_name: c.requirement.title, category: c.requirement.category,
+      status: CHECK_TO_DB[c.status], mandatory: c.requirement.mandatory, score_contribution: 0,
+      notes: complianceNotes(c.submitted, c.note), evidence_item_id: c.findingId ? evidenceUuid.get(c.findingId) : null,
+    }))), `checks ${bid.id}`);
 
-    const reqRows = tender.requirements.map((r) => ({
-      tender_id: tender.id,
-      display_code: r.id,
-      category: r.category,
-      title: r.title,
-      criterion: r.criterion,
-      mandatory: r.mandatory,
-      benchmark_value: r.benchmarkValue ?? null,
+    if (view.riskFactors.length) {
+      ok(await sb.from('risk_factors').insert(view.riskFactors.map((r) => ({
+        bid_id: bid.id, display_code: r.id, category: r.category, title: r.title, level: r.level, description: r.description,
+        impact_score: 0, evidence_item_id: r.findingId ? evidenceUuid.get(r.findingId) : null,
+      }))), `risks ${bid.id}`);
+    }
+
+    // The recorded verification run carries the per-requirement detail (see StoredRun).
+    const checks: EngineCheck[] = view.checks.map((c) => ({
+      requirementCode: c.requirement.code, status: c.status, submitted: c.submitted, note: c.note,
+      documentId: c.documentId ?? null, riskPoints: 0,
+      finding: c.finding && {
+        title: c.finding.title, severity: c.finding.severity, expected: c.finding.expected, submitted: c.finding.submitted,
+        comparison: c.finding.comparison, evidenceExcerpt: c.finding.evidenceExcerpt, evidenceSource: c.finding.evidenceSource,
+        impact: c.finding.impact, suggestedAction: c.finding.suggestedAction,
+      },
     }));
-    const { error: reqErr } = await db
-      .from('tender_requirements')
-      .upsert(reqRows, { onConflict: 'tender_id,display_code' });
-    if (reqErr) throw reqErr;
-  }
-  console.log(`Seeded ${mockTenders.length} tenders with requirements`);
+    const started = view.audit.find((a) => a.summary === 'Verification started')?.timestamp ?? bid.submittedAt;
+    const run = ok(await sb.from('ai_verification_runs').insert({
+      bid_id: bid.id, initiated_by: officerId, status: 'COMPLETED', started_at: started, completed_at: bid.lastVerifiedAt,
+      steps: { kind: 'bidsure.verification.v1', source: 'seed', steps: buildSteps(view), checks } satisfies StoredRun,
+    }).select('id').single(), `run ${bid.id}`);
 
-  // 4. Bids and everything under them
-  for (const bid of mockBids as Bid[]) {
-    const companyId = companyIdByGstin.get(bid.gstin)!;
-
-    const { error: bidErr } = await db.from('bids').upsert({
-      id: bid.id,
-      tender_id: bid.tenderId,
-      company_id: companyId,
-      make_in_india_percentage: bid.makeInIndiaPercentage,
-      overall_compliance_score: bid.overallComplianceScore,
-      risk_level: bid.riskLevel,
-      risk_score: bid.riskScore,
-      primary_concern: bid.primaryConcern ?? null,
-      submission_timestamp: parseTimestamp(bid.submissionTimestamp),
-    });
-    if (bidErr) throw bidErr;
-
-    // Evidence items first — documents/compliance/risk rows FK into them.
-    const evidenceIdByMockId = new Map<string, string>();
-    for (const ev of bid.evidenceItems) {
-      const { data, error } = await db
-        .from('evidence_items')
-        .upsert(
-          {
-            bid_id: bid.id,
-            display_code: ev.id,
-            requirement_title: ev.requirementTitle,
-            finding_type: ev.findingType,
-            ai_finding: ev.aiFinding,
-            submitted_document_name: ev.submittedDocumentName,
-            document_snippet: ev.documentSnippet,
-            tender_clause_requirement: ev.tenderClauseRequirement,
-            verification_timestamp: parseTimestamp(ev.verificationTimestamp),
-            source: ev.source,
-            resolution_status: ev.resolutionStatus,
-          },
-          { onConflict: 'bid_id,display_code' }
-        )
-        .select('id')
-        .single();
-      if (error) throw error;
-      evidenceIdByMockId.set(ev.id, data.id);
+    if (view.recommendation) {
+      const r = view.recommendation;
+      const rec = ok(await sb.from('ai_recommendations').insert({
+        bid_id: bid.id, ai_verification_run_id: run.id, summary: r.summary, details: r.rationale,
+        suggested_action: r.suggestedDecision, confidence: 0, created_at: r.generatedAt,
+      }).select('id').single(), `recommendation ${bid.id}`);
+      const pts = [
+        ...r.strengths.map((t, i) => ({ ai_recommendation_id: rec.id, kind: 'PRO', point_text: t, sort_order: i })),
+        ...r.concerns.map((t, i) => ({ ai_recommendation_id: rec.id, kind: 'CON', point_text: t, sort_order: i })),
+      ];
+      if (pts.length) ok(await sb.from('ai_recommendation_points').insert(pts), `points ${bid.id}`);
     }
 
-    const docRows = bid.documents.map((d) => ({
-      bid_id: bid.id,
-      display_code: d.id,
-      name: d.name,
-      doc_type: d.type,
-      file_name: d.fileName,
-      file_size: d.fileSize,
-      upload_timestamp: parseTimestamp(d.uploadTimestamp),
-      ocr_status: d.ocrStatus,
-      verification_status: d.verificationStatus,
-      status_message: d.statusMessage,
-      extracted_snippet: d.extractedSnippet ?? null,
-      tender_clause_reference: d.tenderClauseReference ?? null,
-      evidence_item_id: d.evidenceId ? evidenceIdByMockId.get(d.evidenceId) ?? null : null,
-    }));
-    if (docRows.length) {
-      const { error } = await db.from('bid_documents').upsert(docRows, { onConflict: 'bid_id,display_code' });
-      if (error) throw error;
+    for (const d of view.decisions) {
+      ok(await sb.from('officer_decisions').insert({
+        bid_id: bid.id, tender_id: bid.tenderId, officer_profile_id: userIdMap.get(d.officerId) ?? officerId, decision: d.decision,
+        remarks: d.remarks, justification_reason: d.reason, dsc_signed: false, created_at: d.decidedAt,
+      }), `decision ${bid.id}`);
     }
-
-    const emd = bid.emd;
-    const { error: emdErr } = await db.from('bid_emd').upsert({
-      bid_id: bid.id,
-      required_amount: emd.requiredAmount,
-      submitted_amount: emd.submittedAmount,
-      instrument_type: emd.instrumentType,
-      transaction_or_bg_no: emd.transactionOrBgNo,
-      bank_name: emd.bankName,
-      issuing_branch: emd.issuingBranch ?? null,
-      sfms_reference: emd.sfmsReference ?? null,
-      valid_until: parseDateOnly(emd.validUntil),
-      payment_date: parseDateOnly(emd.paymentDate),
-      payment_status: emd.paymentStatus,
-      bidder_match: emd.bidderMatch,
-      verification_result: emd.verificationResult,
-      officer_note: emd.officerNote ?? null,
-    });
-    if (emdErr) throw emdErr;
-
-    const complianceRows = bid.complianceItems.map((c) => ({
-      bid_id: bid.id,
-      display_code: c.id,
-      requirement_name: c.requirementName,
-      category: c.category,
-      status: c.status,
-      mandatory: c.mandatory,
-      score_contribution: c.scoreContribution,
-      notes: c.notes,
-      evidence_item_id: c.evidenceId ? evidenceIdByMockId.get(c.evidenceId) ?? null : null,
-    }));
-    if (complianceRows.length) {
-      const { error } = await db
-        .from('compliance_check_items')
-        .upsert(complianceRows, { onConflict: 'bid_id,display_code' });
-      if (error) throw error;
-    }
-
-    const riskRows = bid.riskFactors.map((r) => ({
-      bid_id: bid.id,
-      display_code: r.id,
-      category: r.category,
-      title: r.title,
-      level: r.level,
-      description: r.description,
-      impact_score: r.impactScore,
-      evidence_item_id: r.evidenceId ? evidenceIdByMockId.get(r.evidenceId) ?? null : null,
-    }));
-    if (riskRows.length) {
-      const { error } = await db.from('risk_factors').insert(riskRows);
-      if (error) throw error;
-    }
-
-    // AI recommendation + pro/con points
-    const { data: recRow, error: recErr } = await db
-      .from('ai_recommendations')
-      .insert({
-        bid_id: bid.id,
-        summary: bid.aiRecommendation.summary,
-        details: bid.aiRecommendation.details,
-        suggested_action: bid.aiRecommendation.suggestedAction,
-        confidence: bid.aiRecommendation.confidence,
-      })
-      .select('id')
-      .single();
-    if (recErr) throw recErr;
-    const pointRows = [
-      ...bid.aiRecommendation.pros.map((text, i) => ({ ai_recommendation_id: recRow.id, kind: 'PRO', point_text: text, sort_order: i })),
-      ...bid.aiRecommendation.cons.map((text, i) => ({ ai_recommendation_id: recRow.id, kind: 'CON', point_text: text, sort_order: i })),
-    ];
-    if (pointRows.length) {
-      const { error } = await db.from('ai_recommendation_points').insert(pointRows);
-      if (error) throw error;
-    }
-
-    // Original audit trail entries (OCR/system events already in the mock data)
-    const auditRows = bid.auditTrail.map((a) => ({
-      bid_id: bid.id,
-      tender_id: bid.tenderId,
-      actor_display_name: a.actor,
-      actor_role: a.actorRole,
-      action_type: a.actionType,
-      summary: a.summary,
-      details: a.details,
-      created_at: parseTimestamp(a.timestamp) ?? new Date().toISOString(),
-    }));
-    if (auditRows.length) {
-      const { error } = await db.from('audit_events').insert(auditRows);
-      if (error) throw error;
-    }
-
-    // Completed AI verification run + simulated gov-portal log, so the demo
-    // looks fully processed on first load (matches what the old mock data
-    // showed) instead of starting from a blank "never verified" state.
-    const steps = [
-      { name: 'Documents OCR Extraction', status: 'completed' },
-      { name: 'Government Registry Cross-Check (GSTN / MCA21)', status: 'completed' },
-      { name: 'EMD & Payment Gateway Reconciliation', status: 'completed' },
-      { name: 'Tender Rule & Eligibility Evaluation', status: 'completed' },
-      { name: 'Discrepancy & Deficit Detection', status: bid.riskFactors.length ? 'flagged' : 'completed' },
-      { name: 'Compliance & Multi-Vector Risk Calculation', status: 'completed' },
-    ];
-    const { data: runRow, error: runErr } = await db
-      .from('ai_verification_runs')
-      .insert({
-        bid_id: bid.id,
-        initiated_by: officerId,
-        status: 'COMPLETED',
-        steps,
-        completed_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
-    if (runErr) throw runErr;
-
-    const vs = bid.verificationsSummary;
-    const now = new Date().toISOString();
-    const canned = (
-      portal: string,
-      checkType: string,
-      status: VerificationStatus,
-      requestField: string,
-      requestValue: string
-    ) => ({
-      ai_verification_run_id: runRow.id,
-      portal_code: portal,
-      check_type: checkType,
-      requested_at: now,
-      responded_at: now,
-      request_payload: { [requestField]: requestValue },
-      response_payload: { status, source: `${portal} (simulated)` },
-      result_status: status,
-    });
-    const logRows = [
-      canned('GSTN', 'GSTIN_STATUS', vs.gst, 'gstin', bid.gstin),
-      canned('INCOME_TAX', 'PAN_VALIDATION', vs.pan, 'pan', bid.pan),
-      canned('UDYAM', 'UDYAM_STATUS', vs.udyam, 'udyam_number', bid.udyamNumber),
-      canned('INCOME_TAX', 'ITR_FILING_STATUS', vs.incomeTax, 'pan', bid.pan),
-      canned('EPFO', 'EPFO_ECR', vs.epfoEsic, 'gstin', bid.gstin),
-      canned('ESIC', 'ESIC_ECR', vs.epfoEsic, 'gstin', bid.gstin),
-      canned('CPPP_BLACKLIST', 'CPPP_BLACKLIST_CHECK', vs.blacklisting, 'pan', bid.pan),
-      canned('BANK_TREASURY_SFMS', 'EMD_RECONCILIATION', vs.emd, 'transaction_or_bg_no', bid.emd.transactionOrBgNo),
-    ];
-    const { error: logErr } = await db.from('gov_portal_verification_log').insert(logRows);
-    if (logErr) throw logErr;
-
-    // BID-004 in the old mock data shows status RECOMMENDED_ACCEPT with no
-    // backing OfficerDecisionRecord — a pre-existing inconsistency (see plan
-    // doc). Synthesize the missing decision here so the seeded demo still
-    // shows one fully-worked "already decided" example instead of silently
-    // losing that state once status is derived from officer_decisions.
-    if (bid.status === 'RECOMMENDED_ACCEPT') {
-      const { error: decErr } = await db.from('officer_decisions').insert({
-        bid_id: bid.id,
-        tender_id: bid.tenderId,
-        officer_profile_id: officerId,
-        decision: 'APPROVE',
-        remarks: 'All statutory, financial, and technical criteria verified and compliant. Approved for commercial evaluation stage.',
-        justification_reason: 'Full compliance across GST, PAN, Udyam, EMD, and OEM authorization checks; no outstanding risk factors.',
-        dsc_signed: true,
-      });
-      if (decErr) throw decErr;
-      const { error: auditErr } = await db.from('audit_events').insert({
-        bid_id: bid.id,
-        tender_id: bid.tenderId,
-        actor_profile_id: officerId,
-        actor_display_name: 'R. K. Ramanathan (Chief Procurement Officer)',
-        actor_role: 'Procurement Officer',
-        action_type: 'OFFICER_ACTION',
-        summary: 'Formal Officer Decision: APPROVE',
-        details: 'All statutory, financial, and technical criteria verified and compliant. Approved for commercial evaluation stage.',
-      });
-      if (auditErr) throw auditErr;
-    }
-
-    console.log(`Seeded bid ${bid.id} (${bid.companyName})`);
+    console.log(`Seeded ${bid.id} — ${view.bidder.companyName}`);
   }
 
-  console.log('\nDone. Officer login:');
-  console.log(`  email:    ${officerEmail}`);
-  console.log(`  password: ${officerPassword}`);
+  // 5. Audit trail (tender- and bid-level).
+  ok(await sb.from('audit_events').insert(demo.auditEvents.map((a) => ({
+    bid_id: a.bidId ?? null, tender_id: a.tenderId,
+    actor_profile_id: a.actorType === 'OFFICER' ? officerId : null,
+    actor_display_name: a.actor, actor_role: ACTOR_TO_DB[a.actorType].role, action_type: ACTOR_TO_DB[a.actorType].actionType,
+    summary: a.summary, details: a.details, created_at: a.timestamp,
+  }))), 'audit events');
+
+  // 6. Document files for the PAN verification pipeline (bucket `bid-documents`).
+  const samplesDir = new URL('../sample_documents/', import.meta.url);
+  for (const file of readdirSync(samplesDir).filter((f) => f.endsWith('.png'))) {
+    const bidId = /^(BID-\d{3})_/.exec(file)?.[1];
+    const path = bidId ? `${bidId}/${file}` : `samples/${file}`;
+    const { error } = await sb.storage
+      .from('bid-documents')
+      .upload(path, readFileSync(new URL(file, samplesDir)), { contentType: 'image/png', upsert: true });
+    if (error) throw new Error(`upload ${path}: ${error.message}`);
+    if (bidId) {
+      ok(
+        await sb.from('bid_documents').update({ storage_path: path, mime_type: 'image/png' }).eq('bid_id', bidId).like('tender_clause_reference', 'REQ-07 %'),
+        `link ${path}`,
+      );
+    }
+    console.log(`Stored ${path}`);
+  }
+
+  console.log(`\nDone. Officer login: ${demoUser.email} or employee ID ${demoUser.employeeId}`);
 }
 
 main().catch((err) => {
-  console.error('Seed failed:', err);
+  console.error('Seed failed:', err.message ?? err);
   process.exit(1);
 });

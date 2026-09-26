@@ -1,36 +1,28 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileQuestion, ArrowLeft } from 'lucide-react';
+import { FileQuestion } from 'lucide-react';
+import { Button, EmptyState } from '../../components/ui/primitives';
 
-export const NotFoundPage: React.FC = () => {
+/** Shown for unknown routes and for tender / bid / bidder IDs that do not exist. */
+export const NotFoundPage: React.FC<{ what?: 'page' | 'tender' | 'bid' | 'bidder'; id?: string }> = ({ what = 'page', id }) => {
   const navigate = useNavigate();
-
+  const target = { page: 'page', tender: 'tender', bid: 'bid', bidder: 'bidder' }[what];
+  const back = { page: '/dashboard', tender: '/tenders', bid: '/bidders', bidder: '/bidders' }[what];
   return (
-    <div className="flex flex-col items-center justify-center text-center py-24">
-      <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mb-4">
-        <FileQuestion className="w-7 h-7 text-slate-400" />
-      </div>
-      <h1 className="text-lg font-bold text-slate-900">Page not found</h1>
-      <p className="text-xs text-slate-500 mt-1.5 max-w-sm">
-        The tender, bid, or page you're looking for doesn't exist, or the link may be out of date.
-      </p>
-      <div className="flex items-center gap-2 mt-5">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Go Back</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition-colors"
-        >
-          Return to Dashboard
-        </button>
-      </div>
+    <div className="rounded-md border border-slate-200 bg-white">
+      <EmptyState
+        icon={<FileQuestion className="h-8 w-8" />}
+        title={id ? `No ${target} found with ID ${id}` : `This ${target} does not exist`}
+        description="The link may be out of date, or the record is not part of this dataset."
+        action={
+          <div className="flex gap-2">
+            <Button onClick={() => navigate(-1)}>Go back</Button>
+            <Button variant="primary" onClick={() => navigate(back)}>
+              {what === 'page' ? 'Go to dashboard' : what === 'tender' ? 'View all tenders' : 'View all bidders'}
+            </Button>
+          </div>
+        }
+      />
     </div>
   );
 };

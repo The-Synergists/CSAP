@@ -1,39 +1,50 @@
-from typing import List, Dict, Any
+"""Risk assessment and advisory recommendation from check results.
+
+Each exception carries risk points set by the rule that raised it (mandatory EMD and
+financial failures weigh most). The total maps to LOW / MEDIUM / HIGH. The recommendation
+is advisory only — the procurement officer records the actual decision.
+"""
+
+from typing import Any, Dict, List
+
+from src.schemas import CheckResult
+
+LOW_MAX = 24
+MEDIUM_MAX = 49
+FINANCIAL_OR_EMD = ("turnover", "earnest money", "emd")
+
 
 class MultiVectorRiskScorer:
-    """Calculates multi-vector risk index (Low, Medium, High, Critical) based on compliance findings."""
+    def assess(self, checks: List[CheckResult], requirement_titles: Dict[str, str]) -> Dict[str, Any]:
+        exceptions = [c for c in checks if c.status in ("REVIEW", "NOT_MET", "MISSING")]
+        score = min(95, sum(c.riskPoints for c in exceptions))
+        level = "LOW" if score <= LOW_MAX else "MEDIUM" if score <= MEDIUM_MAX else "HIGH"
+        drivers = [
+            {"requirementCode": c.requirementCode, "status": c.status, "points": c.riskPoints}
+            for c in sorted(exceptions, key=lambda c: -c.riskPoints)
+        ]
+        return {"level": level, "score": score, "drivers": drivers, "recommendation": self._recommend(exceptions, requirement_titles)}
 
-    def calculate_risk_score(self, findings: List[Dict[str, Any]]) -> Dict[str, Any]:
-        if not findings:
+    def _recommend(self, exceptions: List[CheckResult], titles: Dict[str, str]) -> Dict[str, str]:
+        def is_core(c: CheckResult) -> bool:
+            return any(k in titles.get(c.requirementCode, "").lower() for k in FINANCIAL_OR_EMD)
+
+        hard_fail = [c for c in exceptions if c.status == "NOT_MET" and is_core(c)]
+        if hard_fail:
             return {
-                "overall_risk_level": "LOW",
-                "risk_score": 12,
-                "confidence": 0.96,
-                "recommendation": "RECOMMENDED_ACCEPT",
-                "summary": "All statutory and financial prerequisites satisfy tender stipulations."
+                "suggestedDecision": "REJECT",
+                "summary": "Potential non-compliance on mandatory conditions ("
+                + ", ".join(titles.get(c.requirementCode, c.requirementCode) for c in hard_fail)
+                + "). Officer review required.",
             }
-
-        critical_count = sum(1 for f in findings if f.get("severity") == "CRITICAL")
-        high_count = sum(1 for f in findings if f.get("severity") == "HIGH")
-
-        if critical_count > 0:
-            risk_level = "CRITICAL"
-            score = 88
-            rec = "RECOMMENDED_REJECT"
-        elif high_count > 0:
-            risk_level = "HIGH"
-            score = 65
-            rec = "CLARIFICATION_SEEKED"
-        else:
-            risk_level = "MEDIUM"
-            score = 42
-            rec = "MANUAL_REVIEW"
-
+        if not exceptions:
+            return {"suggestedDecision": "APPROVE", "summary": "All requirements met. No exceptions found."}
+        if all(c.status == "REVIEW" and is_core(c) for c in exceptions):
+            return {
+                "suggestedDecision": "APPROVE",
+                "summary": "Meets all requirements; a borderline financial figure should be confirmed by the officer.",
+            }
         return {
-            "overall_risk_level": risk_level,
-            "risk_score": score,
-            "confidence": 0.91,
-            "findings_count": len(findings),
-            "recommendation": rec,
-            "summary": f"Detected {len(findings)} potential discrepancy item(s) requiring officer review."
+            "suggestedDecision": "REQUEST_CLARIFICATION",
+            "summary": f"{len(exceptions)} item(s) need clarification before a final decision.",
         }

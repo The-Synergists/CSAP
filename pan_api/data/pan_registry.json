@@ -1,0 +1,96 @@
+{
+  "dataset": "CSAP dummy PAN registry",
+  "description": "Demo data source for the dummy PAN Verification API. Not real taxpayer data. Every record here is fictitious.",
+  "version": "2026.09.1",
+  "updated_at": "2026-09-20",
+  "records": [
+    {
+      "record_id": "PANREG-0001",
+      "pan": "AABCA1234F",
+      "registered_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED",
+      "category": "Company",
+      "status": "VALID",
+      "date_of_incorporation": "2014-05-14",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-04-02",
+      "remarks": "Active PAN."
+    },
+    {
+      "record_id": "PANREG-0002",
+      "pan": "AABCB9876E",
+      "registered_name": "BHARAT ENGINEERING WORKS",
+      "category": "Firm",
+      "status": "VALID",
+      "date_of_incorporation": "2011-08-19",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-03-18",
+      "remarks": "Active PAN."
+    },
+    {
+      "record_id": "PANREG-0003",
+      "pan": "AABCN5544K",
+      "registered_name": "NATIONAL SAFETY SYSTEMS",
+      "category": "Firm",
+      "status": "VALID",
+      "date_of_incorporation": "2018-01-08",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-01-29",
+      "remarks": "Active PAN."
+    },
+    {
+      "record_id": "PANREG-0004",
+      "pan": "AAACP4419M",
+      "registered_name": "PRIME TECH SOLUTIONS",
+      "category": "Firm",
+      "status": "VALID",
+      "date_of_incorporation": "2016-03-22",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-05-11",
+      "remarks": "Active PAN."
+    },
+    {
+      "record_id": "PANREG-0005",
+      "pan": "ABCDE1234A",
+      "registered_name": "ABC INDUSTRIAL SOLUTIONS PVT LTD",
+      "category": "Company",
+      "status": "VALID",
+      "date_of_incorporation": "2014-05-14",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-02-10",
+      "remarks": "Reference example record."
+    },
+    {
+      "record_id": "PANREG-0006",
+      "pan": "AAECS7788K",
+      "registered_name": "SUNRISE SAFETY TRADERS",
+      "category": "Firm",
+      "status": "INVALID",
+      "date_of_incorporation": "2019-07-03",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-06-30",
+      "remarks": "PAN marked invalid: duplicate allotment detected."
+    },
+    {
+      "record_id": "PANREG-0007",
+      "pan": "AAFCR3322Q",
+      "registered_name": "RAJ FIRE SERVICES PRIVATE LIMITED",
+      "category": "Company",
+      "status": "DEACTIVATED",
+      "date_of_incorporation": "2012-11-15",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2025-12-01",
+      "remarks": "PAN deactivated: entity struck off."
+    },
+    {
+      "record_id": "PANREG-0008",
+      "pan": "AAGCK5566L",
+      "registered_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED",
+      "category": "Company",
+      "status": "VALID",
+      "date_of_incorporation": "2015-09-09",
+      "aadhaar_seeding": "NOT_APPLICABLE",
+      "last_updated": "2026-04-21",
+      "remarks": "Active PAN."
+    }
+  ]
+}

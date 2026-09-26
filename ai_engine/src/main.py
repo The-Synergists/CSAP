@@ -1,89 +1,129 @@
-from fastapi import FastAPI, HTTPException
+import base64
+import binascii
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 
+from src.core.config import settings
+from src.discrepancy_detector.matcher import DiscrepancyDetector
 from src.ocr_processor.extractor import DocumentOCRExtractor
 from src.registry_verifier.checker import StatutoryRegistryChecker
-from src.discrepancy_detector.matcher import DiscrepancyDetector
 from src.risk_scorer.scorer import MultiVectorRiskScorer
-from src.core.config import settings
+from src.nvidia.errors import NvidiaError
+from src.nvidia.extraction import run_extraction
+from src.nvidia.ocr import run_ocr
+from src.schemas import OcrRequest, VerifyRequest
+
+ENGINE_VERSION = "rules-2026.09"
 
 app = FastAPI(
-    title="CSAP AI Verification Engine",
-    description="Statutory Compliance, OCR extraction, and Discrepancy Detection Microservice",
-    version="1.0.0"
+    title="CSAP Verification Engine",
+    description="Checks a bid against tender requirements and explains every exception. Advisory only.",
+    version="1.1.0",
 )
+app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.middleware("http")
+async def require_engine_key(request: Request, call_next):
+    """Only the CSAP backend may call the engine (it spends NVIDIA credits)."""
+    if settings.engine_api_key and not request.url.path.endswith("/health"):
+        if request.headers.get("x-engine-key") != settings.engine_api_key:
+            return JSONResponse(status_code=401, content={"detail": {"code": "UNAUTHORIZED", "message": "Missing or invalid engine key."}})
+    return await call_next(request)
+
 
 ocr_extractor = DocumentOCRExtractor()
 registry_checker = StatutoryRegistryChecker()
-discrepancy_detector = DiscrepancyDetector()
+detector = DiscrepancyDetector()
 risk_scorer = MultiVectorRiskScorer()
 
-class VerificationRequest(BaseModel):
-    bidId: str
-    tenderId: str
-    gstin: str
-    pan: str
-    udyamNumber: Optional[str] = None
-    documents: Optional[List[Dict[str, Any]]] = []
-
-class OCRRequest(BaseModel):
-    documents: List[Dict[str, str]]
 
 @app.get("/api/v1/health")
 def health_check():
     return {
         "status": "healthy",
         "service": settings.app_name,
-        "environment": settings.environment
+        "engineVersion": ENGINE_VERSION,
+        "environment": settings.environment,
+        "nvidia": {
+            "ocr": {"model": "nvidia/nemotron-ocr-v2", "configured": bool(settings.nvidia_ocr_api_key)},
+            "extraction": {"model": settings.nvidia_extraction_model, "configured": bool(settings.nvidia_extraction_api_key)},
+        },
     }
+
+
+class DocumentOcrRequest(BaseModel):
+    fileName: str
+    mimeType: str
+    contentBase64: str
+
+
+class ExtractionRequest(BaseModel):
+    documentType: str
+    ocrText: str
+
+
+def _nvidia_call(fn, *args):
+    try:
+        return fn(*args)
+    except NvidiaError as exc:
+        raise HTTPException(status_code=exc.status, detail={"code": "NVIDIA_NOT_CONFIGURED" if exc.status == 503 else "NVIDIA_ERROR", "message": str(exc)})
+
+
+@app.post("/api/v1/documents/ocr")
+def document_ocr(payload: DocumentOcrRequest):
+    """Stage 1: NVIDIA Nemotron OCR V2 reads the document image."""
+    try:
+        data = base64.b64decode(payload.contentBase64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail={"code": "BAD_FILE", "message": "contentBase64 is not valid base64."})
+    return {"fileName": payload.fileName, **_nvidia_call(run_ocr, data, payload.mimeType)}
+
+
+@app.post("/api/v1/documents/extract")
+def document_extract(payload: ExtractionRequest):
+    """Stage 2: an NVIDIA LLM extracts structured fields from the OCR text."""
+    return _nvidia_call(run_extraction, payload.documentType, payload.ocrText)
+
 
 @app.post("/api/v1/ocr/extract")
-def extract_documents(payload: OCRRequest):
-    extracted = ocr_extractor.batch_extract(payload.documents)
-    return {"status": "SUCCESS", "documents": extracted}
+def extract_documents(payload: OcrRequest):
+    return {"status": "SUCCESS", "documents": ocr_extractor.batch_extract(payload.documents)}
+
 
 @app.post("/api/v1/verify")
-def run_statutory_verification(payload: VerificationRequest):
-    # 1. OCR Extraction
-    ocr_results = ocr_extractor.batch_extract(payload.documents or [])
+def verify_bid(payload: VerifyRequest):
+    documents = ocr_extractor.batch_extract(payload.documents)
+    registry = registry_checker.verify_all(payload.bidder.gstin, payload.bidder.pan, payload.bidder.udyamNumber)
+    checks = detector.evaluate(payload)
+    titles = {r.code: r.title for r in payload.requirements}
+    risk = risk_scorer.assess(checks, titles)
 
-    # 2. Government Registry Cross-Check
-    registry_results = registry_checker.verify_all(
-        gstin=payload.gstin,
-        pan=payload.pan,
-        udyam_number=payload.udyamNumber
-    )
-
-    # 3. Discrepancy Detection
-    findings = discrepancy_detector.evaluate_compliance([], {
-        "gstin": payload.gstin,
-        "pan": payload.pan,
-        "udyam": payload.udyamNumber,
-    })
-
-    # 4. Multi-Vector Risk Calculation
-    risk_assessment = risk_scorer.calculate_risk_score(findings)
-
+    counts = {s: sum(1 for c in checks if c.status == s) for s in ("MET", "EXEMPTED", "REVIEW", "NOT_MET", "MISSING")}
     return {
         "status": "SUCCESS",
+        "engineVersion": ENGINE_VERSION,
+        "advisory": True,
         "bidId": payload.bidId,
-        "tenderId": payload.tenderId,
-        "ocrResults": ocr_results,
-        "registryChecks": registry_results,
-        "findings": findings,
-        "riskAssessment": risk_assessment
+        "tenderId": payload.tender.id,
+        "summary": {
+            "met": counts["MET"] + counts["EXEMPTED"],
+            "review": counts["REVIEW"],
+            "notMet": counts["NOT_MET"],
+            "missing": counts["MISSING"],
+            "total": len(checks),
+        },
+        "checks": [c.model_dump() for c in checks],
+        "risk": {k: v for k, v in risk.items() if k != "recommendation"},
+        "recommendation": risk["recommendation"],
+        "registryChecks": registry,
+        "documents": documents,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("src.main:app", host="0.0.0.0", port=settings.port, reload=True)
+
+    uvicorn.run("src.main:app", host="127.0.0.1", port=settings.port, reload=True)

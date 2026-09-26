@@ -1,56 +1,70 @@
-import hashlib
-from typing import Dict, Any, List
+"""Document field extraction.
+
+The prototype does not run OCR on real PDFs yet: bid documents arrive with their text already
+extracted ("Label: value | Label: value"). This module parses that text into structured
+fields and classifies the document type. A real OCR backend (e.g. Tesseract / a document AI
+service) would replace `_read_text` without changing the callers.
+"""
+
+import re
+from typing import Any, Dict, List
+
+from src.schemas import Document
+
+_DOC_TYPES = [
+    ("gst", "GST_REGISTRATION"),
+    ("oem", "OEM_AUTHORIZATION"),
+    ("emd", "EMD_INSTRUMENT"),
+    ("bank guarantee", "EMD_INSTRUMENT"),
+    ("financial", "AUDITED_FINANCIALS"),
+    ("udyam", "UDYAM_CERTIFICATE"),
+    ("make in india", "LOCAL_CONTENT_DECLARATION"),
+    ("pan", "PAN_ITR"),
+    ("epfo", "EPFO_ESIC"),
+    ("past", "EXPERIENCE_RECORD"),
+    ("nabl", "TEST_CERTIFICATE"),
+    ("test", "TEST_CERTIFICATE"),
+    ("blacklisting", "NON_BLACKLISTING_AFFIDAVIT"),
+    ("land border", "LAND_BORDER_DECLARATION"),
+]
+
+
+def parse_fields(text: str) -> Dict[str, str]:
+    """'GSTIN: X | Status: Active' -> {'gstin': 'X', 'status': 'Active'}."""
+    fields: Dict[str, str] = {}
+    for part in (text or "").split("|"):
+        if ":" not in part:
+            continue
+        key, value = part.split(":", 1)
+        key = re.sub(r"[^a-z0-9]+", "_", key.strip().lower()).strip("_")
+        if key:
+            fields[key] = value.strip()
+    return fields
+
+
+def classify(name: str) -> str:
+    lower = name.lower()
+    for needle, doc_type in _DOC_TYPES:
+        if needle in lower:
+            return doc_type
+    return "GENERAL_DOCUMENT"
+
 
 class DocumentOCRExtractor:
-    """Simulates/implements OCR document text and structured entity extraction."""
+    def _read_text(self, document: Document) -> str:
+        return document.extractedText
 
-    def extract_document(self, file_name: str, file_bytes: bytes = None) -> Dict[str, Any]:
-        doc_hash = hashlib.sha256(file_name.encode()).hexdigest()[:12]
-        
-        # Entity extraction mapping based on common procurement statutory certificates
-        lower_name = file_name.lower()
-        doc_type = "GENERAL_DOCUMENT"
-        extracted_fields = {}
-
-        if "gst" in lower_name:
-            doc_type = "GST_REGISTRATION_CERTIFICATE"
-            extracted_fields = {
-                "gstin": "33AABCC1234F1Z5",
-                "taxpayer_name": "Apex Infra Solutions Pvt Ltd",
-                "status": "Active",
-                "registration_date": "2018-04-12"
-            }
-        elif "pan" in lower_name:
-            doc_type = "PAN_CARD"
-            extracted_fields = {
-                "pan": "AABCC1234F",
-                "entity_type": "Company",
-                "name": "Apex Infra Solutions Pvt Ltd"
-            }
-        elif "udyam" in lower_name or "msme" in lower_name:
-            doc_type = "UDYAM_REGISTRATION_CERTIFICATE"
-            extracted_fields = {
-                "udyam_number": "UDYAM-TN-01-0012345",
-                "enterprise_type": "Medium Enterprise",
-                "major_activity": "Manufacturing"
-            }
-        elif "emd" in lower_name or "bg" in lower_name or "bank" in lower_name:
-            doc_type = "BANK_GUARANTEE_EMD"
-            extracted_fields = {
-                "bank_name": "State Bank of India",
-                "bg_number": "BG/2026/CPCL/98712",
-                "amount": 2500000,
-                "expiry_date": "2026-12-31"
-            }
-
+    def extract_document(self, document: Document) -> Dict[str, Any]:
+        text = self._read_text(document)
+        fields = parse_fields(text)
         return {
-            "file_name": file_name,
-            "document_hash": doc_hash,
-            "document_type": doc_type,
-            "ocr_status": "COMPLETED",
-            "confidence": 0.98,
-            "extracted_fields": extracted_fields
+            "documentId": document.id,
+            "fileName": document.fileName,
+            "documentType": classify(document.name),
+            "status": "EXTRACTED" if fields else "NO_FIELDS_FOUND",
+            "fields": fields,
+            "source": "Pre-extracted text supplied with the bid (OCR is not run in this prototype).",
         }
 
-    def batch_extract(self, documents: List[Dict[str, str]]) -> List[Dict[str, Any]]:
-        return [self.extract_document(doc.get("name", "document.pdf")) for doc in documents]
+    def batch_extract(self, documents: List[Document]) -> List[Dict[str, Any]]:
+        return [self.extract_document(d) for d in documents]

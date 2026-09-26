@@ -1,84 +1,69 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
-import { useProcurement } from '../../context/ProcurementContext';
-import { StatusBadge } from '../../components/ui/StatusBadge';
-import { RiskBadge } from '../../components/ui/RiskBadge';
+import { listBidViews, type BidView } from '@shared/domain/selectors';
+import { useApp } from '../../state/appContext';
+import { BidStatusBadge, RiskBadge } from '../../components/ui/Badge';
+import { Card, EmptyState, PageHeader } from '../../components/ui/primitives';
+import { buttonClass } from '../../components/ui/styles';
+import { DECISION } from '../../domain/labels';
+import { bidPath, formatDateTime } from '../../lib/format';
+
+const Row: React.FC<{ v: BidView; action: string; tab?: string }> = ({ v, action, tab }) => (
+  <li className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-medium text-slate-900">{v.bidder.companyName}</span>
+        <span className="font-mono text-xs text-slate-500">{v.bid.id}</span>
+        <BidStatusBadge status={v.bid.status} />
+        <RiskBadge level={v.bid.riskLevel} score={v.bid.riskScore} />
+      </div>
+      <p className="mt-0.5 text-xs text-slate-600">{v.bid.primaryConcern}</p>
+      <p className="text-xs text-slate-500">
+        {v.tender.id} · compliance {v.bid.complianceScore}
+        {v.latestDecision && ` · last action: ${DECISION[v.latestDecision.decision].label} on ${formatDateTime(v.latestDecision.decidedAt)}`}
+      </p>
+    </div>
+    <Link to={bidPath(v.bid.id, tab)} className={`${buttonClass('primary', 'sm')} shrink-0`}>
+      {action} <ArrowRight className="h-3.5 w-3.5" />
+    </Link>
+  </li>
+);
 
 export const MyReviewsPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { bids, selectBid, metrics } = useProcurement();
-  const pendingBids = bids.filter((b) => !b.officerDecision);
-
-  const handleReview = (bidId: string) => {
-    selectBid(bidId);
-    navigate(`/bids/${bidId}`);
-  };
+  const { db } = useApp();
+  const views = listBidViews(db).sort((a, b) => b.bid.riskScore - a.bid.riskScore);
+  const toDecide = views.filter((v) => v.flags.awaitingDecision);
+  const waiting = views.filter((v) => v.bid.status === 'CLARIFICATION_REQUIRED' || v.bid.status === 'COMMITTEE_REVIEW');
+  const done = views.filter((v) => v.flags.closed);
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Pending Officer Reviews
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Bids where AI automated checks are complete and formal Officer Sign-off is pending
-          </p>
-        </div>
-        <span className="text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-1 rounded">
-          {metrics.pendingReviews} Action Items
-        </span>
-      </div>
+      <PageHeader title="My reviews" subtitle="Bids that need your decision, bids waiting on others, and bids you have closed." />
 
-      {pendingBids.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-md p-10 text-center">
-          <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-800">No pending reviews.</p>
-          <p className="text-xs text-slate-500 mt-1">
-            Every bid has a formal officer decision recorded against it.
-          </p>
-        </div>
-      ) : (
-      <div className="bg-white border border-slate-200 rounded-md shadow-2xs overflow-hidden">
-        <div className="divide-y divide-slate-200">
-          {pendingBids.map((bidder) => (
-            <div
-              key={bidder.id}
-              onClick={() => handleReview(bidder.id)}
-              className="p-4 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-xs text-slate-900">{bidder.companyName}</span>
-                  <span className="font-mono text-[11px] text-slate-400">({bidder.id})</span>
-                  <StatusBadge status={bidder.status} size="sm" />
-                  <RiskBadge level={bidder.riskLevel} score={bidder.riskScore} />
-                </div>
-                <p className="text-xs text-slate-600 mt-1">
-                  Primary Finding: <span className="font-medium text-slate-800">{bidder.primaryConcern}</span>
-                </p>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  Tender: <span className="font-mono text-blue-700">{bidder.tenderId}</span> • Compliance Score: {bidder.overallComplianceScore}%
-                </div>
-              </div>
+      <Card title={`Awaiting your decision (${toDecide.length})`} subtitle="Highest risk first" padded={false}>
+        {toDecide.length === 0 ? (
+          <EmptyState icon={<CheckCircle2 className="h-7 w-7 text-emerald-600" />} title="Nothing awaiting your decision" />
+        ) : (
+          <ul className="divide-y divide-slate-100">{toDecide.map((v) => <Row key={v.bid.id} v={v} action="Start review" />)}</ul>
+        )}
+      </Card>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleReview(bidder.id);
-                }}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold self-start sm:self-center flex items-center gap-1.5 shadow-xs transition-colors"
-              >
-                <span>Execute Review</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-      )}
+      <Card title={`Waiting on bidder or committee (${waiting.length})`} padded={false}>
+        {waiting.length === 0 ? (
+          <EmptyState title="No bids are waiting on clarification or committee review" />
+        ) : (
+          <ul className="divide-y divide-slate-100">{waiting.map((v) => <Row key={v.bid.id} v={v} action="Open case" />)}</ul>
+        )}
+      </Card>
+
+      <Card title={`Decided (${done.length})`} padded={false}>
+        {done.length === 0 ? (
+          <EmptyState title="No final decisions recorded yet" />
+        ) : (
+          <ul className="divide-y divide-slate-100">{done.map((v) => <Row key={v.bid.id} v={v} action="View decision" tab="decision" />)}</ul>
+        )}
+      </Card>
     </div>
   );
 };

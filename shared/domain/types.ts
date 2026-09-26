@@ -1,0 +1,311 @@
+// Domain model for CSAP.
+//
+// The frontend holds a normalised, relational-style dataset (one table per entity, rows
+// reference each other by id), mirroring the tables in /database/migrations. Screens never
+// hardcode bid/tender facts — they read rows from the store and join them with the
+// selectors in ./selectors.ts. A real backend can later replace the in-memory store without
+// changing page code.
+
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type TenderStatus = 'UNDER_EVALUATION' | 'TECHNICAL_SCRUTINY' | 'AWARDED' | 'CANCELLED';
+
+/** Workflow status of a bid. Only an officer decision moves a bid to ACCEPTED / REJECTED. */
+export type BidStatus =
+  | 'UNDER_REVIEW'
+  | 'RECOMMENDED_ACCEPT'
+  | 'CLARIFICATION_REQUIRED'
+  | 'COMMITTEE_REVIEW'
+  | 'ACCEPTED'
+  | 'REJECTED';
+
+/** Outcome of checking one tender requirement against the bidder's submission. */
+export type CheckStatus = 'MET' | 'EXEMPTED' | 'REVIEW' | 'NOT_MET' | 'MISSING';
+
+export type FindingSeverity = 'HIGH' | 'MEDIUM' | 'LOW';
+export type FindingStatus = 'OPEN' | 'CLARIFICATION_REQUESTED' | 'REFERRED' | 'ACCEPTED' | 'CONFIRMED';
+
+export type DecisionType = 'APPROVE' | 'REJECT' | 'REQUEST_CLARIFICATION' | 'COMMITTEE_REVIEW';
+
+export type RequirementCategory = 'STATUTORY' | 'FINANCIAL' | 'TECHNICAL' | 'EMD' | 'POLICY';
+
+export interface User {
+  id: string;
+  employeeId: string;
+  email: string;
+  name: string;
+  designation: string;
+  division: string;
+  organization: string;
+  role: string;
+}
+
+export interface Tender {
+  id: string; // e.g. GEM/2026/CPCL/001
+  title: string;
+  category: string;
+  division: string;
+  estimatedValue: number; // INR
+  emdAmount: number; // INR
+  publishDate: string; // ISO date
+  deadlineDate: string;
+  technicalOpeningDate: string;
+  status: TenderStatus;
+  description: string;
+  officerInCharge: string;
+}
+
+export interface TenderRequirement {
+  /** Unique across tenders. */
+  id: string;
+  /** Display code, unique within its tender, e.g. REQ-01. */
+  code: string;
+  tenderId: string;
+  clause: string; // e.g. "Clause 3.1"
+  category: RequirementCategory;
+  title: string;
+  criterion: string;
+  benchmark: string;
+  mandatory: boolean;
+}
+
+export interface Bidder {
+  id: string; // vendor code, e.g. V-CPCL-7842
+  companyName: string;
+  incorporationDate: string;
+  registeredAddress: string;
+  gstin: string;
+  pan: string;
+  udyamNumber: string;
+  msmeCategory?: string;
+  /** Audited turnover in ₹ crore, oldest first. */
+  turnover: { financialYear: string; amountCr: number }[];
+}
+
+export interface Bid {
+  id: string; // BID-001
+  tenderId: string;
+  bidderId: string;
+  submittedAt: string; // ISO datetime
+  makeInIndiaPercentage: number;
+  /** Outputs of the most recent verification run. */
+  complianceScore: number; // 0–100
+  riskScore: number; // 0–100
+  riskLevel: RiskLevel;
+  primaryConcern: string;
+  lastVerifiedAt: string;
+  status: BidStatus;
+}
+
+/** A file in the bid package. Its verification outcome lives on the ComplianceCheck that
+ *  references it (one source of truth), not on the document row. */
+export interface BidDocument {
+  id: string;
+  bidId: string;
+  requirementId: string;
+  name: string;
+  fileName: string;
+  fileSize: string;
+  uploadedAt: string;
+  /** Fields extracted from the document ("Label: value | Label: value"). */
+  extractedText: string;
+  /** Object path in the `bid-documents` storage bucket, when the file itself is stored. */
+  storagePath?: string;
+  mimeType?: string;
+}
+
+export type EmdInstrument = 'NEFT_RTGS' | 'BANK_GUARANTEE' | 'MSME_EXEMPTION' | 'DEMAND_DRAFT';
+export type EmdResult = 'VERIFIED' | 'SHORTFALL' | 'EXEMPTION_CONFIRMED' | 'INVALID_INSTRUMENT';
+
+export interface EmdTransaction {
+  bidId: string;
+  documentId: string;
+  requiredAmount: number;
+  submittedAmount: number;
+  instrument: EmdInstrument;
+  reference: string;
+  bankName: string;
+  branch?: string;
+  paymentDate: string;
+  validUntil?: string;
+  remitterMatchesBidder: boolean;
+  result: EmdResult;
+  note: string;
+}
+
+/** One row per (bid, tender requirement). */
+export interface ComplianceCheck {
+  id: string;
+  bidId: string;
+  requirementId: string;
+  documentId?: string;
+  status: CheckStatus;
+  /** What the bidder submitted, as read from the document. */
+  submitted: string;
+  note: string;
+  findingId?: string;
+}
+
+/**
+ * A discrepancy the verification run raised for officer attention. Captures the whole chain
+ * the officer needs: requirement → submission → comparison → evidence → impact → action.
+ */
+export interface Finding {
+  id: string; // EVD-001
+  bidId: string;
+  requirementId: string;
+  documentId?: string;
+  title: string;
+  severity: FindingSeverity;
+  expected: string;
+  submitted: string;
+  comparison: string;
+  evidenceExcerpt: string;
+  evidenceSource: string;
+  impact: string;
+  suggestedAction: string;
+  detectedAt: string;
+  status: FindingStatus;
+}
+
+export interface RiskFactor {
+  id: string;
+  bidId: string;
+  category: 'STATUTORY' | 'FINANCIAL' | 'DOCUMENT' | 'EMD' | 'ELIGIBILITY' | 'POLICY';
+  title: string;
+  level: RiskLevel;
+  description: string;
+  findingId?: string;
+}
+
+export interface Recommendation {
+  bidId: string;
+  suggestedDecision: DecisionType;
+  summary: string;
+  rationale: string;
+  strengths: string[];
+  concerns: string[];
+  generatedAt: string;
+}
+
+export interface OfficerDecision {
+  id: string;
+  bidId: string;
+  tenderId: string;
+  decision: DecisionType;
+  reason: string;
+  remarks: string;
+  officerId: string;
+  officerName: string;
+  officerDesignation: string;
+  decidedAt: string;
+  followedRecommendation: boolean;
+}
+
+export type AuditActorType = 'BIDDER' | 'SYSTEM' | 'OFFICER';
+
+export interface AuditEvent {
+  id: string;
+  timestamp: string;
+  tenderId: string;
+  bidId?: string;
+  actorType: AuditActorType;
+  actor: string;
+  summary: string;
+  details: string;
+}
+
+/** The whole prototype dataset. Each array is one "table". */
+export interface Database {
+  users: User[];
+  tenders: Tender[];
+  requirements: TenderRequirement[];
+  bidders: Bidder[];
+  bids: Bid[];
+  documents: BidDocument[];
+  emdTransactions: EmdTransaction[];
+  complianceChecks: ComplianceCheck[];
+  findings: Finding[];
+  riskFactors: RiskFactor[];
+  recommendations: Recommendation[];
+  decisions: OfficerDecision[];
+  auditEvents: AuditEvent[];
+}
+
+// ---------------------------------------------------------------- document verification pipeline
+
+export type PipelineStatus = 'QUEUED' | 'OCR_RUNNING' | 'EXTRACTING' | 'CALLING_API' | 'COMPLETED' | 'FAILED';
+export type PanVerdict = 'VERIFIED' | 'NAME_MISMATCH' | 'PAN_MISMATCH' | 'PAN_INVALID' | 'PAN_NOT_FOUND' | 'ERROR';
+
+export interface PipelineDocument {
+  path: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  source: 'bid_package' | 'officer_upload' | 'sample';
+}
+
+export interface OcrResult {
+  model: string;
+  endpoint: string;
+  latencyMs: number;
+  text: string;
+  blocks: { text: string; confidence: number }[];
+  meanConfidence: number;
+}
+
+export interface ExtractionResult {
+  model: string;
+  endpoint: string;
+  latencyMs: number;
+  documentType: string;
+  fields: { pan: string | null; name: string | null; date_of_incorporation: string | null; category: string | null };
+  grounding: Record<string, boolean>;
+  warnings: string[];
+  rawOutput: string;
+}
+
+export interface ApiRequestRecord {
+  apiName: string;
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body: { pan: string; name?: string | null };
+  sentAt: string;
+}
+
+export interface ApiResponseRecord {
+  httpStatus: number;
+  latencyMs: number;
+  receivedAt: string;
+  body: Record<string, unknown>;
+}
+
+export interface ComparisonRow {
+  field: string;
+  document: string | null;
+  apiRegistry: string | null;
+  bidderRecord: string | null;
+  result: 'MATCH' | 'MISMATCH' | 'NOT_AVAILABLE';
+  note?: string;
+}
+
+export interface DocumentVerificationRun {
+  id: string;
+  bidId: string;
+  documentType: 'PAN';
+  initiatedBy: string;
+  status: PipelineStatus;
+  document: PipelineDocument;
+  ocr?: OcrResult | null;
+  extraction?: ExtractionResult | null;
+  apiRequest?: ApiRequestRecord | null;
+  apiResponse?: ApiResponseRecord | null;
+  comparison?: { rows: ComparisonRow[]; summary: string } | null;
+  verdict?: PanVerdict | null;
+  error?: string | null;
+  startedAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+}

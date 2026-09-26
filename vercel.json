@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.ts": { "maxDuration": 60 },
+    "api/engine.py": { "maxDuration": 60, "includeFiles": "ai_engine/src/**" },
+    "api/pan.py": { "maxDuration": 15, "includeFiles": "pan_api/{app.py,data/**}" }
+  },
+  "rewrites": [
+    { "source": "/api/engine/:path*", "destination": "/api/engine" },
+    { "source": "/api/pan-registry/:path*", "destination": "/api/pan" },
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}

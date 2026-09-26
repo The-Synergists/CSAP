@@ -5,20 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test:live": "tsx tests/live-parity.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
+    "@vercel/functions": "^2.2.13",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "tsx": "^4.23.13"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^24.13.3",
-    "tsx": "^4.23.13",
-    "typescript": "~5.7.0"
+    "typescript": "~6.0.2"
   }
 }

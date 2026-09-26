@@ -1,5 +1,5 @@
 {
-  "name": "csap-monorepo",
+  "name": "csap",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -10,14 +10,20 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
-    "build:frontend": "npm --prefix frontend run build",
-    "lint:frontend": "npm --prefix frontend run lint",
     "dev:backend": "npm --prefix backend run dev",
-    "build:backend": "npm --prefix backend run build",
-    "start:backend": "npm --prefix backend start",
-    "seed:db": "npm --prefix database run seed"
+    "dev:engine": "node scripts/py.mjs -m uvicorn src.main:app --port 8000",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck && npm --prefix backend run typecheck",
+    "seed": "npm --prefix database run seed",
+    "test:engine": "node scripts/py.mjs -m pytest -q",
+    "test:live": "npm --prefix backend run test:live",
+    "dev:pan-api": "node scripts/py.mjs --cwd pan_api -m uvicorn app:app --port 8100",
+    "test:pan-api": "node scripts/py.mjs --cwd pan_api -m pytest -q",
+    "migrate": "npm --prefix database run migrate"
   },
   "devDependencies": {
     "typescript": "~6.0.2"
-  }
+  },
+  "type": "module"
 }

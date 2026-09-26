@@ -1,5 +1,5 @@
 {
-  "name": "csap",
+  "name": "csap-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.115.0",
+    "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "lucide-react": "^1.41.0",
     "react": "^19.2.8",

@@ -41,3 +41,6 @@ supabase/.temp
 *.sln
 *.sw?
 .vercel
+
+# Database backups written by the seed script (contain live data)
+database/backups/

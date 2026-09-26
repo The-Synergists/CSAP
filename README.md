@@ -1,80 +1,97 @@
-# CSAP — Central Statutory Authentication Platform
+# CSAP — AI-assisted bid verification for CPCL (prototype)
 
-CSAP is an AI-assisted procurement bid verification platform built around a CPCL (Chennai Petroleum Corporation Limited) public tender workflow. A procurement officer reviews vendor bids against statutory requirements, reviews automated registry checks (GSTN, MCA21, EPFO, ESIC, MSME), examines AI-surfaced discrepancies backed by evidence, and records formal decisions with complete auditability.
+A procurement officer's workspace: select a tender, open a bid, see how it was checked
+against every tender requirement, inspect the evidence for each exception, read the
+advisory AI recommendation, and record the decision — which is written to the audit trail.
 
----
+> Prototype. Tender data is illustrative. OCR and extraction run on live NVIDIA models; the PAN
+> Verification API is a dummy service with its own dataset; GSTN/bank integrations are simulated.
+> AI output is advisory; the designated procurement officer makes the final decision.
 
-## 🏛️ System Architecture
-
-CSAP is organized as a modular 4-tier architecture:
+## Architecture
 
 ```
-CSAP/
-├── frontend/             # React 19 + TypeScript + Vite + Tailwind CSS portal
-├── backend/              # Express + TypeScript API Gateway
-├── ai_engine/            # Python + FastAPI Statutory Verification & OCR Engine
-└── database/             # PostgreSQL / Supabase Migrations, Seeds & Schemas
+frontend/  React UI ──/api──► backend/ Express gateway ──► Supabase (Postgres, Auth, Storage, Realtime)
+   ▲                             │
+   │ Supabase Realtime           ├──► ai_engine/  FastAPI: rule engine + NVIDIA OCR + NVIDIA extraction
+   └─────────────────────────────┴──► pan_api/    Dummy PAN Verification API (own dataset file)
+shared/    domain model, selectors, demo dataset — imported by frontend, backend, seed and tests
+database/  SQL migrations (+ runner), seed script, sample PAN documents, schema docs
 ```
 
-### Module Responsibilities
+### PAN verification pipeline (bid → "PAN verification" tab)
 
-| Pillar | Tech Stack | Role |
-|---|---|---|
-| **`frontend/`** | React 19, Vite, Tailwind CSS v4, Lucide React | Procurement Officer Web Portal, evaluation workspaces, alert dashboards, document previewers, and floating AI assistant. |
-| **`backend/`** | Node.js, Express, TypeScript, Supabase JS | API gateway handling tenders, bids, statutory verifications, officer decisions, and audit logging. |
-| **`ai_engine/`** | Python 3, FastAPI, Pydantic | Microservice for document OCR extraction, government registry cross-checks (GSTN/EPFO/ESIC/MCA21), discrepancy detection, and multi-vector risk scoring. |
-| **`database/`** | PostgreSQL, Supabase Migrations, TSX | Relational schema definitions, enum constraints, foreign keys, and seed scripts with realistic CPCL procurement data. |
+```
+PAN document (bucket bid-documents) → NVIDIA Nemotron OCR V2 → OCR text
+  → NVIDIA extraction model → PAN, name, … (each value checked against the OCR text)
+  → POST pan_api /v1/pan/verify → lookup in pan_registry.json → response
+  → CSAP compares document vs registry vs bid record → verdict
+```
 
----
+Each stage is written to `document_verification_runs` as it completes and streamed to the
+officer's screen through Supabase Realtime; every call to the PAN API is logged in
+`external_api_calls`. Decisions, audit events and verification runs are also live across
+officers' screens.
 
-## 🚀 Quickstart Guide
+- **shared/domain** — the normalised data model (`types.ts`) and the joins every screen uses
+  (`selectors.ts`). A bid's scores, EMD, findings, decision and audit history always come from
+  the same rows.
+- **backend** — validates the officer's Supabase session, reads/writes under the officer's JWT
+  (RLS applies), records decisions through the `submit_officer_decision` RPC, and runs
+  verification through the engine. It never reports a check as passed if the engine is down.
+- **ai_engine** — deterministic rules that compare each tender requirement with the bid's data
+  and documents, and explain every exception (requirement → submission → comparison →
+  evidence → impact → suggested action), plus risk level and an advisory recommendation.
+- **frontend** — talks only to the backend (`VITE_DATA_SOURCE=api`), or runs fully in the
+  browser on the demo dataset (`VITE_DATA_SOURCE=demo`) for static previews.
 
-### 1. Frontend Setup
+## Run locally
+
+Prerequisites: Node 20+, Python 3.11+.
+
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-Accessible at: `http://localhost:5173`
+npm install                                   # installs frontend, backend, database workspaces
+python -m venv ai_engine/.venv
+ai_engine/.venv/Scripts/pip install -r ai_engine/requirements.txt   # (bin/ on macOS/Linux)
 
-Demo credentials on login screen:
-- **Employee Code**: `CPCL-PROC-0841`
-- **Password**: `Cpcl@2026`
+cp backend/.env.example backend/.env          # fill SUPABASE_URL / ANON / SERVICE_ROLE keys
+cp frontend/.env.example frontend/.env.local  # VITE_DATA_SOURCE=api
 
-### 2. Backend Setup
-```bash
-cd backend
-npm install
-npm run dev
-```
-Runs at: `http://localhost:5000` (Health check: `http://localhost:5000/api/health`)
+npm run seed          # optional: load the demo dataset (backs up every table first)
 
-### 3. AI Engine Setup
-```bash
-cd ai_engine
-python -m venv .venv
-# Activate virtualenv (Windows: .venv\Scripts\activate, Linux/macOS: source .venv/bin/activate)
-pip install -r requirements.txt
-uvicorn src.main:app --reload --port 8000
-```
-Interactive Swagger docs: `http://localhost:8000/docs`
+cp ai_engine/.env.example ai_engine/.env      # NVIDIA keys
+cp database/.env.example database/.env        # DATABASE_URL (for migrations)
+npm run migrate       # apply pending SQL migrations
 
-### 4. Database Seeding & Migrations
-```bash
-cd database
-npm install
-npm run seed
+npm run dev:engine    # terminal 1 — http://localhost:8000
+npm run dev:pan-api   # terminal 2 — http://localhost:8100
+npm run dev:backend   # terminal 3 — http://localhost:5000/api/health
+npm run dev           # terminal 4 — http://localhost:5173
 ```
 
----
+Demo login: employee ID `CPCL10421` (or `rk.ramanathan@cpcl.co.in`), password `Cpcl@2026`.
 
-## 📦 Root Convenience Scripts
+## Tests
 
-You can also run commands from the repository root:
+| Command | What it checks |
+| --- | --- |
+| `npm run test:engine` | Engine rules reproduce all four demo scenarios exactly; NVIDIA stages with mocked HTTP |
+| `npm run test:pan-api` | Dummy PAN API: valid, name mismatch, invalid, deactivated, not found, bad format, API key |
+| `npm run test:live` | Against the running backend + Supabase: every bid reads back identical to the demo dataset |
+| `npm run typecheck` / `npm run lint` / `npm run build` | Static checks and production build |
 
-- `npm run dev:frontend` — Launches the frontend development server.
-- `npm run build:frontend` — Builds the frontend for production.
-- `npm run lint:frontend` — Runs oxlint against frontend source files.
-- `npm run dev:backend` — Launches the backend development server.
-- `npm run build:backend` — Compiles TypeScript for the backend.
-- `npm run seed:db` — Runs the database seeder script.
+## Demo scenarios (tender GEM/2026/CPCL/001)
+
+| Bid | Bidder | Compliance | Risk | Primary issue | Status |
+| --- | --- | --- | --- | --- | --- |
+| BID-001 | ABC Industrial Solutions Pvt. Ltd. | 92 | Low | OEM authorization 35 days short of required validity | Clarification Required |
+| BID-002 | Bharat Engineering Works | 87 | Medium | Turnover meets average, FY24 below benchmark | Under Review |
+| BID-003 | National Safety Systems | 74 | High | EMD shortfall ₹50,000 (+ turnover, local content, missing documents) | Under Review |
+| BID-004 | Prime Tech Solutions | 96 | Low | None — MSE EMD exemption confirmed | Recommended Accept |
+
+## Security notes
+
+- `SUPABASE_SERVICE_ROLE_KEY` lives only in `backend/.env`; NVIDIA keys only in `ai_engine/.env`;
+  the DB connection string only in `database/.env`. The frontend holds only the public anon key
+  (for Realtime, with RLS applying to the officer's own JWT).
+- `.env*` files and `database/backups/` are git-ignored.

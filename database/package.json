@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "seed": "tsx seeds/seed.ts"
+    "seed": "tsx seeds/seed.ts",
+    "export-engine-fixtures": "tsx seeds/export-engine-fixtures.ts",
+    "migrate": "tsx migrate.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.115.0"
+    "@supabase/supabase-js": "^2.115.0",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
