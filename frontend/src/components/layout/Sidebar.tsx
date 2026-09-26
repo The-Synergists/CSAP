@@ -7,7 +7,6 @@ import {
   FileText,
   History,
   LayoutDashboard,
-  MessageSquareText,
   Network,
   Settings,
   Users,
@@ -42,15 +41,8 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; coun
   </NavLink>
 );
 
-const NavSection: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="space-y-0.5">
-    <div className="mb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</div>
-    {children}
-  </div>
-);
-
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { db, setAssistantOpen, assistantOpen } = useApp();
+  const { db } = useApp();
   const metrics = getDashboardMetrics(db);
   const alertCount = getAlerts(db).length;
 
@@ -66,37 +58,21 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
           <BrandMark />
         </div>
 
-        <nav aria-label="Main navigation" className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        <nav aria-label="Main navigation" className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
           <div className="space-y-0.5">
             <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" onNavigate={onClose} />
-          </div>
-          <NavSection label="Procurement">
             <NavItem to="/tenders" icon={<FileText className="h-4 w-4" />} label="Tenders" onNavigate={onClose} />
             <NavItem to="/bidders" icon={<Users className="h-4 w-4" />} label="Bidders" onNavigate={onClose} />
-          </NavSection>
-          <NavSection label="My work">
+          </div>
+          <div className="space-y-0.5 border-t border-slate-800/80 pt-4">
             <NavItem to="/reviews" icon={<CheckSquare className="h-4 w-4" />} label="My Reviews" count={metrics.awaitingDecision} onNavigate={onClose} />
             <NavItem to="/alerts" icon={<AlertTriangle className="h-4 w-4" />} label="Alerts" count={alertCount} tone="danger" onNavigate={onClose} />
             <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />} label="Reports" onNavigate={onClose} />
-            <button
-              type="button"
-              onClick={() => {
-                setAssistantOpen(!assistantOpen);
-                onClose();
-              }}
-              aria-pressed={assistantOpen}
-              className={`${itemBase} ${assistantOpen ? itemActive : itemIdle}`}
-            >
-              <MessageSquareText aria-hidden className="h-4 w-4 text-slate-400" />
-              <span>AI Assistant</span>
-            </button>
-          </NavSection>
-          <div className="space-y-1 border-t border-slate-800 pt-2">
-          <NavSection label="System">
+          </div>
+          <div className="space-y-0.5 border-t border-slate-800/80 pt-4">
             <NavItem to="/audit" icon={<History className="h-4 w-4" />} label="Audit Trail" onNavigate={onClose} />
             <NavItem to="/gateway" icon={<Network className="h-4 w-4" />} label="Govt. Registries" onNavigate={onClose} />
             <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" onNavigate={onClose} />
-          </NavSection>
           </div>
         </nav>
 

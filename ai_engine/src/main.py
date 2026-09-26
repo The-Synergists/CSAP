@@ -15,6 +15,7 @@ from src.nvidia.errors import NvidiaError
 from src.nvidia.extraction import run_extraction
 from src.nvidia.ocr import run_ocr
 from src.nvidia.recommendation import draft_recommendation
+from src.nvidia.extraction import stream_chat
 from src.schemas import OcrRequest, VerifyRequest
 
 ENGINE_VERSION = "rules-2026.09"
@@ -102,6 +103,22 @@ class RecommendationRequest(BaseModel):
 def recommendation_draft(payload: RecommendationRequest):
     """An NVIDIA LLM explains the rule-based suggestion; unsupported sentences are removed."""
     return _nvidia_call(draft_recommendation, payload.model_dump())
+
+
+class ChatRequest(BaseModel):
+    system: str
+    user: str
+    maxTokens: int = 700
+
+
+@app.post("/api/v1/llm/chat")
+def llm_chat(payload: ChatRequest):
+    """One NVIDIA chat completion for the officer assistant (the backend builds the grounded prompt)."""
+    def run():
+        content, latency_ms = stream_chat(payload.system, payload.user, max(100, min(payload.maxTokens, 1200)))
+        from src.core.config import settings
+        return {"content": content, "latencyMs": latency_ms, "model": settings.nvidia_extraction_model}
+    return _nvidia_call(run)
 
 
 @app.post("/api/v1/ocr/extract")

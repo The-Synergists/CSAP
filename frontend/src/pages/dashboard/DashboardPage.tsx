@@ -1,4 +1,5 @@
 import React from 'react';
+import { TimeSavedBanner } from '../../components/TimeSaved';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertOctagon, ArrowRight, CheckCircle2, Clock, FileText, ShieldAlert } from 'lucide-react';
 import { getAlerts, getDashboardMetrics, getTenderStats } from '@shared/domain/selectors';
@@ -49,6 +50,8 @@ export const DashboardPage: React.FC = () => {
         <Counter to="/bidders?filter=high-risk" label="High-risk bids" value={metrics.highRisk} subtext="Deficits or discrepancies" icon={<AlertOctagon className="h-4 w-4 text-rose-500" />} tone="danger" />
         <Counter to="/reviews" label="Awaiting clarification" value={metrics.awaitingClarification} subtext="Bidder or committee response" icon={<FileText className="h-4 w-4 text-blue-500" />} tone="info" />
       </section>
+
+      <TimeSavedBanner />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card

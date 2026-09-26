@@ -3,14 +3,17 @@
 // log) stays available under "For developers".
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, CheckCircle2, ChevronLeft, Database, Globe2, KeyRound, Loader2, Search, Server, UserCheck, XCircle } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Activity, AlertTriangle, ArrowRight, CheckCircle2, ChevronLeft, Database, Globe2, KeyRound, Loader2, Search, Server, UserCheck, XCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button, Card, PageHeader } from '../../components/ui/primitives';
 import { inputClass } from '../../components/ui/styles';
 import { formatDateTime } from '../../lib/format';
 import { api, type GatewayCall, type GatewayOverview } from '../../state/api';
 import { useApp } from '../../state/appContext';
+import { mapPortalRow } from '@shared/domain/portal';
+import { PORTAL_STATUS } from '../../domain/labels';
+import { subscribeToTables } from '../../state/realtime';
 import { display, LABEL, REGISTRIES, verdictOf, type RegistryMeta, type Verdict } from './registryMeta';
 
 type TryResult = Awaited<ReturnType<typeof api.gatewayTry>>;
@@ -80,6 +83,80 @@ const CallLog: React.FC<{ registry?: string }> = ({ registry }) => {
   );
 };
 
+interface LiveRow {
+  id: string;
+  at: string;
+  bidId: string | null;
+  registry: string;
+  identifier: string | null;
+  outcome: string | null;
+}
+
+/** Checks as they happen ("scanning"): newest first, streamed through Supabase Realtime. */
+const LiveChecks: React.FC<{ registry?: string }> = ({ registry }) => {
+  const [rows, setRows] = useState<LiveRow[]>([]);
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api
+      .gatewayCalls()
+      .then((calls) =>
+        active &&
+        setRows(
+          calls
+            .filter((c) => c.source === 'Portal verification' && (!registry || c.registry === registry))
+            .slice(0, 12)
+            .map((c) => ({ id: c.id, at: c.at, bidId: c.bidId, registry: c.registry, identifier: c.identifier ?? null, outcome: c.outcome })),
+        ),
+      )
+      .catch(() => {});
+    const stop = subscribeToTables(
+      `live-${registry ?? 'all'}`,
+      [{ table: 'portal_verifications', ...(registry ? { filter: `registry=eq.${registry}` } : {}) }],
+      (_t, row) => {
+        const p = mapPortalRow(row);
+        setRows((prev) => [{ id: p.id, at: p.checkedAt, bidId: p.bidId, registry: p.registry, identifier: p.identifier ?? null, outcome: p.status }, ...prev.filter((r) => r.id !== p.id)].slice(0, 12));
+        setFresh((f) => new Set(f).add(p.id));
+        window.setTimeout(() => setFresh((f) => { const n = new Set(f); n.delete(p.id); return n; }), 2500);
+      },
+      setLive,
+    );
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [registry]);
+  return (
+    <Card
+      title={registry ? 'Live checks on this registry' : 'Live checks across all registries'}
+      subtitle="Every lookup CSAP runs appears here the moment it happens (portal checks and automatic GeM intake)."
+      actions={
+        <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+          <span className={`h-2 w-2 rounded-full ${live ? 'animate-pulse bg-emerald-500' : 'bg-slate-300'}`} /> {live ? 'Live' : 'Connecting…'}
+        </span>
+      }
+      padded={false}
+    >
+      {rows.length === 0 ? (
+        <p className="flex items-center gap-2 px-4 py-3 text-xs text-slate-500"><Activity className="h-4 w-4" /> Waiting for checks. Run portal checks on a bid or submit a bid on GeM.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100" aria-live="polite">
+          {rows.map((r) => (
+            <li key={r.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-xs transition-colors ${fresh.has(r.id) ? 'bg-blue-50' : ''}`}>
+              <span className="w-36 shrink-0 text-slate-500">{formatDateTime(r.at)}</span>
+              {r.bidId && <Link to={`/bids/${r.bidId}/portal`} className="w-16 shrink-0 font-mono text-blue-700 hover:underline">{r.bidId}</Link>}
+              {!registry && <span className="w-24 shrink-0 font-semibold text-slate-800">{REGISTRIES.find((m) => m.key.toUpperCase() === r.registry)?.title ?? r.registry}</span>}
+              <span className="min-w-0 flex-1 font-mono text-slate-700">{r.identifier ?? '—'}</span>
+              {r.outcome && PORTAL_STATUS[r.outcome] && <Badge tone={PORTAL_STATUS[r.outcome].tone} dot>{PORTAL_STATUS[r.outcome].label}</Badge>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+};
+
 /** Landing page: one card per registry. */
 export const GatewayPage: React.FC = () => {
   const { source } = useApp();
@@ -117,6 +194,7 @@ export const GatewayPage: React.FC = () => {
           </Link>
         ))}
       </div>
+      <LiveChecks />
       <DevDetails summary="For developers: how CSAP connects to the registries">
         <div className="flex flex-col gap-2 lg:flex-row">
           <FlowStep icon={<UserCheck className="h-4 w-4 text-slate-500" />} title="1. Officer clicks" body="Run portal checks or Verify PAN, or GeM intake runs automatically." />
@@ -156,10 +234,12 @@ const VerdictCard: React.FC<{ verdict: Verdict }> = ({ verdict }) => {
 /** One registry: check a number, browse its records. */
 export const RegistryPage: React.FC = () => {
   const { registry = '' } = useParams();
+  const [params] = useSearchParams();
+  const linked = (params.get('q') ?? '').trim().toUpperCase();
   const meta = REGISTRIES.find((r) => r.key === registry) as RegistryMeta | undefined;
   const [records, setRecords] = useState<Records | null>(null);
-  const [query, setQuery] = useState('');
-  const [identifier, setIdentifier] = useState('');
+  const [query, setQuery] = useState(linked);
+  const [identifier, setIdentifier] = useState(linked);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<TryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +252,19 @@ export const RegistryPage: React.FC = () => {
       active = false;
     };
   }, [meta]);
+
+  // Opened from a bid (…?q=<number>): check that number straight away.
+  useEffect(() => {
+    if (!meta || !linked) return;
+    let active = true;
+    api
+      .gatewayTry(meta.key, linked)
+      .then((r) => active && setResult(r))
+      .catch((e) => active && setError(e instanceof Error ? e.message : String(e)));
+    return () => {
+      active = false;
+    };
+  }, [meta, linked]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -234,7 +327,7 @@ export const RegistryPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((r, i) => (
-                  <tr key={i}>
+                  <tr key={i} className={linked && String(r[meta.idField] ?? '').toUpperCase() === linked ? 'bg-amber-50' : undefined}>
                     {meta.columns.map((k) => (
                       <td key={k} className={`px-4 py-2 ${k === meta.idField ? 'font-mono' : ''}`}>{display(k, r[k])}</td>
                     ))}
@@ -250,6 +343,8 @@ export const RegistryPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      <LiveChecks registry={meta.key.toUpperCase()} />
 
       <DevDetails summary="For developers: the API call and the calls CSAP made">
         {result ? (

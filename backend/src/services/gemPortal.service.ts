@@ -69,13 +69,6 @@ const mapSubmission = (r: any) => ({
   deliveredAt: r.delivered_at,
 });
 
-export async function getSubmission(id: string) {
-  if (!/^[0-9a-f-]{36}$/.test(id)) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
-  const r = must<any>(await serviceClient.from('gem_bid_submissions').select('*').eq('id', id).maybeSingle(), 'submission');
-  if (!r) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
-  return mapSubmission(r);
-}
-
 /** Saves the bid on the GeM side, then delivers it to CSAP's intake webhook (signed). */
 export async function submitBid(input: { tenderId: string; company: GemBidPayload['company']; declared: GemBidPayload['declared']; documents: GemBidPayload['documents'] }) {
   const tenders = await openTenders();
@@ -125,4 +118,41 @@ export async function submitBid(input: { tenderId: string; company: GemBidPayloa
     'submission',
   );
   return mapSubmission(updated);
+}
+
+/** The bidder's bids ("My Bids"); the simulated portal identifies a seller by PAN. */
+export async function myBids(pan: string) {
+  const p = (pan ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(p)) throw new HttpError(400, 'Enter a valid PAN.', 'VALIDATION');
+  const rows = must<any[]>(await serviceClient.from('gem_bid_submissions').select('*').eq('company->>pan', p).order('submitted_at', { ascending: false }), 'submissions');
+  return rows.map(mapSubmissionWithEvaluation);
+}
+
+const mapSubmissionWithEvaluation = (r: any) => ({
+  ...mapSubmission(r),
+  evaluationStatus: r.evaluation_status,
+  evaluation: r.evaluation,
+  evaluationReceivedAt: r.evaluation_received_at,
+});
+
+export async function getSubmissionWithEvaluation(id: string) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
+  const r = must<any>(await serviceClient.from('gem_bid_submissions').select('*').eq('id', id).maybeSingle(), 'submission');
+  if (!r) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
+  return mapSubmissionWithEvaluation(r);
+}
+
+/** CSAP -> GeM: the buyer's evaluation outcome and report summary for one bid (signed by CSAP). */
+export async function receiveEvaluation(payload: any) {
+  if (!payload?.gemBidNo || !payload?.status) throw new HttpError(400, 'gemBidNo and status are required.', 'VALIDATION');
+  const row = must<any>(await serviceClient.from('gem_bid_submissions').select('id').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
+  if (!row) throw new HttpError(404, `GeM bid ${payload.gemBidNo} not found.`, 'NOT_FOUND');
+  must(
+    await serviceClient
+      .from('gem_bid_submissions')
+      .update({ evaluation_status: payload.status, evaluation: payload, evaluation_received_at: new Date().toISOString() })
+      .eq('id', row.id),
+    'submission',
+  );
+  return { received: true, gemBidNo: payload.gemBidNo, status: payload.status };
 }

@@ -7,6 +7,25 @@ import type { VerificationRun } from '@shared/domain/verification';
 /** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
 export type RegistryAnswer = Omit<PortalVerification, 'id' | 'runId' | 'bidId' | 'checkedAt'>;
 
+export interface EvaluationReport {
+  id: string;
+  reportNo: string;
+  bidId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content: any;
+  sha256: string;
+  generatedBy: string;
+  generatedAt: string;
+  sentToGemAt: string | null;
+  gemResponse: unknown;
+}
+
+export interface TimeSaved {
+  assumptions: { perDocument: number; perRegistry: number; perRequirement: number; report: number };
+  bids: { bidId: string; documentsRead: number; registriesChecked: number; requirementsChecked: number; reportGenerated: boolean; automatedSeconds: number; manualMinutes: number }[];
+  totals: { automatedSeconds: number; manualMinutes: number; savedMinutes: number };
+}
+
 export interface RecommendationDraft {
   id: string;
   bidId: string;
@@ -33,6 +52,7 @@ export interface GatewayCall {
   bidId: string | null;
   source: string;
   registry: string;
+  identifier?: string | null;
   mode: string;
   method: string;
   url: string;
@@ -177,6 +197,17 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
+  reports: (bidId: string) => call<EvaluationReport[]>(`/api/bids/${bidId}/reports`),
+  generateReport: (bidId: string) => call<EvaluationReport>(`/api/bids/${bidId}/reports`, { method: 'POST' }),
+  report: (id: string) => call<EvaluationReport & { verified: boolean }>(`/api/reports/${id}`),
+  sendReportToGem: (id: string) => call<EvaluationReport & { gemStatus: string }>(`/api/reports/${id}/send-to-gem`, { method: 'POST' }),
+  assistant: (b: { message: string; path: string; bidId?: string; history: { role: string; content: string }[] }) =>
+    call<{ answer: string; actions: { label: string; path: string }[]; model: string; latencyMs: number }>('/api/assistant', { method: 'POST', body: JSON.stringify(b) }),
+  timeSaved: () => call<TimeSaved>('/api/metrics/time-saved'),
+  verifyAudit: (simulateSeq?: number) =>
+    call<{ intact: boolean; checked: number; brokenAt: number | null; reason: string | null; lastHash: string; simulated: number | null }>(
+      `/api/audit/verify${simulateSeq ? `?simulate=${simulateSeq}` : ''}`,
+    ),
   recommendationDraft: (bidId: string) => call<RecommendationDraft | null>(`/api/bids/${bidId}/recommendation/draft`),
   draftRecommendation: (bidId: string) => call<RecommendationDraft>(`/api/bids/${bidId}/recommendation/draft`, { method: 'POST' }),
   gateway: () => call<GatewayOverview>('/api/gateway'),

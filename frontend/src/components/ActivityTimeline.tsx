@@ -39,6 +39,11 @@ export const ActivityTimeline: React.FC<{ events: AuditEvent[]; showBid?: boolea
                 </Link>
               </>
             )}
+            {showBid && e.seq != null && e.entryHash && (
+              <span className="font-mono text-[11px] text-slate-400" title={`SHA-256 fingerprint ${e.entryHash}`}>
+                {' · '}#{e.seq} · {e.entryHash.slice(0, 12)}…
+              </span>
+            )}
           </p>
         </li>
       ))}

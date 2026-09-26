@@ -58,7 +58,23 @@ export interface GemSubmission {
   delivery: { request?: { url: string }; response?: { httpStatus: number }; error?: string } | null;
   submittedAt: string;
   deliveredAt: string | null;
+  evaluationStatus?: string;
+  evaluation?: {
+    status: string;
+    remarks: string | null;
+    decidedAt: string | null;
+    report: { reportNo: string; sha256: string; generatedAt: string; complianceScore: number; requirementsMet: string; issues: { id: string; title: string; requiredAction: string }[] };
+  } | null;
+  evaluationReceivedAt?: string | null;
 }
+
+export const EVALUATION_STATUS: Record<string, { label: string; className: string }> = {
+  UNDER_EVALUATION: { label: 'Under technical evaluation', className: 'bg-blue-100 text-blue-800' },
+  CLARIFICATION_SOUGHT: { label: 'Clarification sought by buyer', className: 'bg-amber-100 text-amber-900' },
+  TECHNICALLY_QUALIFIED: { label: 'Technically qualified', className: 'bg-emerald-100 text-emerald-800' },
+  DISQUALIFIED: { label: 'Technically disqualified', className: 'bg-rose-100 text-rose-800' },
+  UNDER_COMMITTEE_REVIEW: { label: 'Referred to evaluation committee', className: 'bg-violet-100 text-violet-800' },
+};
 
 export interface GemDemoKit {
   tender: string;
@@ -76,6 +92,7 @@ export const gemApi = {
     publicCall<{ path: string; sizeBytes: number }>('/api/gem/uploads', post(b)),
   submit: (b: { tenderId: string; company: GemCompany; declared: GemDeclared; documents: GemDocument[] }) => publicCall<GemSubmission>('/api/gem/submissions', post(b)),
   submission: (id: string) => publicCall<GemSubmission>(`/api/gem/submissions/${id}`),
+  myBids: (pan: string) => publicCall<GemSubmission[]>(`/api/gem/my-bids?pan=${encodeURIComponent(pan)}`),
 };
 
 export const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;

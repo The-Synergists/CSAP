@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RegistryLink } from '../../components/RegistryLink';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Gavel, RefreshCw } from 'lucide-react';
 import { getBidView } from '@shared/domain/selectors';
@@ -29,7 +30,7 @@ export const BidWorkspacePage: React.FC = () => {
   const { bidId, tab } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { db, verificationRuns, startVerification, setActiveTenderId } = useApp();
+  const { db, source, verificationRuns, startVerification, setActiveTenderId } = useApp();
   const view = bidId ? getBidView(db, bidId) : undefined;
   const [viewingDoc, setViewingDoc] = useState<BidDocument | null>(null);
 
@@ -68,7 +69,8 @@ export const BidWorkspacePage: React.FC = () => {
         title={bidder.companyName}
         subtitle={
           <span className="font-mono text-xs">
-            {bidder.id} · GSTIN {bidder.gstin} · PAN {bidder.pan}
+            {bidder.id} · GSTIN {source === 'api' ? <RegistryLink registry="gstn" id={bidder.gstin} /> : bidder.gstin} · PAN{' '}
+            {source === 'api' ? <RegistryLink registry="pan" id={bidder.pan} /> : bidder.pan}
           </span>
         }
         actions={

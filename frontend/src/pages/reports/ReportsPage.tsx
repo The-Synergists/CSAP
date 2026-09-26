@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TimeSavedCard } from '../../components/TimeSaved';
 import { Download, Eye, Printer } from 'lucide-react';
 import { listBidViews, type BidView } from '@shared/domain/selectors';
 import { useApp } from '../../state/appContext';
@@ -126,6 +127,8 @@ export const ReportsPage: React.FC = () => {
           )
         }
       />
+
+      <TimeSavedCard />
 
       {!tender ? (
         <Card><EmptyState title="No tenders with bids" description="Reports become available once a tender has received bids." /></Card>

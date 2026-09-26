@@ -326,6 +326,8 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
     actor: a.actor_display_name,
     summary: a.summary,
     details: a.details,
+    seq: a.seq ?? undefined,
+    entryHash: a.entry_hash ?? undefined,
   }));
 
   return {

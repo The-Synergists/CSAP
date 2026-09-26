@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useMatch } from 'react-router-dom';
-import { AlertCircle, Bot, Send, X } from 'lucide-react';
+import { Link, useLocation, useMatch } from 'react-router-dom';
+import { AlertCircle, Bot, Loader2, Send, X } from 'lucide-react';
 import { getBidView, listBidViews, type BidView } from '@shared/domain/selectors';
 import type { Database } from '@shared/domain/types';
 import { useApp } from '../../state/appContext';
+import { api } from '../../state/api';
 import { DECISION, EMD_INSTRUMENT } from '../../domain/labels';
 import { bidPath, formatINR } from '../../lib/format';
 
@@ -14,6 +15,7 @@ interface Answer {
 interface Message extends Answer {
   id: number;
   from: 'officer' | 'assistant';
+  fallback?: boolean;
 }
 
 const findBidInText = (db: Database, text: string): BidView | undefined => {
@@ -105,7 +107,9 @@ const answer = (db: Database, question: string, context?: BidView): Answer => {
 let seq = 0;
 
 export const AssistantPanel: React.FC = () => {
-  const { db, assistantOpen, setAssistantOpen } = useApp();
+  const { db, source, assistantOpen, setAssistantOpen } = useApp();
+  const location = useLocation();
+  const [thinking, setThinking] = useState(false);
   const match = useMatch('/bids/:bidId/*');
   const context = match?.params.bidId ? getBidView(db, match.params.bidId) : undefined;
   const [messages, setMessages] = useState<Message[]>([]);
@@ -120,17 +124,31 @@ export const AssistantPanel: React.FC = () => {
     if (assistantOpen) inputRef.current?.focus();
   }, [assistantOpen]);
 
-  const ask = (text: string) => {
+  const ask = async (text: string) => {
     const t = text.trim();
-    if (!t) return;
-    const reply = answer(db, t, context);
-    setMessages((m) => [...m, { id: ++seq, from: 'officer', text: t }, { id: ++seq, from: 'assistant', ...reply }]);
+    if (!t || thinking) return;
+    setMessages((m) => [...m, { id: ++seq, from: 'officer', text: t }]);
     setInput('');
+    if (source !== 'api') {
+      setMessages((m) => [...m, { id: ++seq, from: 'assistant', ...answer(db, t, context) }]);
+      return;
+    }
+    setThinking(true);
+    try {
+      const history = messages.slice(-6).map((m) => ({ role: m.from === 'officer' ? 'user' : 'assistant', content: m.text }));
+      const r = await api.assistant({ message: t, path: location.pathname, bidId: context?.bid.id, history });
+      setMessages((m) => [...m, { id: ++seq, from: 'assistant', text: r.answer, links: r.actions.map((a) => ({ label: a.label, to: a.path })) }]);
+    } catch {
+      // NVIDIA unreachable: fall back to the rule-based answers so the officer is never left without help.
+      setMessages((m) => [...m, { id: ++seq, from: 'assistant', ...answer(db, t, context), fallback: true }]);
+    } finally {
+      setThinking(false);
+    }
   };
 
   const suggestions = context
-    ? ['Why was this bid flagged?', 'Explain the EMD', 'Which documents are missing?', 'What does the AI recommend?']
-    : ['Compare all bids', 'Why is BID-003 high risk?', 'Explain the EMD for Prime Tech'];
+    ? ['Why was this bid flagged?', 'Explain the EMD', 'Help me ask for clarification', "Check this bidder's PAN"]
+    : ['Which bids need my decision?', 'Why is BID-003 high risk?', 'Where do I verify the audit trail?'];
 
   if (!assistantOpen) {
     return (
@@ -170,7 +188,9 @@ export const AssistantPanel: React.FC = () => {
       </header>
       <p className="flex items-start gap-1.5 border-b border-slate-100 px-3 pb-1.5 pt-2.5 text-[10px] text-slate-500">
         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-500" />
-        Answers are assembled from the case data on record by fixed rules; a language model is not connected. Advisory only.
+        {source === 'api'
+          ? 'Answers by NVIDIA Nemotron from the case data you can see, with links to where you can act. It never acts for you. Advisory only.'
+          : 'Answers are assembled from the case data on record by fixed rules. Advisory only.'}
       </p>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-xs" aria-live="polite">
@@ -179,6 +199,7 @@ export const AssistantPanel: React.FC = () => {
           <div key={m.id} className={m.from === 'officer' ? 'flex justify-end' : ''}>
             <div className={`max-w-[88%] rounded-md p-2.5 ${m.from === 'officer' ? 'bg-blue-600 font-medium text-white' : 'border border-slate-200 bg-slate-50 text-slate-800'}`}>
               <p className="leading-relaxed">{m.text}</p>
+              {m.fallback && <p className="mt-1 text-[10px] text-amber-700">NVIDIA was unreachable; this answer comes from CSAP's built-in rules.</p>}
               {m.links && m.links.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
                   {m.links.map((l) => (
@@ -191,12 +212,15 @@ export const AssistantPanel: React.FC = () => {
             </div>
           </div>
         ))}
+        {thinking && (
+          <p className="flex items-center gap-1.5 text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…</p>
+        )}
         <div ref={endRef} />
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-3 pt-2">
         {suggestions.map((s) => (
-          <button key={s} type="button" onClick={() => ask(s)} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10.5px] font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50">
+          <button key={s} type="button" onClick={() => void ask(s)} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10.5px] font-medium text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50">
             {s}
           </button>
         ))}
@@ -204,7 +228,7 @@ export const AssistantPanel: React.FC = () => {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          ask(input);
+          void ask(input);
         }}
         className="flex gap-2 p-3"
       >

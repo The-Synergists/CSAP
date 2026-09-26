@@ -1,4 +1,5 @@
 import React from 'react';
+import { RegistryLink } from '../../../components/RegistryLink';
 import { CheckCircle2 } from 'lucide-react';
 import { AdvisoryTag, CheckBadge } from '../../../components/ui/Badge';
 import { Button, Card, DetailList } from '../../../components/ui/primitives';
@@ -72,7 +73,17 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
             { label: 'Vendor code', value: <span className="font-mono text-xs">{view.bidder.id}</span> },
             { label: 'Incorporated', value: formatDate(view.bidder.incorporationDate) },
             { label: 'Address', value: view.bidder.registeredAddress },
-            { label: 'Udyam', value: view.bidder.udyamNumber ? `${view.bidder.udyamNumber}${view.bidder.msmeCategory ? ` (${view.bidder.msmeCategory})` : ''}` : '—' },
+            {
+              label: 'Udyam',
+              value: view.bidder.udyamNumber ? (
+                <>
+                  <RegistryLink registry="udyam" id={view.bidder.udyamNumber} />
+                  {view.bidder.msmeCategory ? ` (${view.bidder.msmeCategory})` : ''}
+                </>
+              ) : (
+                '—'
+              ),
+            },
             { label: 'Local content', value: `${view.bid.makeInIndiaPercentage}%` },
             {
               label: 'Turnover',

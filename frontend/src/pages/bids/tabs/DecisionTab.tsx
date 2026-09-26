@@ -11,6 +11,7 @@ import { BID_STATUS, DECISION } from '../../../domain/labels';
 import { formatDateTime } from '../../../lib/format';
 import type { TabProps } from '../bidTabs';
 import { AiExplanation } from '../AiExplanation';
+import { EvaluationReports } from '../EvaluationReports';
 
 const ORDER: DecisionType[] = ['APPROVE', 'REQUEST_CLARIFICATION', 'COMMITTEE_REVIEW', 'REJECT'];
 const OTHER = '__other__';
@@ -24,7 +25,12 @@ interface Preset {
 const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> = ({ view, goTo }) => {
   const { source } = useApp();
   const rec = view.recommendation;
-  if (!rec) return <Card title="AI recommendation"><p className="text-xs text-slate-500">No recommendation has been generated for this bid.</p></Card>;
+  if (!rec)
+    return (
+      <Card title="AI recommendation">
+        <p className="text-xs text-slate-500">No recommendation has been generated for this bid.</p>
+      </Card>
+    );
   return (
     <Card
       title={
@@ -45,7 +51,10 @@ const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> =
           <h3 className="text-xs font-medium text-slate-500">In favour</h3>
           <ul className="mt-1 space-y-1 text-xs text-slate-800">
             {rec.strengths.map((s) => (
-              <li key={s} className="flex gap-1.5"><Plus aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />{s}</li>
+              <li key={s} className="flex gap-1.5">
+                <Plus aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                {s}
+              </li>
             ))}
           </ul>
         </div>
@@ -54,7 +63,10 @@ const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> =
           <ul className="mt-1 space-y-1 text-xs text-slate-800">
             {rec.concerns.length ? (
               rec.concerns.map((s) => (
-                <li key={s} className="flex gap-1.5"><Minus aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" />{s}</li>
+                <li key={s} className="flex gap-1.5">
+                  <Minus aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" />
+                  {s}
+                </li>
               ))
             ) : (
               <li className="text-slate-500">None identified.</li>
@@ -170,7 +182,9 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
             </label>
             <select id="reason" value={reasonChoice} onChange={(e) => setReasonChoice(e.target.value)} className={inputClass}>
               {DECISION[decision].reasons.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
               <option value={OTHER}>Other (specify)</option>
             </select>
@@ -209,23 +223,27 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
         {decision === 'APPROVE' && openSerious.length > 0 && (
           <p className="flex gap-2 rounded border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            {openSerious.length} open finding{openSerious.length === 1 ? '' : 's'} of medium or high severity. Explain in your remarks why approval is appropriate.
+            {openSerious.length} open finding{openSerious.length === 1 ? '' : 's'} of medium or high severity. Explain in your remarks why approval is
+            appropriate.
           </p>
         )}
         {differsFromAi && (
           <p className="rounded border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-700">
-            Your decision differs from the AI recommendation ({DECISION[rec!.suggestedDecision].label}). That is fine — it will be recorded as your independent judgement.
+            Your decision differs from the AI recommendation ({DECISION[rec!.suggestedDecision].label}). That is fine — it will be recorded as your independent
+            judgement.
           </p>
         )}
 
         <label className="flex items-start gap-2 text-xs text-slate-800">
-          <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} className="mt-0.5" />
-          I have reviewed the findings and evidence for this bid, and this decision is my own.
+          <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} className="mt-0.5" />I have reviewed the findings
+          and evidence for this bid, and this decision is my own.
         </label>
         {errors.ack && <p className="-mt-2 text-xs text-rose-700">{errors.ack}</p>}
 
         <div className="flex justify-end">
-          <Button type="submit" variant="primary">Review and submit</Button>
+          <Button type="submit" variant="primary">
+            Review and submit
+          </Button>
         </div>
       </form>
 
@@ -236,7 +254,9 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
         description={`${view.bid.id} · ${view.bidder.companyName}`}
         footer={
           <>
-            <Button onClick={() => setConfirming(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={() => setConfirming(false)} disabled={saving}>
+              Cancel
+            </Button>
             <Button variant={decision === 'REJECT' ? 'danger' : 'primary'} onClick={() => void confirm()} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Saving…' : `Confirm: ${decision ? DECISION[decision].label : ''}`}
@@ -247,13 +267,21 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
         {decision && (
           <div className="space-y-3 text-xs">
             <p>
-              The bid status will change from <BidStatusBadge status={view.bid.status} /> to{' '}
-              <BidStatusBadge status={DECISION[decision].resultingStatus} />.
+              The bid status will change from <BidStatusBadge status={view.bid.status} /> to <BidStatusBadge status={DECISION[decision].resultingStatus} />.
             </p>
             <dl className="space-y-1.5 rounded border border-slate-200 p-3">
-              <div><dt className="inline text-slate-500">Decision: </dt><dd className="inline font-medium">{DECISION[decision].verb}</dd></div>
-              <div><dt className="inline text-slate-500">Reason: </dt><dd className="inline">{reason}</dd></div>
-              <div><dt className="text-slate-500">Remarks:</dt><dd className="whitespace-pre-wrap">{remarks.trim()}</dd></div>
+              <div>
+                <dt className="inline text-slate-500">Decision: </dt>
+                <dd className="inline font-medium">{DECISION[decision].verb}</dd>
+              </div>
+              <div>
+                <dt className="inline text-slate-500">Reason: </dt>
+                <dd className="inline">{reason}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Remarks:</dt>
+                <dd className="whitespace-pre-wrap">{remarks.trim()}</dd>
+              </div>
             </dl>
             <p className="text-xs text-slate-500">
               {decision === 'APPROVE' || decision === 'REJECT'
@@ -281,11 +309,16 @@ const DecisionHistory: React.FC<{ view: BidView }> = ({ view }) =>
           <li key={d.id} className="px-4 py-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={DECISION[d.decision].tone}>{DECISION[d.decision].label}</Badge>
-              <span className="text-slate-600">{d.officerName}{d.officerDesignation && `, ${d.officerDesignation}`}</span>
+              <span className="text-slate-600">
+                {d.officerName}
+                {d.officerDesignation && `, ${d.officerDesignation}`}
+              </span>
               <span className="font-mono text-xs text-slate-500">{formatDateTime(d.decidedAt)}</span>
               {!d.followedRecommendation && <span className="text-xs text-slate-500">· differs from AI recommendation</span>}
             </div>
-            <p className="mt-1 text-slate-800"><span className="text-slate-500">Reason:</span> {d.reason}</p>
+            <p className="mt-1 text-slate-800">
+              <span className="text-slate-500">Reason:</span> {d.reason}
+            </p>
             <p className="mt-0.5 text-slate-700">{d.remarks}</p>
           </li>
         ))}
@@ -293,23 +326,26 @@ const DecisionHistory: React.FC<{ view: BidView }> = ({ view }) =>
     </Card>
   );
 
-export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, preset, goTo }) => (
-  <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-    <div className="space-y-5">
-      <RecommendationPanel view={view} goTo={goTo} />
+export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, preset, goTo }) => {
+  const { source } = useApp();
+  return (
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div className="space-y-5">
+        <RecommendationPanel view={view} goTo={goTo} />
+      </div>
+      <div className="space-y-5">
+        {view.flags.closed ? (
+          <Card>
+            <p className="flex items-center gap-2 text-xs text-slate-800">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />A final decision has been recorded. No further decisions can be made on this bid.
+            </p>
+          </Card>
+        ) : (
+          <DecisionForm key={`${view.bid.id}-${view.decisions.length}-${preset.decision ?? ''}-${preset.finding ?? ''}`} view={view} preset={preset} />
+        )}
+        <DecisionHistory view={view} />
+        {source === 'api' && <EvaluationReports view={view} />}
+      </div>
     </div>
-    <div className="space-y-5">
-      {view.flags.closed ? (
-        <Card>
-          <p className="flex items-center gap-2 text-xs text-slate-800">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            A final decision has been recorded. No further decisions can be made on this bid.
-          </p>
-        </Card>
-      ) : (
-        <DecisionForm key={`${view.bid.id}-${view.decisions.length}-${preset.decision ?? ''}-${preset.finding ?? ''}`} view={view} preset={preset} />
-      )}
-      <DecisionHistory view={view} />
-    </div>
-  </div>
-);
+  );
+};

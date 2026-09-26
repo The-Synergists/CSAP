@@ -278,6 +278,10 @@ async function main() {
   }
   console.log('Stored GeM demo kit');
 
+  // 9. The demo reset removed audit events; re-seal the tamper-evident chain over what remains.
+  const sealed = ok(await sb.rpc('reseal_audit_chain'), 'reseal audit chain');
+  console.log(`Audit chain re-sealed over ${sealed} events`);
+
   console.log(`\nDone. Officer login: ${demoUser.email} or employee ID ${demoUser.employeeId}`);
 }
 

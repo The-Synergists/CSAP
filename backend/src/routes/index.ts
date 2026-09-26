@@ -14,7 +14,11 @@ import { listPortalChecks, startPortalChecks } from '../services/portal.service.
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
 import { receiveGemBid, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
-import { demoKit, getSubmission, openTenders, submitBid, uploadDocument } from '../services/gemPortal.service.js';
+import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, uploadDocument } from '../services/gemPortal.service.js';
+import { generateReport, getReport, listReports, sendReportToGem } from '../services/report.service.js';
+import { timeSaved } from '../services/metrics.service.js';
+import { askAssistant } from '../services/assistant.service.js';
+import { waitUntil } from '@vercel/functions';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
 import { gatewayOverview, recentCalls, registryRecords, tryRegistryCall } from '../services/gatewayConsole.service.js';
@@ -92,7 +96,23 @@ router.post(
 router.get(
   '/gem/submissions/:id',
   asyncHandler(async (req, res) => {
-    res.json({ success: true, data: await getSubmission(String(req.params.id)) });
+    res.json({ success: true, data: await getSubmissionWithEvaluation(String(req.params.id)) });
+  }),
+);
+
+router.get(
+  '/gem/my-bids',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await myBids(String(req.query.pan ?? '')) });
+  }),
+);
+
+/** CSAP -> GeM: evaluation outcome and report summary (signed by CSAP). */
+router.post(
+  '/gem/notifications',
+  asyncHandler(async (req, res) => {
+    verifySignature((req as unknown as { rawBody?: Buffer }).rawBody, req.get('x-csap-timestamp'), req.get('x-csap-signature'));
+    res.json({ success: true, data: await receiveEvaluation(req.body) });
   }),
 );
 
@@ -167,7 +187,19 @@ router.post(
   '/decisions',
   asyncHandler(async (req, res) => {
     const input = validateDecision(req.body);
-    const result = await submitDecision(authOf(res).db, input);
+    const { db, userId } = authOf(res);
+    const result = await submitDecision(db, input);
+    // Bids from GeM: the evaluation report goes back to GeM automatically after the decision.
+    const { data: bid } = await db.from('bids').select('source').eq('id', input.bidId).single();
+    if (bid?.source === 'GEM') {
+      const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+      const name = profile?.full_name ?? 'Officer';
+      waitUntil(
+        generateReport(db, userId, name, input.bidId)
+          .then((r) => sendReportToGem(db, userId, name, r.id))
+          .catch(() => {}),
+      );
+    }
     res.status(201).json({ success: true, data: result });
   }),
 );
@@ -216,6 +248,68 @@ router.delete(
     const { db, userId } = authOf(res);
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.json({ success: true, data: await deleteUpload(db, userId, String(req.params.id), profile?.full_name ?? 'Officer') });
+  }),
+);
+
+router.post(
+  '/assistant',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await askAssistant(authOf(res).db, req.body ?? {}) });
+  }),
+);
+
+router.get(
+  '/metrics/time-saved',
+  asyncHandler(async (_req, res) => {
+    res.json({ success: true, data: await timeSaved(authOf(res).db) });
+  }),
+);
+
+// ---------------------------------------------------------------- evaluation reports (evidence pack)
+
+router.get(
+  '/bids/:id/reports',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await listReports(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.post(
+  '/bids/:id/reports',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.status(201).json({ success: true, data: await generateReport(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
+  }),
+);
+
+router.get(
+  '/reports/:id',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await getReport(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.post(
+  '/reports/:id/send-to-gem',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.json({ success: true, data: await sendReportToGem(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
+  }),
+);
+
+// ---------------------------------------------------------------- tamper-evident audit trail
+
+/** Recomputes the audit hash chain. ?simulate=<seq> pretends that event was altered (in memory only). */
+router.get(
+  '/audit/verify',
+  asyncHandler(async (req, res) => {
+    const simulate = req.query.simulate ? Number(req.query.simulate) : null;
+    const { data, error } = await authOf(res).db.rpc('verify_audit_chain', simulate ? { p_simulate_seq: simulate } : {});
+    if (error) throw new HttpError(502, `Could not verify the audit chain: ${error.message}`, 'DB_ERROR');
+    const r = (data as { intact: boolean; checked: number; broken_at: number | null; reason: string | null; last_hash: string }[])[0];
+    res.json({ success: true, data: { intact: r.intact, checked: Number(r.checked), brokenAt: r.broken_at, reason: r.reason, lastHash: r.last_hash, simulated: simulate } });
   }),
 );
 

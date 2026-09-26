@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { formatDate } from '../../lib/format';
-import { GemCard, gemButton, gemInput } from './GemLayout';
+import { GemCard, gemButton, gemInput, gemPrimary, gemSecondary } from './GemLayout';
+import { rememberSeller } from './gemSeller';
 import { crore, gemApi, inr, type EmdInstrument, type GemCompany, type GemDocument, type GemTender } from './gemApi';
 
 const FY = ['2022-23', '2023-24', '2024-25'];
@@ -17,10 +18,10 @@ const fileToBase64 = (file: File) =>
   });
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
-  <label className="block text-xs font-medium text-stone-700">
+  <label className="block text-xs font-medium text-slate-700">
     {label}
     <div className="mt-1">{children}</div>
-    {hint && <span className="mt-0.5 block text-[11px] font-normal text-stone-500">{hint}</span>}
+    {hint && <span className="mt-0.5 block text-[11px] font-normal text-slate-500">{hint}</span>}
   </label>
 );
 
@@ -112,6 +113,7 @@ export const GemSubmitPage: React.FC = () => {
         },
         documents: Object.values(docs).map(({ specimen: _s, ...d }) => d),
       });
+      rememberSeller(company.pan);
       navigate(`/gem/submissions/${sub.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -123,21 +125,21 @@ export const GemSubmitPage: React.FC = () => {
     return error ? (
       <p role="alert" className="text-sm text-rose-700">{error} <Link to="/gem" className="underline">Back to tenders</Link></p>
     ) : (
-      <p className="flex items-center gap-2 text-sm text-stone-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+      <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
     );
 
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link to="/gem" className="text-xs text-teal-800 hover:underline">← All tenders</Link>
-          <p className="mt-1 font-mono text-xs text-stone-500">{tender.id}</p>
+          <Link to={`/gem/tenders/${encodeURIComponent(tender.id)}`} className="text-xs text-[#1b3a6b] hover:underline">← Bid document</Link>
+          <p className="mt-1 font-mono text-xs text-slate-500">{tender.id}</p>
           <h1 className="text-xl font-semibold">{tender.title}</h1>
-          <p className="text-xs text-stone-600">
+          <p className="text-xs text-slate-600">
             {tender.buyer} · estimated {crore(tender.estimatedValue)} · EMD {inr(tender.emdAmount)} · closes {formatDate(tender.deadlineDate)}
           </p>
         </div>
-        <button type="button" onClick={() => void fillDemo()} className={`${gemButton} border border-teal-700 bg-white text-teal-800 hover:bg-teal-50`}>
+        <button type="button" onClick={() => void fillDemo()} className={gemSecondary}>
           <Sparkles aria-hidden className="h-4 w-4" /> Fill with demo bidder
         </button>
       </div>
@@ -182,26 +184,26 @@ export const GemSubmitPage: React.FC = () => {
         </div>
       </GemCard>
 
-      <GemCard title="3. Documents" actions={<span className="text-xs text-stone-500">{Object.keys(docs).length} of {tender.requirements.length} attached · PNG or JPEG, under 3 MB</span>}>
-        <ul className="divide-y divide-stone-100">
+      <GemCard title="3. Documents" actions={<span className="text-xs text-slate-500">{Object.keys(docs).length} of {tender.requirements.length} attached · PNG or JPEG, under 3 MB</span>}>
+        <ul className="divide-y divide-slate-100">
           {tender.requirements.map((r) => {
             const d = docs[r.code];
             return (
               <li key={r.code} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-sm text-stone-900">
-                    <span className="font-mono text-xs text-stone-500">{r.code}</span> {r.title}
-                    {!r.mandatory && <span className="text-xs text-stone-500"> (optional)</span>}
+                  <p className="text-sm text-slate-900">
+                    <span className="font-mono text-xs text-slate-500">{r.code}</span> {r.title}
+                    {!r.mandatory && <span className="text-xs text-slate-500"> (optional)</span>}
                   </p>
-                  <p className="text-[11px] text-stone-500">{r.benchmark}</p>
+                  <p className="text-[11px] text-slate-500">{r.benchmark}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {d && (
-                    <span className="flex items-center gap-1 text-xs text-teal-800">
+                    <span className="flex items-center gap-1 text-xs text-emerald-700">
                       <CheckCircle2 aria-hidden className="h-4 w-4" /> {d.specimen ? 'Specimen attached' : d.fileName}
                     </span>
                   )}
-                  <label className={`${gemButton} cursor-pointer border border-stone-300 bg-white text-stone-800 hover:bg-stone-50`}>
+                  <label className={`${gemButton} cursor-pointer border border-slate-300 bg-white text-slate-800 hover:bg-slate-50`}>
                     {uploading === r.code ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp aria-hidden className="h-4 w-4" />}
                     {d ? 'Replace' : 'Upload'}
                     <input type="file" accept="image/png,image/jpeg" className="sr-only" aria-label={`Upload ${r.title}`} onChange={(e) => void upload(r.code, r.title, e.target.files?.[0])} />
@@ -214,15 +216,15 @@ export const GemSubmitPage: React.FC = () => {
       </GemCard>
 
       {error && <p role="alert" className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4">
-        <p className="text-xs text-stone-600">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <p className="text-xs text-slate-600">
           {problems.length
             ? `Still needed: ${problems.join(', ')}.`
             : missing.length
               ? `Ready. ${missing.length} mandatory document(s) not attached; the buyer will see them as missing.`
               : 'Ready to submit. The buyer receives your bid immediately and verifies it automatically.'}
         </p>
-        <button type="submit" disabled={!!problems.length || submitting} className={`${gemButton} bg-teal-700 px-5 text-white hover:bg-teal-800`}>
+        <button type="submit" disabled={!!problems.length || submitting} className={`${gemPrimary} px-5`}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Submit bid
         </button>
       </div>

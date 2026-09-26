@@ -222,6 +222,9 @@ export interface AuditEvent {
   actor: string;
   summary: string;
   details: string;
+  /** Position in the tamper-evident chain and this event's SHA-256 fingerprint (database only). */
+  seq?: number;
+  entryHash?: string;
 }
 
 // ---------------------------------------------------------------- government portal verification

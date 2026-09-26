@@ -19,6 +19,9 @@ import { GemLayout } from './pages/gem/GemLayout';
 import { GemHomePage } from './pages/gem/GemHomePage';
 import { GemSubmitPage } from './pages/gem/GemSubmitPage';
 import { GemReceiptPage } from './pages/gem/GemReceiptPage';
+import { GemBidPage } from './pages/gem/GemBidPage';
+import { GemMyBidsPage } from './pages/gem/GemMyBidsPage';
+import { EvaluationReportPage } from './pages/bids/EvaluationReportPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotFoundPage } from './pages/common/NotFoundPage';
 import { bidPath } from './lib/format';
@@ -55,7 +58,9 @@ export const App: React.FC = () => (
           {/* Simulated GeM portal: the bidder side, no officer login. */}
           <Route path="/gem" element={<GemLayout />}>
             <Route index element={<GemHomePage />} />
-            <Route path="tenders/:tenderId" element={<GemSubmitPage />} />
+            <Route path="tenders/:tenderId" element={<GemBidPage />} />
+            <Route path="tenders/:tenderId/participate" element={<GemSubmitPage />} />
+            <Route path="my-bids" element={<GemMyBidsPage />} />
             <Route path="submissions/:id" element={<GemReceiptPage />} />
           </Route>
           <Route
@@ -64,6 +69,14 @@ export const App: React.FC = () => (
               <RedirectIfAuthenticated>
                 <LoginPage />
               </RedirectIfAuthenticated>
+            }
+          />
+          <Route
+            path="/reports/evaluation/:id"
+            element={
+              <RequireAuth>
+                <EvaluationReportPage />
+              </RequireAuth>
             }
           />
           <Route

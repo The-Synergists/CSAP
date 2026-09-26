@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { RegistryLink } from '../../../components/RegistryLink';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Globe2, Loader2, MinusCircle, RefreshCw, Search, XCircle } from 'lucide-react';
 import { mapPortalRow } from '@shared/domain/portal';
@@ -30,7 +31,7 @@ const RegistryRow: React.FC<{ row: RegistryAnswer; open?: boolean }> = ({ row, o
           <div className="text-xs font-semibold text-slate-900">{reg.name}</div>
           <div className="truncate text-[11px] text-slate-500">{reg.authority}</div>
         </div>
-        <div className="font-mono text-[11px] text-slate-600 sm:w-44 sm:shrink-0">{row.identifier ?? '—'}</div>
+        <div className="font-mono text-[11px] text-slate-600 sm:w-44 sm:shrink-0">{row.identifier ? <RegistryLink registry={row.registry} id={row.identifier} /> : '—'}</div>
         <div className="flex flex-wrap items-center gap-1.5 sm:w-52 sm:shrink-0">
           <Badge tone={PORTAL_STATUS[row.status].tone} dot>{PORTAL_STATUS[row.status].label}</Badge>
           {applicable && <Badge tone={REGISTRY_MODE[row.mode].tone}>{REGISTRY_MODE[row.mode].label}</Badge>}
