@@ -34,5 +34,9 @@ export const config = {
   gstinFallbackKey: process.env.GSTIN_FALLBACK_KEY ?? '',
   /** Live answers are reused for this many days so repeated checks spend no credits. */
   gstinCacheDays: Number(process.env.GSTIN_CACHE_DAYS ?? 30),
+  /** This deployment's public base URL (the simulated GeM portal calls CSAP's webhook here). */
+  selfUrl: (process.env.CSAP_PUBLIC_URL ?? vercelBase ?? `http://localhost:${process.env.PORT ?? 5000}`).replace(/\/+$/, ''),
+  /** Shared secret GeM signs intake webhooks with (HMAC-SHA256). */
+  gemWebhookSecret: process.env.GEM_WEBHOOK_SECRET ?? 'csap-demo-gem-webhook-secret',
   corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),
 };

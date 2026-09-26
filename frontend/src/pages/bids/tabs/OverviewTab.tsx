@@ -5,6 +5,7 @@ import { Button, Card, DetailList } from '../../../components/ui/primitives';
 import { DECISION } from '../../../domain/labels';
 import { formatCr, formatDate } from '../../../lib/format';
 import type { TabProps } from '../bidTabs';
+import { GemIntakeCard } from '../GemIntakeCard';
 
 export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
   const exceptions = view.checks.filter((c) => c.status === 'REVIEW' || c.status === 'NOT_MET' || c.status === 'MISSING');
@@ -12,6 +13,7 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
+        <GemIntakeCard view={view} />
         <Card
           title="Exceptions against tender requirements"
           subtitle={`${view.counts.met} of ${view.counts.total} requirements met`}

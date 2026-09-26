@@ -26,6 +26,27 @@
       ]
     },
     {
+      "cin": "U33120TN2015PTC101842",
+      "company_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED",
+      "company_status": "Active",
+      "company_class": "Private",
+      "date_of_incorporation": "2015-06-18",
+      "registered_office": "No. 18, SIDCO Industrial Estate, Thirumazhisai, Chennai, Tamil Nadu 600124",
+      "authorised_capital_inr": 15000000,
+      "paid_up_capital_inr": 10000000,
+      "last_agm_date": "2025-09-24",
+      "directors": [
+        {
+          "name": "ARUN VISWANATHAN",
+          "din": "07345612"
+        },
+        {
+          "name": "MEERA ARUN",
+          "din": "07345613"
+        }
+      ]
+    },
+    {
       "cin": "U74999KA2015PTC082334",
       "company_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED",
       "company_status": "Active",

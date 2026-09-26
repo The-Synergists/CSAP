@@ -145,6 +145,11 @@ async function refreshSession(): Promise<ApiSession | null> {
 }
 
 /** Authenticated request; retries once after refreshing an expired token. */
+/** Calls that need no officer session (the simulated GeM portal is used by bidders). */
+export async function publicCall<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return parse<T>(await raw(path, init));
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const session = sessionStore.get();
   if (!session) throw new ApiError(401, 'Sign in required.', 'UNAUTHENTICATED');

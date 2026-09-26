@@ -40,6 +40,8 @@ const users: User[] = [
 ];
 
 const T1 = 'GEM/2026/CPCL/001';
+/** Open for bids: the tender a bidder can submit to on the simulated GeM portal. */
+export const T5 = 'GEM/2026/CPCL/005';
 
 const tenders: Tender[] = [
   {
@@ -100,6 +102,21 @@ const tenders: Tender[] = [
     description: 'On-site servicing, hydrostatic testing and lapping of globe, safety relief and control valves.',
     officerInCharge: 'P. Venkatachalam',
   },
+  {
+    id: T5,
+    title: 'Fire Protection & Gas Detection Systems',
+    category: 'Safety & Fire',
+    division: 'Chennai Refinery — Fire & Safety Department',
+    estimatedValue: 9500000,
+    emdAmount: 150000,
+    publishDate: '2026-09-20',
+    deadlineDate: '2026-10-15',
+    technicalOpeningDate: '2026-10-16',
+    status: 'OPEN_FOR_BIDS',
+    description:
+      'Supply of fixed gas detection systems, portable multi-gas detectors, SCBA sets and fire-retardant suits for the Chennai Refinery. Bids are received on GeM and verified automatically by CSAP.',
+    officerInCharge: 'R. K. Ramanathan',
+  },
 ];
 
 const req = (
@@ -126,6 +143,15 @@ const requirements: TenderRequirement[] = [
   req('REQ-11', 'Clause 2.4', 'POLICY', 'Non-blacklisting undertaking', 'Affidavit confirming no debarment by CPPP, MoPNG or CPCL.', 'Signed affidavit'),
   req('REQ-12', 'Clause 2.5', 'POLICY', 'Land border declaration', 'Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).', 'Signed declaration'),
 ];
+
+/** Tender GEM/2026/CPCL/005 uses the same requirement template with its own thresholds. */
+const t5Requirements: TenderRequirement[] = requirements.map((r) => ({
+  ...r,
+  id: `T5-${r.code}`,
+  tenderId: T5,
+  criterion: r.criterion.replace('₹5.00 crore', '₹4.00 crore').replace('₹2,00,000', '₹1,50,000'),
+  benchmark: r.benchmark.replace('₹5.00 Cr', '₹4.00 Cr').replace('₹2,00,000', '₹1,50,000'),
+}));
 
 const bidders: Bidder[] = [
   {
@@ -797,7 +823,7 @@ export const seedDatabase = (): Database =>
   structuredClone({
     users,
     tenders,
-    requirements,
+    requirements: [...requirements, ...t5Requirements],
     bidders,
     bids,
     documents,

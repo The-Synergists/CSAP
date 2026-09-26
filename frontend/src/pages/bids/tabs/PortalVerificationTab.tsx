@@ -259,8 +259,8 @@ export const PortalVerificationTab: React.FC<TabProps> = ({ view }) => {
           </div>
         )}
         <p className="mt-2 text-[11px] text-slate-500">
-          Each check is a real HTTPS call to the Government Gateway API; the registries answer from simulated datasets.{' '}
-          <Link to="/gateway" className="font-medium text-blue-700 hover:underline">See the APIs, datasets and call log</Link>
+          The registries answer from simulated records.{' '}
+          <Link to="/gateway" className="font-medium text-blue-700 hover:underline">See each registry and its records</Link>
         </p>
       </Card>
 

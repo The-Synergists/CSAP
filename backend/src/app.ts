@@ -9,7 +9,15 @@ const app = express();
 
 app.disable('x-powered-by');
 app.use(cors({ origin: config.corsOrigins }));
-app.use(express.json({ limit: '8mb' })); // PAN document uploads arrive as base64
+// PAN document uploads arrive as base64. The raw body is kept for webhook signature checks (GeM intake).
+app.use(
+  express.json({
+    limit: '8mb',
+    verify: (req, _res, buf) => {
+      (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 
 app.use('/api', routes);
 app.use('/api', notFound);

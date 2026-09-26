@@ -23,6 +23,7 @@ export const BID_STATUS: Record<BidStatus, { label: string; tone: Tone }> = {
 };
 
 export const TENDER_STATUS: Record<TenderStatus, { label: string; tone: Tone }> = {
+  OPEN_FOR_BIDS: { label: 'Open for bids', tone: 'info' },
   UNDER_EVALUATION: { label: 'Under Evaluation', tone: 'warning' },
   TECHNICAL_SCRUTINY: { label: 'Technical Scrutiny', tone: 'warning' },
   AWARDED: { label: 'Awarded', tone: 'success' },

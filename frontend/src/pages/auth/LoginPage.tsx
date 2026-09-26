@@ -153,6 +153,14 @@ export const LoginPage: React.FC = () => {
               Prototype system — {source === 'api' ? 'connected to the CSAP test database' : 'running on built-in demo data'}. Not for use with real tender information.
             </p>
           </div>
+          {source === 'api' && (
+            <p className="mt-2 text-center text-[11px] text-slate-400">
+              Bidder?{' '}
+              <a href="/gem" className="font-medium text-blue-300 hover:underline">
+                Submit a bid on the simulated GeM portal
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </div>

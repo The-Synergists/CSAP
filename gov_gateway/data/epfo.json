@@ -37,6 +37,14 @@
       "employees_covered": 64
     },
     {
+      "establishment_code": "TNMAS0073310000",
+      "establishment_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED",
+      "status": "Live",
+      "latest_ecr_month": "2026-08",
+      "latest_ecr_paid_on": "2026-09-14",
+      "employees_covered": 46
+    },
+    {
       "establishment_code": "TNMAS0033221",
       "establishment_name": "RAJ FIRE SERVICES PRIVATE LIMITED",
       "status": "Closed",

@@ -248,6 +248,8 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       riskLevel: b.risk_level === 'CRITICAL' ? 'HIGH' : b.risk_level,
       primaryConcern: b.primary_concern ?? '',
       lastVerifiedAt: run?.completed_at ?? b.submission_timestamp,
+      source: b.source === 'GEM' ? 'GEM' : 'CSAP',
+      gemBidNo: b.gem_bid_no ?? undefined,
       status: decision
         ? DECISION_TO_BID_STATUS[decision.decision as keyof typeof DECISION_TO_BID_STATUS]
         : clean

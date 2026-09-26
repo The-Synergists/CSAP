@@ -64,6 +64,18 @@
       "classification_year": "2025-26",
       "status": "Active",
       "remarks": "Reclassified from Small to Medium in FY 2025-26."
+    },
+    {
+      "udyam_number": "UDYAM-TN-02-0073310",
+      "enterprise_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED",
+      "type": "Small",
+      "major_activity": "Manufacturing",
+      "nic_codes": [
+        "32901 Manufacture of safety equipment"
+      ],
+      "date_of_registration": "2020-07-22",
+      "classification_year": "2025-26",
+      "status": "Active"
     }
   ]
 }

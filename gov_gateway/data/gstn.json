@@ -389,6 +389,61 @@
           "status": "NOT_FILED"
         }
       ]
+    },
+    {
+      "gstin": "33AADCC2718R1ZK",
+      "legal_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED",
+      "trade_name": "COASTAL SAFETY",
+      "status": "Active",
+      "taxpayer_type": "Regular",
+      "constitution": "Private Limited Company",
+      "registration_date": "2017-07-01",
+      "state": "Tamil Nadu",
+      "principal_address": "No. 18, SIDCO Industrial Estate, Thirumazhisai, Chennai 600124",
+      "filings": [
+        {
+          "period": "Feb 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-03-20",
+          "filed_on": "2026-03-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Mar 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-04-20",
+          "filed_on": "2026-04-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Apr 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-05-20",
+          "filed_on": "2026-05-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "May 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-06-20",
+          "filed_on": "2026-06-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jun 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-07-20",
+          "filed_on": "2026-07-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Jul 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-08-20",
+          "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        }
+      ]
     }
   ]
 }

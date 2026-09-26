@@ -205,6 +205,19 @@ export async function listBatchRuns(db: SupabaseClient, batchId: string) {
 
 /** Creates the batch and one queued run per stored document, returns at once; reading continues in the background. */
 export async function startDocumentBatch(db: SupabaseClient, userId: string, officerName: string, bidId: string) {
+  const { view, batch, runs } = await createDocumentBatch(db, userId, bidId);
+  waitUntil(processBatch(db, view, batch.id, runs, officerName));
+  return { batch, runs };
+}
+
+/** Reads every stored document of a bid and waits until all are done (used by automatic GeM intake). */
+export async function readAllDocumentsNow(db: SupabaseClient, actorName: string, bidId: string) {
+  const { view, batch, runs } = await createDocumentBatch(db, null, bidId);
+  await processBatch(db, view, batch.id, runs, actorName);
+  return listBatchRuns(db, batch.id);
+}
+
+async function createDocumentBatch(db: SupabaseClient, userId: string | null, bidId: string) {
   const view = getBidView(await loadWorkspace(db), bidId);
   if (!view) throw new HttpError(404, `Bid ${bidId} was not found.`, 'NOT_FOUND');
   const docs = view.documents.filter((d) => d.storagePath && DOCUMENT_TYPE_BY_REQUIREMENT[requirementCode(view, d)]);
@@ -227,8 +240,7 @@ export async function startDocumentBatch(db: SupabaseClient, userId: string, off
       .select('*'),
     'document runs',
   );
-  waitUntil(processBatch(db, view, batch.id, runs.map(mapRunRow), officerName));
-  return { batch: mapBatchRow(batch), runs: runs.map(mapRunRow) };
+  return { view, batch: mapBatchRow(batch), runs: runs.map(mapRunRow) };
 }
 
 async function processBatch(db: SupabaseClient, view: BidView, batchId: string, runs: ReturnType<typeof mapRunRow>[], officerName: string) {

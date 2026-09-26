@@ -1,6 +1,7 @@
 // Writes bid_package/manifest.json (documents + bidder identity) from the shared demo seed, so the
 // specimen images always match the database. Run: npx tsx database/sample_documents/export_manifest.ts
 import { writeFileSync } from 'node:fs';
+import { GEM_DEMO_KIT } from '../../shared/demo/gemDemoKit.js';
 import { seedDatabase } from '../../shared/demo/seed.js';
 
 const db = seedDatabase();
@@ -12,3 +13,6 @@ const docs = db.documents.map((d) => {
 });
 writeFileSync(new URL('./bid_package/manifest.json', import.meta.url), JSON.stringify(docs, null, 2));
 console.log(`manifest: ${docs.length} documents`);
+
+writeFileSync(new URL('./gem_demo_kit/kit.json', import.meta.url), JSON.stringify(GEM_DEMO_KIT, null, 2));
+console.log(`GeM demo kit: ${GEM_DEMO_KIT.documents.length} documents`);

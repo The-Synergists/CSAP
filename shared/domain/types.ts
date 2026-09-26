@@ -8,7 +8,7 @@
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
-export type TenderStatus = 'UNDER_EVALUATION' | 'TECHNICAL_SCRUTINY' | 'AWARDED' | 'CANCELLED';
+export type TenderStatus = 'OPEN_FOR_BIDS' | 'UNDER_EVALUATION' | 'TECHNICAL_SCRUTINY' | 'AWARDED' | 'CANCELLED';
 
 /** Workflow status of a bid. Only an officer decision moves a bid to ACCEPTED / REJECTED. */
 export type BidStatus =
@@ -101,6 +101,9 @@ export interface Bid {
   primaryConcern: string;
   lastVerifiedAt: string;
   status: BidStatus;
+  /** Where the bid came from: loaded into CSAP, or delivered by the (simulated) GeM portal. */
+  source?: 'CSAP' | 'GEM';
+  gemBidNo?: string;
 }
 
 /** A file in the bid package. Its verification outcome lives on the ComplianceCheck that

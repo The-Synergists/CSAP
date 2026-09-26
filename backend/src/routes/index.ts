@@ -13,6 +13,8 @@ import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
+import { receiveGemBid, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
+import { demoKit, getSubmission, openTenders, submitBid, uploadDocument } from '../services/gemPortal.service.js';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
 import { gatewayOverview, recentCalls, registryRecords, tryRegistryCall } from '../services/gatewayConsole.service.js';
@@ -57,6 +59,51 @@ router.post(
   '/auth/refresh',
   asyncHandler(async (req, res) => {
     res.json({ success: true, data: await refresh(req.body?.refreshToken) });
+  }),
+);
+
+// ---------------------------------------------------------------- simulated GeM portal (bidder side, public)
+
+router.get(
+  '/gem/tenders',
+  asyncHandler(async (_req, res) => {
+    res.json({ success: true, data: await openTenders() });
+  }),
+);
+
+router.get('/gem/demo-kit', (_req, res) => {
+  res.json({ success: true, data: demoKit() });
+});
+
+router.post(
+  '/gem/uploads',
+  asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await uploadDocument(req.body ?? {}) });
+  }),
+);
+
+router.post(
+  '/gem/submissions',
+  asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await submitBid(req.body ?? {}) });
+  }),
+);
+
+router.get(
+  '/gem/submissions/:id',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await getSubmission(String(req.params.id)) });
+  }),
+);
+
+// ---------------------------------------------------------------- GeM -> CSAP intake webhook (signed, no officer session)
+
+router.post(
+  '/integrations/gem/bids',
+  asyncHandler(async (req, res) => {
+    verifySignature((req as unknown as { rawBody?: Buffer }).rawBody, req.get('x-gem-timestamp'), req.get('x-gem-signature'));
+    const result = await receiveGemBid(req.body as GemBidPayload);
+    res.status(result.duplicate ? 200 : 202).json({ success: true, data: result });
   }),
 );
 

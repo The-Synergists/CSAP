@@ -29,7 +29,14 @@ export async function startPortalChecks(db: SupabaseClient, userId: string, offi
   return { runId, registries: ADAPTERS.length };
 }
 
-async function runChecks(db: SupabaseClient, userId: string, officerName: string, view: BidView, runId: string) {
+/** Runs every registry check for a bid and waits for the result (used by automatic GeM intake). */
+export async function runPortalChecksNow(db: SupabaseClient, userId: string | null, actorName: string, bidId: string) {
+  const view = getBidView(await loadWorkspace(db), bidId);
+  if (!view) throw new HttpError(404, `Bid ${bidId} was not found.`, 'NOT_FOUND');
+  await runChecks(db, userId, actorName, view, randomUUID());
+}
+
+async function runChecks(db: SupabaseClient, userId: string | null, officerName: string, view: BidView, runId: string) {
   const audit = (summary: string, details: string) =>
     db.from('audit_events').insert({
       bid_id: view.bid.id,

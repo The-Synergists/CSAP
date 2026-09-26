@@ -55,4 +55,4 @@ def test_private_pan_records_from_environment(monkeypatch):
     assert body["status"] == "VALID"
     assert body["category"] == "Individual"
     assert body["name_match"] == "MATCH"
-    assert client.get("/v1/health").json()["records"] == 10  # the malformed entry is ignored
+    assert client.get("/v1/health").json()["records"] == 11  # the malformed entry is ignored

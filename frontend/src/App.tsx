@@ -14,7 +14,11 @@ import { MyReviewsPage } from './pages/work/MyReviewsPage';
 import { AlertsPage } from './pages/work/AlertsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { AuditTrailPage } from './pages/audit/AuditTrailPage';
-import { GatewayPage } from './pages/gateway/GatewayPage';
+import { GatewayPage, RegistryPage } from './pages/gateway/GatewayPage';
+import { GemLayout } from './pages/gem/GemLayout';
+import { GemHomePage } from './pages/gem/GemHomePage';
+import { GemSubmitPage } from './pages/gem/GemSubmitPage';
+import { GemReceiptPage } from './pages/gem/GemReceiptPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotFoundPage } from './pages/common/NotFoundPage';
 import { bidPath } from './lib/format';
@@ -48,6 +52,12 @@ export const App: React.FC = () => (
     <ToastProvider>
       <BrowserRouter>
         <Routes>
+          {/* Simulated GeM portal: the bidder side, no officer login. */}
+          <Route path="/gem" element={<GemLayout />}>
+            <Route index element={<GemHomePage />} />
+            <Route path="tenders/:tenderId" element={<GemSubmitPage />} />
+            <Route path="submissions/:id" element={<GemReceiptPage />} />
+          </Route>
           <Route
             path="/login"
             element={
@@ -77,6 +87,7 @@ export const App: React.FC = () => (
             <Route path="reports" element={<ReportsPage />} />
             <Route path="audit" element={<AuditTrailPage />} />
             <Route path="gateway" element={<GatewayPage />} />
+            <Route path="gateway/:registry" element={<RegistryPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="profile" element={<Navigate to="/settings" replace />} />
             <Route path="*" element={<NotFoundPage />} />

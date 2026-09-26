@@ -65,7 +65,7 @@ def test_unknown_registry_and_key_required():
 def test_records_endpoint_lists_dataset_and_hides_private_pans(monkeypatch):
     monkeypatch.setenv("PAN_EXTRA_RECORDS", '[{"pan": "BQXPS4821K", "registered_name": "Private Person"}]')
     body = client.get("/v1/pan/records", headers=KEY).json()
-    assert body["file"] == "pan.json" and len(body["records"]) == 9
+    assert body["file"] == "pan.json" and len(body["records"]) == 10
     assert all(r["pan"] != "BQXPS4821K" for r in body["records"])
     assert client.get("/v1/gstn/records", headers=KEY).json()["file"] == "gstn.json"
     assert client.get("/v1/nope/records", headers=KEY).status_code == 404

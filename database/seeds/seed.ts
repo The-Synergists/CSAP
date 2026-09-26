@@ -86,6 +86,23 @@ async function main() {
   // 2. Clear demo rows (bid children cascade from bids).
   const bidIds = demo.bids.map((b) => b.id);
   const tenderIds = demo.tenders.map((t) => t.id);
+  // Bids that arrived through the simulated GeM portal are demo runs too: remove them and their companies.
+  const gemBids = ok(await sb.from('bids').select('id, company_id').eq('source', 'GEM'), 'GeM bids');
+  if (gemBids.length) {
+    ok(await sb.from('audit_events').delete().in('bid_id', gemBids.map((b) => b.id)), 'clear GeM bid audit');
+    ok(await sb.from('bids').delete().in('id', gemBids.map((b) => b.id)), 'clear GeM bids');
+    for (const b of gemBids) {
+      const { data: files } = await sb.storage.from('bid-documents').list(b.id, { limit: 100 });
+      if (files?.length) await sb.storage.from('bid-documents').remove(files.map((f) => `${b.id}/${f.name}`));
+    }
+    ok(await sb.from('companies').delete().in('id', gemBids.map((b) => b.company_id)).like('vendor_code', 'V-GEM-%'), 'clear GeM companies');
+  }
+  ok(await sb.from('gem_bid_submissions').delete().neq('gem_bid_no', ''), 'clear GeM submissions');
+  const { data: gemFolders } = await sb.storage.from('bid-documents').list('gem/submissions', { limit: 1000 });
+  for (const folder of gemFolders ?? []) {
+    const { data: files } = await sb.storage.from('bid-documents').list(`gem/submissions/${folder.name}`, { limit: 100 });
+    if (files?.length) await sb.storage.from('bid-documents').remove(files.map((f) => `gem/submissions/${folder.name}/${f.name}`));
+  }
   ok(await sb.from('audit_events').delete().in('tender_id', tenderIds), 'clear tender audit');
   ok(await sb.from('audit_events').delete().in('bid_id', bidIds), 'clear bid audit');
   ok(await sb.from('bids').delete().in('id', bidIds), 'clear bids');
@@ -252,6 +269,14 @@ async function main() {
     }
     console.log(`Stored bid package ${bidId}`);
   }
+
+  // 8. GeM demo kit: specimen documents a bidder can attach on the simulated GeM portal.
+  const kitDir = new URL('../sample_documents/gem_demo_kit/', import.meta.url);
+  for (const file of readdirSync(kitDir).filter((f) => f.endsWith('.png'))) {
+    const { error } = await sb.storage.from('bid-documents').upload(`gem/demo-kit/${file}`, readFileSync(new URL(file, kitDir)), { contentType: 'image/png', upsert: true });
+    if (error) throw new Error(`upload gem/demo-kit/${file}: ${error.message}`);
+  }
+  console.log('Stored GeM demo kit');
 
   console.log(`\nDone. Officer login: ${demoUser.email} or employee ID ${demoUser.employeeId}`);
 }

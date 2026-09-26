@@ -45,6 +45,8 @@ gstn["records"] = [
     {"gstin": "33AAECS7788K1Z9", "legal_name": "SUNRISE SAFETY TRADERS", "trade_name": "SUNRISE SAFETY TRADERS", "status": "Cancelled", "taxpayer_type": "Regular", "constitution": "Proprietorship", "registration_date": "2019-07-03", "cancellation_date": "2026-05-31", "state": "Tamil Nadu", "principal_address": "Guindy, Chennai 600032", "filings": filings(["ON_TIME", "LATE", "NOT_FILED", "NOT_FILED", "NOT_FILED", "NOT_FILED"])},
     {"gstin": "29AAGCK5566L1ZX", "legal_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED", "trade_name": "KAVERI SAFETY EQUIPMENT", "status": "Active", "taxpayer_type": "Regular", "constitution": "Private Limited Company", "registration_date": "2017-09-12", "state": "Karnataka", "principal_address": "Peenya Industrial Area, Bengaluru 560058", "filings": filings(["ON_TIME", "ON_TIME", "ON_TIME", "NOT_FILED", "NOT_FILED", "NOT_FILED"])},
     {"gstin": "33AAFCR3322Q1Z1", "legal_name": "RAJ FIRE SERVICES PRIVATE LIMITED", "trade_name": "RAJ FIRE SERVICES", "status": "Suspended", "taxpayer_type": "Regular", "constitution": "Private Limited Company", "registration_date": "2017-07-01", "state": "Tamil Nadu", "principal_address": "Ennore, Chennai 600057", "filings": filings(["NOT_FILED"] * 6)},
+    # GeM demo kit bidder (Phase 5): submits on the simulated GeM portal.
+    {"gstin": "33AADCC2718R1ZK", "legal_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "trade_name": "COASTAL SAFETY", "status": "Active", "taxpayer_type": "Regular", "constitution": "Private Limited Company", "registration_date": "2017-07-01", "state": "Tamil Nadu", "principal_address": "No. 18, SIDCO Industrial Estate, Thirumazhisai, Chennai 600124", "filings": filings(OK6)},
 ]
 
 udyam = meta("Udyam registry", "MSME classification and activity.")
@@ -54,11 +56,13 @@ udyam["records"] = [
     {"udyam_number": "UDYAM-UP-28-0091245", "enterprise_name": "NATIONAL SAFETY SYSTEMS", "type": "Medium", "major_activity": "Services", "nic_codes": ["46699 Wholesale of other products"], "date_of_registration": "2021-01-11", "classification_year": "2025-26", "status": "Active"},
     {"udyam_number": "UDYAM-TN-02-0089142", "enterprise_name": "PRIME TECH SOLUTIONS", "type": "Small", "major_activity": "Manufacturing", "nic_codes": ["32901 Manufacture of safety equipment"], "date_of_registration": "2020-08-27", "classification_year": "2025-26", "status": "Active"},
     {"udyam_number": "UDYAM-KR-03-0055667", "enterprise_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED", "type": "Medium", "major_activity": "Manufacturing", "nic_codes": ["32901 Manufacture of safety equipment"], "date_of_registration": "2020-11-05", "classification_year": "2025-26", "status": "Active", "remarks": "Reclassified from Small to Medium in FY 2025-26."},
+    {"udyam_number": "UDYAM-TN-02-0073310", "enterprise_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "type": "Small", "major_activity": "Manufacturing", "nic_codes": ["32901 Manufacture of safety equipment"], "date_of_registration": "2020-07-22", "classification_year": "2025-26", "status": "Active"},
 ]
 
 mca = meta("MCA21 company master", "Company status, incorporation and directors.")
 mca["records"] = [
     {"cin": "U29299TN2014PTC095871", "company_name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED", "company_status": "Active", "company_class": "Private", "date_of_incorporation": "2014-05-14", "registered_office": "Plot 42, Ambattur Industrial Estate, Chennai, Tamil Nadu 600058", "authorised_capital_inr": 20000000, "paid_up_capital_inr": 15000000, "last_agm_date": "2025-09-26", "directors": [{"name": "SURESH ANANTHAKRISHNAN", "din": "07123456"}, {"name": "LATHA SURESH", "din": "07123457"}]},
+    {"cin": "U33120TN2015PTC101842", "company_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "company_status": "Active", "company_class": "Private", "date_of_incorporation": "2015-06-18", "registered_office": "No. 18, SIDCO Industrial Estate, Thirumazhisai, Chennai, Tamil Nadu 600124", "authorised_capital_inr": 15000000, "paid_up_capital_inr": 10000000, "last_agm_date": "2025-09-24", "directors": [{"name": "ARUN VISWANATHAN", "din": "07345612"}, {"name": "MEERA ARUN", "din": "07345613"}]},
     {"cin": "U74999KA2015PTC082334", "company_name": "KAVERI FIRE PROTECTION PRIVATE LIMITED", "company_status": "Active", "company_class": "Private", "date_of_incorporation": "2015-09-09", "registered_office": "Peenya Industrial Area, Bengaluru, Karnataka 560058", "authorised_capital_inr": 10000000, "paid_up_capital_inr": 5000000, "last_agm_date": "2025-09-30", "directors": [{"name": "RAVI KUMAR", "din": "08234567"}]},
     {"cin": "U74999TN2012PTC088123", "company_name": "RAJ FIRE SERVICES PRIVATE LIMITED", "company_status": "Strike Off", "company_class": "Private", "date_of_incorporation": "2012-11-15", "registered_office": "Ennore, Chennai, Tamil Nadu 600057", "authorised_capital_inr": 5000000, "paid_up_capital_inr": 1000000, "last_agm_date": "2021-09-30", "directors": []},
 ]
@@ -69,6 +73,7 @@ epfo["records"] = [
     {"establishment_code": "TNCBE0098124", "establishment_name": "BHARAT ENGINEERING WORKS", "status": "Live", "latest_ecr_month": "2026-07", "latest_ecr_paid_on": "2026-08-14", "employees_covered": 52},
     {"establishment_code": "UPNOI0078129", "establishment_name": "NATIONAL SAFETY SYSTEMS", "status": "Live", "latest_ecr_month": "2026-06", "latest_ecr_paid_on": "2026-07-29", "employees_covered": 21},
     {"establishment_code": "TNMAS0089142", "establishment_name": "PRIME TECH SOLUTIONS", "status": "Live", "latest_ecr_month": "2026-08", "latest_ecr_paid_on": "2026-09-10", "employees_covered": 64},
+    {"establishment_code": "TNMAS0073310000", "establishment_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "status": "Live", "latest_ecr_month": "2026-08", "latest_ecr_paid_on": "2026-09-14", "employees_covered": 46},
     {"establishment_code": "TNMAS0033221", "establishment_name": "RAJ FIRE SERVICES PRIVATE LIMITED", "status": "Closed", "latest_ecr_month": "2023-03", "latest_ecr_paid_on": "2023-04-15", "employees_covered": 0},
 ]
 
@@ -78,6 +83,7 @@ esic["records"] = [
     {"employer_code": "51000981240000102", "employer_name": "BHARAT ENGINEERING WORKS", "status": "Active", "latest_contribution_month": "2026-07", "employees_covered": 52},
     {"employer_code": "69000781290000103", "employer_name": "NATIONAL SAFETY SYSTEMS", "status": "Active", "latest_contribution_month": "2026-07", "employees_covered": 21},
     {"employer_code": "51000891420000104", "employer_name": "PRIME TECH SOLUTIONS", "status": "Active", "latest_contribution_month": "2026-08", "employees_covered": 64},
+    {"employer_code": "51000733100000105", "employer_name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "status": "Active", "latest_contribution_month": "2026-08", "employees_covered": 46},
 ]
 
 startup = meta("Startup India (DPIIT) recognition registry", "DPIIT recognition and validity.")

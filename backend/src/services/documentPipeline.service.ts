@@ -54,7 +54,7 @@ export async function listSamples(): Promise<string[]> {
 
 /** Short-lived signed URL for previewing a stored document. Only bid and sample paths are allowed. */
 export async function signedUrl(path: string): Promise<string> {
-  if (!/^(BID-\d{3}|samples|uploads\/BID-\d{3})\//.test(path) || path.includes('..')) {
+  if (!/^(BID-\d{3}|samples|uploads\/BID-\d{3}|gem\/demo-kit|gem\/submissions\/[0-9a-f-]{36})\//.test(path) || path.includes('..')) {
     throw new HttpError(400, 'Invalid document path.', 'VALIDATION');
   }
   const { data, error } = await serviceClient.storage.from(BUCKET).createSignedUrl(path, 300);
