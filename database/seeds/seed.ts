@@ -122,7 +122,7 @@ async function main() {
     const view = getBidView(demo, bid.id)!;
     ok(await sb.from('bids').insert({
       id: bid.id, tender_id: bid.tenderId, company_id: companyId.get(bid.bidderId),
-      make_in_india_percentage: bid.makeInIndiaPercentage, overall_compliance_score: bid.complianceScore,
+      make_in_india_percentage: bid.makeInIndiaPercentage, overall_compliance_score: view.score.score,
       risk_level: bid.riskLevel, risk_score: bid.riskScore, primary_concern: bid.primaryConcern, submission_timestamp: bid.submittedAt,
     }), `bid ${bid.id}`);
 

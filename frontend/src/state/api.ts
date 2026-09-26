@@ -7,6 +7,19 @@ import type { VerificationRun } from '@shared/domain/verification';
 /** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
 export type RegistryAnswer = Omit<PortalVerification, 'id' | 'runId' | 'bidId' | 'checkedAt'>;
 
+export interface RecommendationDraft {
+  id: string;
+  bidId: string;
+  suggestedDecision: string;
+  score: number;
+  sentences: { text: string; citations: string[] }[];
+  dropped: { text: string; reason: string }[];
+  evidence: { id: string; text: string }[];
+  model: string;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
 export interface GatewayOverview {
   baseUrl: string;
   healthy: boolean;
@@ -159,6 +172,8 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
+  recommendationDraft: (bidId: string) => call<RecommendationDraft | null>(`/api/bids/${bidId}/recommendation/draft`),
+  draftRecommendation: (bidId: string) => call<RecommendationDraft>(`/api/bids/${bidId}/recommendation/draft`, { method: 'POST' }),
   gateway: () => call<GatewayOverview>('/api/gateway'),
   gatewayCalls: () => call<GatewayCall[]>('/api/gateway/calls'),
   gatewayRecords: (registry: string) => call<{ registry: string; file: string; dataset: string; version: string; records: Record<string, unknown>[] }>(`/api/gateway/${registry}/records`),

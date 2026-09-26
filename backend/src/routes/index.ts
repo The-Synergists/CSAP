@@ -12,6 +12,7 @@ import { deleteUpload, listRuns, listSamples, signedUrl, startPanVerification, t
 import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
+import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
 import { gatewayOverview, recentCalls, registryRecords, tryRegistryCall } from '../services/gatewayConsole.service.js';
@@ -168,6 +169,24 @@ router.delete(
     const { db, userId } = authOf(res);
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.json({ success: true, data: await deleteUpload(db, userId, String(req.params.id), profile?.full_name ?? 'Officer') });
+  }),
+);
+
+// ---------------------------------------------------------------- AI explanation of the recommendation
+
+router.get(
+  '/bids/:id/recommendation/draft',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await latestDraft(authOf(res).db, String(req.params.id)) });
+  }),
+);
+
+router.post(
+  '/bids/:id/recommendation/draft',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.status(201).json({ success: true, data: await draftExplanation(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
   }),
 );
 

@@ -14,6 +14,7 @@ from src.risk_scorer.scorer import MultiVectorRiskScorer
 from src.nvidia.errors import NvidiaError
 from src.nvidia.extraction import run_extraction
 from src.nvidia.ocr import run_ocr
+from src.nvidia.recommendation import draft_recommendation
 from src.schemas import OcrRequest, VerifyRequest
 
 ENGINE_VERSION = "rules-2026.09"
@@ -86,6 +87,21 @@ def document_ocr(payload: DocumentOcrRequest):
 def document_extract(payload: ExtractionRequest):
     """Stage 2: an NVIDIA LLM extracts structured fields from the OCR text."""
     return _nvidia_call(run_extraction, payload.documentType, payload.ocrText)
+
+
+class RecommendationRequest(BaseModel):
+    bidId: str
+    bidder: str
+    tender: str
+    suggestedDecision: str
+    score: int
+    evidence: list
+
+
+@app.post("/api/v1/recommendation/draft")
+def recommendation_draft(payload: RecommendationRequest):
+    """An NVIDIA LLM explains the rule-based suggestion; unsupported sentences are removed."""
+    return _nvidia_call(draft_recommendation, payload.model_dump())
 
 
 @app.post("/api/v1/ocr/extract")

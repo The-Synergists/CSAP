@@ -10,6 +10,7 @@ import { useToast } from '../../../components/ui/toast';
 import { BID_STATUS, DECISION } from '../../../domain/labels';
 import { formatDateTime } from '../../../lib/format';
 import type { TabProps } from '../bidTabs';
+import { AiExplanation } from '../AiExplanation';
 
 const ORDER: DecisionType[] = ['APPROVE', 'REQUEST_CLARIFICATION', 'COMMITTEE_REVIEW', 'REJECT'];
 const OTHER = '__other__';
@@ -20,7 +21,8 @@ interface Preset {
   finding?: string;
 }
 
-const RecommendationPanel: React.FC<{ view: BidView }> = ({ view }) => {
+const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> = ({ view, goTo }) => {
+  const { source } = useApp();
   const rec = view.recommendation;
   if (!rec) return <Card title="AI recommendation"><p className="text-xs text-slate-500">No recommendation has been generated for this bid.</p></Card>;
   return (
@@ -60,6 +62,7 @@ const RecommendationPanel: React.FC<{ view: BidView }> = ({ view }) => {
           </ul>
         </div>
       </div>
+      {source === 'api' && <AiExplanation bidId={view.bid.id} goTo={goTo} />}
       <p className="mt-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
         AI advisory — the final decision remains with the designated procurement officer.
       </p>
@@ -290,10 +293,10 @@ const DecisionHistory: React.FC<{ view: BidView }> = ({ view }) =>
     </Card>
   );
 
-export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, preset }) => (
+export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, preset, goTo }) => (
   <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
     <div className="space-y-5">
-      <RecommendationPanel view={view} />
+      <RecommendationPanel view={view} goTo={goTo} />
     </div>
     <div className="space-y-5">
       {view.flags.closed ? (

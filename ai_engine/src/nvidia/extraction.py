@@ -132,25 +132,15 @@ def _parse_json(content: str) -> Dict[str, Any]:
     return json.loads(match.group(0))
 
 
-def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
-    schema = SCHEMAS.get(document_type)
-    if schema is None:
-        raise NvidiaError(f"Unsupported document type {document_type}.", status=400)
+def stream_chat(system: str, user: str, max_tokens: int) -> tuple:
+    """One streamed chat completion from the NVIDIA-hosted model; returns (text, latency_ms)."""
     if not settings.nvidia_extraction_api_key:
         raise NvidiaNotConfigured("NVIDIA_EXTRACTION_API_KEY is not set for the extraction model.")
-    if not ocr_text.strip():
-        raise NvidiaError("OCR produced no text to extract from.", status=422)
-
-    user_prompt = (
-        f"Document type: {document_type}\n"
-        f"Return JSON with exactly these keys: {json.dumps(schema)}\n\n"
-        f"OCR text:\n\"\"\"\n{ocr_text}\n\"\"\""
-    )
     body = {
         "model": settings.nvidia_extraction_model,
-        "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}],
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         "temperature": 0,
-        "max_tokens": 700,
+        "max_tokens": max_tokens,
         "stream": True,
         "chat_template_kwargs": {"enable_thinking": False},
     }
@@ -165,7 +155,7 @@ def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
             timeout=(10, 120),
         ) as res:
             if not res.ok:
-                raise NvidiaError(f"Extraction model returned HTTP {res.status_code}: {res.text[:300]}")
+                raise NvidiaError(f"NVIDIA model returned HTTP {res.status_code}: {res.text[:300]}")
             for line in res.iter_lines():
                 if not line or not line.startswith(b"data: ") or line == b"data: [DONE]":
                     continue
@@ -173,8 +163,25 @@ def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
                 if chunk.get("choices"):
                     content += chunk["choices"][0].get("delta", {}).get("content") or ""
     except requests.RequestException as exc:
-        raise NvidiaError(f"Extraction model request failed: {exc}") from exc
-    latency_ms = round((time.perf_counter() - started) * 1000)
+        raise NvidiaError(f"NVIDIA model request failed: {exc}") from exc
+    return content, round((time.perf_counter() - started) * 1000)
+
+
+def run_extraction(document_type: str, ocr_text: str) -> Dict[str, Any]:
+    schema = SCHEMAS.get(document_type)
+    if schema is None:
+        raise NvidiaError(f"Unsupported document type {document_type}.", status=400)
+    if not settings.nvidia_extraction_api_key:
+        raise NvidiaNotConfigured("NVIDIA_EXTRACTION_API_KEY is not set for the extraction model.")
+    if not ocr_text.strip():
+        raise NvidiaError("OCR produced no text to extract from.", status=422)
+
+    user_prompt = (
+        f"Document type: {document_type}\n"
+        f"Return JSON with exactly these keys: {json.dumps(schema)}\n\n"
+        f"OCR text:\n\"\"\"\n{ocr_text}\n\"\"\""
+    )
+    content, latency_ms = stream_chat(SYSTEM_PROMPT, user_prompt, max_tokens=700)
 
     raw = _parse_json(content)
     fields = {key: raw.get(key) for key in schema}

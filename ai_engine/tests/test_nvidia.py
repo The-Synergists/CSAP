@@ -108,3 +108,35 @@ def test_every_bid_document_type_has_a_schema():
 
 def test_unknown_document_type_rejected():
     assert _extract("{}", "PASSPORT", raw=True).status_code == 400
+
+
+EVIDENCE = [
+    {"id": "EVD-003", "text": "EMD shortfall: required INR 2,00,000, received INR 1,50,000 (NEFT TXN881294); 50,000 short."},
+    {"id": "EVD-004", "text": "Average turnover INR 3.47 Cr against the INR 5.00 Cr benchmark."},
+    {"id": "REQ-02", "text": "GST registration: met. Active regular registration."},
+]
+
+
+def _recommend(model_output):
+    with patch("src.nvidia.extraction.requests.post", return_value=_stream([model_output])), patch("src.nvidia.extraction.settings") as s:
+        s.nvidia_extraction_api_key, s.nvidia_extraction_base_url, s.nvidia_extraction_model = "k", "https://x/v1", "m"
+        return client.post("/api/v1/recommendation/draft", json={"bidId": "BID-003", "bidder": "National Safety Systems", "tender": "T1", "suggestedDecision": "REJECT", "score": 41, "evidence": EVIDENCE}).json()
+
+
+def test_recommendation_keeps_only_grounded_sentences():
+    out = json.dumps({"sentences": [
+        {"text": "The EMD received was 1,50,000, which is 50,000 short of the 2,00,000 required.", "citations": ["EVD-003"]},
+        {"text": "Average turnover of 3.47 Cr is below the 5.00 Cr benchmark [EVD-004].", "citations": []},
+        {"text": "The GST registration is active.", "citations": ["REQ-02"]},
+        {"text": "The bidder has a strong track record.", "citations": []},
+        {"text": "The bidder was blacklisted in 2024.", "citations": ["EVD-099"]},
+        {"text": "The EMD is 75,000 short.", "citations": ["EVD-003"]},
+    ]})
+    body = _recommend(out)
+    kept = [s["text"] for s in body["sentences"]]
+    assert len(kept) == 3
+    assert kept[1] == "Average turnover of 3.47 Cr is below the 5.00 Cr benchmark."  # inline citation parsed and stripped
+    reasons = [d["reason"] for d in body["dropped"]]
+    assert reasons[0] == "cites no evidence"
+    assert "EVD-099" in reasons[1]
+    assert "75000" in reasons[2]

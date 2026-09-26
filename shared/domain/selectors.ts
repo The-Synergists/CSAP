@@ -2,6 +2,7 @@
 // these functions, so a bid's scores, EMD status, findings and decision are always read from
 // the same rows no matter which page displays them.
 
+import { explainScore, type ScoreBreakdown } from './scoring.js';
 import type {
   AuditEvent,
   Bid,
@@ -28,6 +29,8 @@ export interface CheckRow extends ComplianceCheck {
 
 export interface BidView {
   bid: Bid;
+  /** How the compliance score is made up (see scoring.ts). */
+  score: ScoreBreakdown;
   tender: Tender;
   bidder: Bidder;
   requirements: TenderRequirement[];
@@ -125,8 +128,12 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
     noExceptions: counts.exceptions === 0,
   };
 
+  const score = explainScore(checks);
+
   return {
-    bid,
+    // The displayed compliance score is always the one computed from the checks.
+    bid: checks.length ? { ...bid, complianceScore: score.score } : bid,
+    score,
     tender,
     bidder,
     requirements,
