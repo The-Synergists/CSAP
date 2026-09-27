@@ -4,18 +4,10 @@ import { CheckCircle2, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { formatDate } from '../../lib/format';
 import { GemCard, gemButton, gemInput, gemPrimary, gemSecondary } from './GemLayout';
 import { rememberSeller } from './gemSeller';
-import { crore, gemApi, inr, type EmdInstrument, type GemCompany, type GemDocument, type GemTender } from './gemApi';
+import { crore, fileToBase64, gemApi, inr, type EmdInstrument, type GemCompany, type GemDocument, type GemTender } from './gemApi';
 
 const FY = ['2022-23', '2023-24', '2024-25'];
 const EMPTY: GemCompany = { name: '', pan: '', gstin: '', udyamNumber: '', msmeCategory: '', cin: '', epfoCode: '', esicCode: '', incorporationDate: '', address: '' };
-
-const fileToBase64 = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('Could not read the file.'));
-    r.readAsDataURL(file);
-  });
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
   <label className="block text-xs font-medium text-slate-700">

@@ -40,7 +40,7 @@ const byNewest = (key: string) => (a: Row, b: Row) => String(b[key] ?? '').local
 
 export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
   const q = (table: string, select = '*') => db.from(table).select(select);
-  const [profiles, tenders, requirements, companies, turnover, bids, documents, emd, checks, evidence, risks, recs, points, decisions, audit, runs, portal] =
+  const [profiles, tenders, requirements, companies, turnover, bids, documents, emd, checks, evidence, risks, recs, points, decisions, audit, runs, portal, reevaluations] =
     await Promise.all([
       q('profiles'),
       q('tenders').order('id'),
@@ -59,6 +59,7 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       q('audit_events'),
       q('ai_verification_runs', 'id, bid_id, status, steps, started_at, completed_at'),
       q('portal_verifications').order('checked_at', { ascending: false }).limit(500),
+      q('reevaluation_requests'),
     ]);
 
   const P = must<Row[]>(profiles, 'profiles');
@@ -78,6 +79,7 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
   const AU = must<Row[]>(audit, 'audit events');
   const RN = must<Row[]>(runs, 'verification runs');
   const PV = must<Row[]>(portal, 'portal verifications');
+  const RR = must<Row[]>(reevaluations, 'reevaluation requests');
 
   const bidById = new Map(B.map((b) => [b.id, b]));
   const companyById = new Map(C.map((c) => [c.id, c]));
@@ -250,7 +252,10 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       lastVerifiedAt: run?.completed_at ?? b.submission_timestamp,
       source: b.source === 'GEM' ? 'GEM' : 'CSAP',
       gemBidNo: b.gem_bid_no ?? undefined,
-      status: decision
+      // A final decision reopened by an accepted re-evaluation request is under review again.
+      status: decision && RR.some((r) => r.bid_id === b.id && r.status === 'ACCEPTED' && (r.decided_at ?? '') > decision.created_at)
+        ? 'UNDER_REVIEW'
+        : decision
         ? DECISION_TO_BID_STATUS[decision.decision as keyof typeof DECISION_TO_BID_STATUS]
         : clean
           ? 'RECOMMENDED_ACCEPT'
@@ -345,5 +350,17 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
     decisions: decisionsOut,
     auditEvents: auditOut,
     portalVerifications: PV.map(mapPortalRow),
+    reevaluationRequests: RR.map((r) => ({
+      id: r.id,
+      bidId: r.bid_id,
+      gemBidNo: r.gem_bid_no ?? null,
+      kind: r.kind,
+      reason: r.reason,
+      documents: r.documents ?? [],
+      status: r.status,
+      requestedAt: r.requested_at,
+      decidedAt: r.decided_at ?? null,
+      decisionNote: r.decision_note ?? null,
+    })),
   };
 }

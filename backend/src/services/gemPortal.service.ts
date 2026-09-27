@@ -138,6 +138,7 @@ const mapSubmissionWithEvaluation = (r: any) => ({
   evaluationStatus: r.evaluation_status,
   evaluation: r.evaluation,
   evaluationReceivedAt: r.evaluation_received_at,
+  responses: (r.responses ?? []) as any[],
 });
 
 export async function getSubmissionWithEvaluation(id: string) {
@@ -150,14 +151,54 @@ export async function getSubmissionWithEvaluation(id: string) {
 /** CSAP -> GeM: the buyer's evaluation outcome and report summary for one bid (signed by CSAP). */
 export async function receiveEvaluation(payload: any) {
   if (!payload?.gemBidNo || !payload?.status) throw new HttpError(400, 'gemBidNo and status are required.', 'VALIDATION');
-  const row = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('id').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
+  const row = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('id, evaluation').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
   if (!row) throw new HttpError(404, `GeM bid ${payload.gemBidNo} not found.`, 'NOT_FOUND');
+  // A status message without a report (re-evaluation started / request declined) keeps the last
+  // report on record, except while the bid is being evaluated again.
+  const report = payload.report ?? (payload.status === 'UNDER_EVALUATION' ? null : row.evaluation?.report ?? null);
   must(
     await serviceClient
       .from('gem_bid_submissions')
-      .update({ evaluation_status: payload.status, evaluation: payload, evaluation_received_at: new Date().toISOString() })
+      .update({ evaluation_status: payload.status, evaluation: { ...payload, report }, evaluation_received_at: new Date().toISOString() })
       .eq('id', row.id),
     'submission',
   );
   return { received: true, gemBidNo: payload.gemBidNo, status: payload.status };
+}
+
+const DECIDED = new Set(['TECHNICALLY_QUALIFIED', 'DISQUALIFIED', 'UNDER_COMMITTEE_REVIEW']);
+
+/**
+ * The seller answers the buyer's clarification, or asks for a decided bid to be evaluated again,
+ * optionally with replacement documents. GeM records it and delivers it to CSAP (signed). Only one
+ * response can be waiting at a time; the buyer's next status message closes it.
+ */
+export async function submitResponse(id: string, input: { reason: string; documents?: GemBidPayload['documents'] }) {
+  const sub = await getSubmissionWithEvaluation(id);
+  const status = sub.evaluationStatus ?? 'UNDER_EVALUATION';
+  const kind = status === 'CLARIFICATION_SOUGHT' ? 'CLARIFICATION_RESPONSE' : DECIDED.has(status) ? 'REEVALUATION' : null;
+  if (!kind) throw new HttpError(409, 'The buyer is still evaluating this bid. You can respond once the buyer has asked for a clarification or decided.', 'NOT_ALLOWED');
+  const last = sub.responses[sub.responses.length - 1];
+  if (last && (!sub.evaluationReceivedAt || last.sentAt > sub.evaluationReceivedAt)) {
+    throw new HttpError(409, 'Your earlier response is still with the buyer. You can send another one after the buyer replies.', 'ALREADY_PENDING');
+  }
+  const reason = String(input.reason ?? '').trim();
+  if (reason.length < 10) throw new HttpError(400, 'Explain your response in at least 10 characters.', 'VALIDATION');
+  const documents = (input.documents ?? []).slice(0, 12);
+  if (documents.some((d) => !/^gem\/submissions\/[0-9a-f-]{36}\/REQ-\d{2}\.(png|jpg|pdf)$/.test(d.path))) throw new HttpError(400, 'Upload the documents again.', 'VALIDATION');
+
+  const body = JSON.stringify({ gemBidNo: sub.gemBidNo, kind, reason, documents });
+  const timestamp = new Date().toISOString();
+  const url = `${config.selfUrl}/api/integrations/gem/responses`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-GeM-Timestamp': timestamp, 'X-GeM-Signature': `sha256=${sign(timestamp, body)}`, 'X-GeM-Delivery': randomUUID() },
+    body,
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  const json = (await res?.json().catch(() => ({}))) as any;
+  if (!res?.ok) throw new HttpError(502, json?.error?.message ?? 'Your response could not be delivered to the buyer. Try again.', 'DELIVERY_FAILED');
+  const entry = { kind, reason, documents, sentAt: new Date().toISOString(), buyerRequestId: json?.data?.requestId ?? null };
+  must(await serviceClient.from('gem_bid_submissions').update({ responses: [...sub.responses, entry] }).eq('id', id), 'submission');
+  return getSubmissionWithEvaluation(id);
 }

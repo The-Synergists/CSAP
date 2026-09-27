@@ -18,6 +18,23 @@ export interface EvaluationReport {
   generatedAt: string;
   sentToGemAt: string | null;
   gemResponse: unknown;
+  decisionId: string | null;
+}
+
+/** A row of the Reports page: one evaluation report and the decision it records. */
+export interface ReportSummary {
+  id: string;
+  reportNo: string;
+  bidId: string;
+  sha256: string;
+  generatedBy: string;
+  generatedAt: string;
+  sentToGemAt: string | null;
+  decisionId: string | null;
+  decision: { decision: DecisionType; reason: string; remarks: string; officer: string; decidedAt: string } | null;
+  bidder: string | null;
+  tenderId: string | null;
+  complianceScore: number | null;
 }
 
 export interface RecommendationDraft {
@@ -206,6 +223,9 @@ export const api = {
   reports: (bidId: string) => call<EvaluationReport[]>(`/api/bids/${bidId}/reports`),
   generateReport: (bidId: string) => call<EvaluationReport>(`/api/bids/${bidId}/reports`, { method: 'POST' }),
   report: (id: string) => call<EvaluationReport & { verified: boolean }>(`/api/reports/${id}`),
+  allReports: () => call<ReportSummary[]>('/api/reports'),
+  acceptReevaluation: (id: string, note?: string) => call<{ bidId: string; status: string }>(`/api/reevaluations/${id}/accept`, { method: 'POST', body: JSON.stringify({ note }) }),
+  declineReevaluation: (id: string, note: string) => call<{ bidId: string; status: string }>(`/api/reevaluations/${id}/decline`, { method: 'POST', body: JSON.stringify({ note }) }),
   sendReportToGem: (id: string) => call<EvaluationReport & { gemStatus: string }>(`/api/reports/${id}/send-to-gem`, { method: 'POST' }),
   assistant: (b: { message: string; path: string; bidId?: string; history: { role: string; content: string }[] }) =>
     call<{ answer: string; actions: { label: string; path: string }[]; model: string; latencyMs: number }>('/api/assistant', { method: 'POST', body: JSON.stringify(b) }),

@@ -63,9 +63,11 @@ export interface GemSubmission {
     status: string;
     remarks: string | null;
     decidedAt: string | null;
-    report: { reportNo: string; sha256: string; generatedAt: string; complianceScore: number; requirementsMet: string; issues: { id: string; title: string; requiredAction: string }[] };
+    report: { reportNo: string; sha256: string; generatedAt: string; complianceScore: number; requirementsMet: string; issues: { id: string; title: string; requiredAction: string }[] } | null;
   } | null;
   evaluationReceivedAt?: string | null;
+  /** The seller's clarification responses / re-evaluation requests, oldest first. */
+  responses?: { kind: 'CLARIFICATION_RESPONSE' | 'REEVALUATION'; reason: string; documents: GemDocument[]; sentAt: string }[];
 }
 
 export const EVALUATION_STATUS: Record<string, { label: string; className: string }> = {
@@ -92,8 +94,17 @@ export const gemApi = {
     publicCall<{ path: string; sizeBytes: number }>('/api/gem/uploads', post(b)),
   submit: (b: { tenderId: string; company: GemCompany; declared: GemDeclared; documents: GemDocument[] }) => publicCall<GemSubmission>('/api/gem/submissions', post(b)),
   submission: (id: string) => publicCall<GemSubmission>(`/api/gem/submissions/${id}`),
+  respond: (id: string, b: { reason: string; documents: GemDocument[] }) => publicCall<GemSubmission>(`/api/gem/submissions/${id}/responses`, post(b)),
   myBids: (pan: string) => publicCall<GemSubmission[]>(`/api/gem/my-bids?pan=${encodeURIComponent(pan)}`),
 };
+
+export const fileToBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(new Error('Could not read the file.'));
+    r.readAsDataURL(file);
+  });
 
 export const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 export const crore = (n: number) => `₹${(n / 1e7).toFixed(2)} Cr`;

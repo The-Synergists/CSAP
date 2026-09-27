@@ -127,7 +127,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let timer: number | undefined;
     const unsubscribe = subscribeToTables(
       'workspace',
-      [{ table: 'officer_decisions' }, { table: 'audit_events' }, { table: 'ai_verification_runs' }, { table: 'portal_verifications' }],
+      [{ table: 'officer_decisions' }, { table: 'audit_events' }, { table: 'ai_verification_runs' }, { table: 'portal_verifications' }, { table: 'reevaluation_requests' }],
       () => {
         window.clearTimeout(timer);
         timer = window.setTimeout(() => {

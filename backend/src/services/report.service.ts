@@ -45,10 +45,33 @@ const mapReport = (r: any) => ({
   generatedAt: r.generated_at,
   sentToGemAt: r.sent_to_gem_at,
   gemResponse: r.gem_response,
+  decisionId: r.decision_id ?? null,
 });
 
 export async function listReports(db: SupabaseClient, bidId: string) {
   return must<any[]>(await db.from('evaluation_reports').select('*').eq('bid_id', bidId).order('generated_at', { ascending: false }), 'reports').map(mapReport);
+}
+
+/** Every report with the decision it records, newest first (Reports page). */
+export async function listAllReports(db: SupabaseClient) {
+  const rows = must<any[]>(
+    await db.from('evaluation_reports').select('id, report_no, bid_id, sha256, generated_by_name, generated_at, sent_to_gem_at, decision_id, content->decision, content->bidder, content->tender, content->summary').order('generated_at', { ascending: false }),
+    'reports',
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    reportNo: r.report_no,
+    bidId: r.bid_id,
+    sha256: r.sha256,
+    generatedBy: r.generated_by_name,
+    generatedAt: r.generated_at,
+    sentToGemAt: r.sent_to_gem_at,
+    decisionId: r.decision_id,
+    decision: r.decision,
+    bidder: r.bidder?.name ?? null,
+    tenderId: r.tender?.id ?? null,
+    complianceScore: r.summary?.complianceScore ?? null,
+  }));
 }
 
 export async function getReport(db: SupabaseClient, id: string) {
@@ -63,6 +86,9 @@ export async function generateReport(db: SupabaseClient, userId: string | null, 
   if (!view) throw new HttpError(404, `Bid ${bidId} was not found.`, 'NOT_FOUND');
   // The report records an evaluation outcome, so it exists only once the officer has decided.
   if (!view.latestDecision) throw new HttpError(409, 'Record your decision first; the evaluation report is generated from it.', 'NO_DECISION');
+  // One report per decision: asking again returns the report already made for this decision.
+  const existing = mustOne<any>(await db.from('evaluation_reports').select('*').eq('decision_id', view.latestDecision.id).maybeSingle(), 'report');
+  if (existing) return mapReport(existing);
 
   const batch = (await listBatches(db, bidId).catch(() => []))[0];
   const reads = batch ? await listBatchRuns(db, batch.id).catch(() => []) : [];
@@ -145,7 +171,7 @@ export async function generateReport(db: SupabaseClient, userId: string | null, 
   const row = must<any>(
     await db
       .from('evaluation_reports')
-      .insert({ report_no: reportNo, bid_id: bidId, content, sha256, generated_by: userId, generated_by_name: officerName })
+      .insert({ report_no: reportNo, bid_id: bidId, decision_id: decision!.id, content, sha256, generated_by: userId, generated_by_name: officerName })
       .select('*')
       .single(),
     'report',

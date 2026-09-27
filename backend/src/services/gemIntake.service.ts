@@ -265,10 +265,17 @@ async function viewOf(bidId: string) {
 }
 
 /** Reads the documents, runs the rules, saves the results and checks the registries. */
-export async function runIntakePipeline(bidId: string) {
+export async function runIntakePipeline(bidId: string, opts: { reverify?: boolean } = {}) {
   const db = serviceClient;
   let view = await viewOf(bidId);
   try {
+    if (opts.reverify) {
+      // Re-evaluation: the previous results are replaced by the new run (history stays in the audit trail).
+      await db.from('compliance_check_items').delete().eq('bid_id', bidId);
+      await db.from('risk_factors').delete().eq('bid_id', bidId);
+      await db.from('evidence_items').delete().eq('bid_id', bidId);
+      await audit(view, 'Re-verification started', 'The bid is being verified again with the documents now on record.');
+    }
     // 1. NVIDIA reads every document; its fields become the text the rules engine checks.
     const runs: DocumentVerificationRun[] = await readAllDocumentsNow(db, 'Automatic verification (GeM intake)', bidId);
     for (const r of runs) {

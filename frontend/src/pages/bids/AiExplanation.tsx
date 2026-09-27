@@ -9,7 +9,7 @@ import { formatDateTime } from '../../lib/format';
 import { api, type RecommendationDraft } from '../../state/api';
 import type { TabProps } from './bidTabs';
 
-export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo'] }> = ({ bidId, goTo }) => {
+export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo']; locked?: boolean }> = ({ bidId, goTo, locked }) => {
   const toast = useToast();
   const [draft, setDraft] = useState<RecommendationDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,7 @@ export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo'] }> 
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
           <Sparkles aria-hidden className="h-3.5 w-3.5 text-indigo-600" /> Explanation written by CSAP AI
         </h3>
-        <Button size="sm" onClick={() => void run()} disabled={busy}>
+        <Button size="sm" onClick={() => void run()} disabled={busy || locked} title={locked ? 'The decision is final; the explanation on record is kept.' : undefined}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           {busy ? 'Writing…' : draft ? 'Write again' : 'Explain with CSAP AI'}
         </Button>

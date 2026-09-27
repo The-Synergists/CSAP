@@ -13,6 +13,7 @@ import { useToast } from '../../../components/ui/toast';
 import { PAN_VERDICT } from '../../../domain/labels';
 import { formatDateTime } from '../../../lib/format';
 import type { TabProps } from '../bidTabs';
+import { LOCKED_HINT } from '../ReevaluationPanel';
 
 type StageState = 'pending' | 'running' | 'done' | 'failed';
 
@@ -470,10 +471,10 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
           actions={<Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>}
         >
           <div className="flex flex-wrap items-end gap-2">
-            <Button variant="primary" disabled={starting || !panDoc?.storagePath} onClick={() => void start({ source: 'bid_package' })} title={panDoc?.storagePath ? undefined : 'No stored PAN document for this bid'}>
+            <Button variant="primary" disabled={starting || !panDoc?.storagePath || view.flags.closed} onClick={() => void start({ source: 'bid_package' })} title={view.flags.closed ? LOCKED_HINT : panDoc?.storagePath ? undefined : 'No stored PAN document for this bid'}>
               {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Verify PAN from bid package
             </Button>
-            <Button disabled={starting} onClick={() => fileRef.current?.click()}>
+            <Button disabled={starting || view.flags.closed} title={view.flags.closed ? LOCKED_HINT : undefined} onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4" /> Upload PAN document
             </Button>
             <input ref={fileRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" aria-label="Upload PAN document" onChange={(e) => void onUpload(e.target.files?.[0])} />
@@ -485,7 +486,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
                     {samples.map((s) => <option key={s} value={s}>{s.replace('SAMPLE_PAN_', '').replace('.png', '').replace(/_/g, ' ')}</option>)}
                   </select>
                 </label>
-                <Button disabled={starting || !sample} onClick={() => void start({ source: 'sample', fileName: sample })}>Run sample</Button>
+                <Button disabled={starting || !sample || view.flags.closed} onClick={() => void start({ source: 'sample', fileName: sample })}>Run sample</Button>
               </div>
             )}
           </div>

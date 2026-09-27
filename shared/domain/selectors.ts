@@ -15,6 +15,7 @@ import type {
   FindingSeverity,
   OfficerDecision,
   PortalVerification,
+  ReevaluationRequest,
   Recommendation,
   RiskFactor,
   Tender,
@@ -48,6 +49,8 @@ export interface BidView {
   audit: AuditEvent[];
   /** Government portal checks from the most recent run (one row per registry). */
   portal: PortalVerification[];
+  /** Bidder responses and re-evaluation requests, newest first. */
+  reevaluations: ReevaluationRequest[];
   counts: { met: number; review: number; notMet: number; missing: number; total: number; exceptions: number };
   documentsRequired: number;
   averageTurnoverCr: number;
@@ -62,6 +65,10 @@ export interface BidFlags {
   missingDocuments: boolean;
   clarification: boolean;
   noExceptions: boolean;
+  /** A final decision was reopened by an accepted re-evaluation request. */
+  reopened: boolean;
+  /** A bidder response / re-evaluation request is waiting for the officer. */
+  pendingRequest: boolean;
 }
 
 const SEVERITY_RANK: Record<FindingSeverity, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -117,6 +124,9 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
   const decisions = db.decisions.filter((d) => d.bidId === bid.id).sort(byNewest((d) => d.decidedAt));
   const openFindings = findings.filter((f) => f.status === 'OPEN');
   const closed = isClosedStatus(bid.status);
+  const reevaluations = (db.reevaluationRequests ?? []).filter((r) => r.bidId === bid.id).sort(byNewest((r) => r.requestedAt));
+  const lastDecision = db.decisions.filter((d) => d.bidId === bid.id).sort(byNewest((d) => d.decidedAt))[0];
+  const reopened = !!lastDecision && reevaluations.some((r) => r.status === 'ACCEPTED' && (r.decidedAt ?? '') > lastDecision.decidedAt);
 
   const flags: BidFlags = {
     awaitingDecision: bid.status === 'UNDER_REVIEW' || bid.status === 'RECOMMENDED_ACCEPT',
@@ -126,6 +136,8 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
     missingDocuments: counts.missing > 0 || documents.length < requirements.length,
     clarification: bid.status === 'CLARIFICATION_REQUIRED',
     noExceptions: counts.exceptions === 0,
+    reopened,
+    pendingRequest: reevaluations.some((r) => r.status === 'OPEN'),
   };
 
   const score = explainScore(checks);
@@ -148,6 +160,7 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
     latestDecision: decisions[0],
     audit: db.auditEvents.filter((e) => e.bidId === bid.id).sort(byNewest((e) => e.timestamp)),
     portal: latestPortalRun(db.portalVerifications ?? [], bid.id),
+    reevaluations,
     counts,
     documentsRequired: requirements.length,
     averageTurnoverCr: bidder.turnover.reduce((s, t) => s + t.amountCr, 0) / (bidder.turnover.length || 1),

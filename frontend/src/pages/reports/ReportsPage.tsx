@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
-import { Download, Eye, Printer } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Download, Eye, FileText, Printer } from 'lucide-react';
 import { listBidViews, type BidView } from '@shared/domain/selectors';
 import { useApp } from '../../state/appContext';
+import { api, type ReportSummary } from '../../state/api';
+import { Badge } from '../../components/ui/Badge';
+import { buttonClass } from '../../components/ui/styles';
+import { bidPath } from '../../lib/format';
 import { Button, Card, EmptyState, Modal, PageHeader } from '../../components/ui/primitives';
 import { inputClass } from '../../components/ui/styles';
 import { useToast } from '../../components/ui/toast';
@@ -89,8 +94,74 @@ const REPORTS: ReportDef[] = [
   },
 ];
 
+/** Signed evaluation reports with the final decision each one records (one report per decision). */
+const EvaluationReportList: React.FC = () => {
+  const { db } = useApp();
+  const [rows, setRows] = useState<ReportSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const decisions = db.decisions.length;
+  useEffect(() => {
+    api.allReports().then(setRows).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [decisions]);
+  // The report is current when it records the bid's latest decision; older ones are kept as history.
+  const latestDecisionId = (bidId: string) =>
+    db.decisions.filter((d) => d.bidId === bidId).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0]?.id;
+
+  return (
+    <Card
+      title="Evaluation reports and final decisions"
+      subtitle="Signed records (SHA-256 fingerprint) of each decision you recorded. One report per decision; a report is replaced only when a bid is reopened by an accepted re-evaluation and decided again."
+    >
+      {error ? (
+        <p role="alert" className="text-xs text-rose-700">{error}</p>
+      ) : rows === null ? (
+        <p className="text-xs text-slate-500">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-slate-600">No evaluation reports yet. A report is generated from a bid's Recommendation &amp; decision tab after you record your decision.</p>
+      ) : (
+        <div className="relative overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+              <tr>
+                {['Report', 'Bid', 'Bidder', 'Final decision', 'Score', 'Decided by', 'Status', ''].map((h) => (
+                  <th key={h} scope="col" className="px-2 py-2 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 align-top">
+              {rows.map((r) => {
+                const d = r.decision?.decision;
+                const current = !r.decisionId || r.decisionId === latestDecisionId(r.bidId);
+                return (
+                  <tr key={r.id}>
+                    <td className="px-2 py-1.5 font-mono">{r.reportNo}</td>
+                    <td className="px-2 py-1.5"><Link to={bidPath(r.bidId, 'decision')} className="text-blue-700 hover:underline">{r.bidId}</Link></td>
+                    <td className="px-2 py-1.5">{r.bidder ?? '—'}</td>
+                    <td className="px-2 py-1.5">{d ? <Badge tone={DECISION[d].tone}>{DECISION[d].label}</Badge> : '—'}</td>
+                    <td className="px-2 py-1.5">{r.complianceScore ?? '—'}</td>
+                    <td className="px-2 py-1.5">{r.decision ? `${r.decision.officer}, ${formatDateTime(r.decision.decidedAt)}` : r.generatedBy}</td>
+                    <td className="px-2 py-1.5">
+                      <span className="flex flex-wrap gap-1">
+                        {current ? <Badge tone="success">Current</Badge> : <Badge tone="neutral">Superseded</Badge>}
+                        {r.sentToGemAt && <Badge tone="info">Sent to GeM</Badge>}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <Link to={`/reports/evaluation/${r.id}`} className={buttonClass('secondary', 'sm')}><FileText className="h-3.5 w-3.5" /> Open</Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+};
+
 export const ReportsPage: React.FC = () => {
-  const { db, activeTenderId } = useApp();
+  const { db, activeTenderId, source } = useApp();
   const toast = useToast();
   const tendersWithBids = db.tenders.filter((t) => db.bids.some((b) => b.tenderId === t.id));
   const [tenderId, setTenderId] = useState(
@@ -112,7 +183,7 @@ export const ReportsPage: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Reports"
-        subtitle="Generated in your browser from the current tender data. Working documents — not official or signed records."
+        subtitle="Signed evaluation reports with their final decisions, and working lists generated in your browser from the current tender data."
         actions={
           tendersWithBids.length > 0 && (
             <label className="flex items-center gap-2 text-xs text-slate-700">
@@ -126,6 +197,10 @@ export const ReportsPage: React.FC = () => {
           )
         }
       />
+
+      {source === 'api' && <EvaluationReportList />}
+
+      <h2 className="pt-1 text-sm font-semibold text-slate-900">Working lists (not signed records)</h2>
 
       {!tender ? (
         <Card><EmptyState title="No tenders with bids" description="Reports become available once a tender has received bids." /></Card>

@@ -14,13 +14,16 @@ import { listPortalChecks, startPortalChecks } from '../services/portal.service.
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
 import { receiveGemBid, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
-import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, uploadDocument } from '../services/gemPortal.service.js';
-import { generateReport, getReport, listReports, sendReportToGem } from '../services/report.service.js';
+import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, submitResponse, uploadDocument } from '../services/gemPortal.service.js';
+import { acceptRequest, declineRequest, receiveBidderResponse, type BidderResponsePayload } from '../services/reevaluation.service.js';
+import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertOpenForVerification } from '../services/bidRules.service.js';
+import { generateReport, getReport, listAllReports, listReports, sendReportToGem } from '../services/report.service.js';
 import { askAssistant } from '../services/assistant.service.js';
 import { createTender } from '../services/tender.service.js';
 import { waitUntil } from '@vercel/functions';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
+import { ADAPTERS } from '../registries/adapters.js';
 import { gatewayOverview, recentCalls, registryRecords, tryRegistryCall } from '../services/gatewayConsole.service.js';
 
 const router = Router();
@@ -100,6 +103,13 @@ router.get(
   }),
 );
 
+router.post(
+  '/gem/submissions/:id/responses',
+  asyncHandler(async (req, res) => {
+    res.status(201).json({ success: true, data: await submitResponse(String(req.params.id), req.body ?? {}) });
+  }),
+);
+
 router.get(
   '/gem/my-bids',
   asyncHandler(async (req, res) => {
@@ -124,6 +134,15 @@ router.post(
     verifySignature((req as unknown as { rawBody?: Buffer }).rawBody, req.get('x-gem-timestamp'), req.get('x-gem-signature'));
     const result = await receiveGemBid(req.body as GemBidPayload);
     res.status(result.duplicate ? 200 : 202).json({ success: true, data: result });
+  }),
+);
+
+/** GeM -> CSAP: a bidder's clarification response or re-evaluation request (waits for the officer). */
+router.post(
+  '/integrations/gem/responses',
+  asyncHandler(async (req, res) => {
+    verifySignature((req as unknown as { rawBody?: Buffer }).rawBody, req.get('x-gem-timestamp'), req.get('x-gem-signature'));
+    res.status(202).json({ success: true, data: await receiveBidderResponse(req.body as BidderResponsePayload) });
   }),
 );
 
@@ -219,6 +238,7 @@ router.post(
     const { db, userId } = authOf(res);
     const bidId = req.body?.bidId;
     if (!bidId) throw new HttpError(400, 'bidId is required.', 'VALIDATION');
+    await assertOpenForVerification(db, String(bidId));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     const run = await runVerification(db, userId, profile?.full_name ?? 'Officer', String(bidId));
     res.json({ success: true, data: run });
@@ -245,6 +265,7 @@ router.post(
         : b.source === 'sample'
           ? { kind: 'sample', fileName: String(b.fileName ?? '') }
           : { kind: 'bid_package' };
+    await assertOpenForVerification(db, String(req.params.id));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     const run = await startPanVerification(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), source);
     res.status(202).json({ success: true, data: run });
@@ -285,6 +306,14 @@ router.post(
   }),
 );
 
+/** Every evaluation report with the decision it records (Reports page). */
+router.get(
+  '/reports',
+  asyncHandler(async (_req, res) => {
+    res.json({ success: true, data: await listAllReports(authOf(res).db) });
+  }),
+);
+
 router.get(
   '/reports/:id',
   asyncHandler(async (req, res) => {
@@ -298,6 +327,26 @@ router.post(
     const { db, userId } = authOf(res);
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.json({ success: true, data: await sendReportToGem(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
+  }),
+);
+
+// ---------------------------------------------------------------- bidder responses / re-evaluation
+
+router.post(
+  '/reevaluations/:id/accept',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.json({ success: true, data: await acceptRequest(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), req.body?.note) });
+  }),
+);
+
+router.post(
+  '/reevaluations/:id/decline',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.json({ success: true, data: await declineRequest(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), req.body?.note) });
   }),
 );
 
@@ -328,6 +377,7 @@ router.post(
   '/bids/:id/recommendation/draft',
   asyncHandler(async (req, res) => {
     const { db, userId } = authOf(res);
+    await assertOpenForVerification(db, String(req.params.id));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.status(201).json({ success: true, data: await draftExplanation(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
   }),
@@ -353,6 +403,8 @@ router.post(
   '/bids/:id/document-batches',
   asyncHandler(async (req, res) => {
     const { db, userId } = authOf(res);
+    await assertOpenForVerification(db, String(req.params.id));
+    await assertNoDocumentReadingRunning(db, String(req.params.id));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.status(202).json({ success: true, data: await startDocumentBatch(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
   }),
@@ -371,6 +423,8 @@ router.post(
   '/bids/:id/portal-checks',
   asyncHandler(async (req, res) => {
     const { db, userId } = authOf(res);
+    await assertOpenForVerification(db, String(req.params.id));
+    await assertNoPortalRunRunning(db, String(req.params.id), ADAPTERS.length);
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     res.status(202).json({ success: true, data: await startPortalChecks(db, userId, profile?.full_name ?? 'Officer', String(req.params.id)) });
   }),

@@ -14,6 +14,7 @@ import { useToast } from '../../../components/ui/toast';
 import { PORTAL_STATUS, REGISTRY, REGISTRY_MODE } from '../../../domain/labels';
 import { formatDateTime } from '../../../lib/format';
 import type { TabProps } from '../bidTabs';
+import { LOCKED_HINT } from '../ReevaluationPanel';
 
 const ORDER: RegistryId[] = ['PAN', 'GSTN', 'UDYAM', 'MCA21', 'EPFO', 'ESIC', 'STARTUP_INDIA', 'NSIC', 'DEBARMENT', 'DIGILOCKER'];
 
@@ -238,7 +239,7 @@ export const PortalVerificationTab: React.FC<TabProps> = ({ view }) => {
         actions={
           <>
             <Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>
-            <Button variant="primary" size="sm" disabled={inProgress} onClick={() => void start()}>
+            <Button variant="primary" size="sm" disabled={inProgress || view.flags.closed} title={view.flags.closed ? LOCKED_HINT : undefined} onClick={() => void start()}>
               {inProgress ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               {inProgress ? 'Checking registries…' : shown.length ? 'Re-run portal checks' : 'Run portal checks'}
             </Button>

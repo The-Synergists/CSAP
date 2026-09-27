@@ -74,7 +74,7 @@ const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> =
           </ul>
         </div>
       </div>
-      {source === 'api' && <AiExplanation bidId={view.bid.id} goTo={goTo} />}
+      {source === 'api' && <AiExplanation bidId={view.bid.id} goTo={goTo} locked={view.flags.closed} />}
       <p className="mt-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
         AI advisory — the final decision remains with the designated procurement officer.
       </p>
@@ -337,7 +337,7 @@ export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, pre
         {view.flags.closed ? (
           <Card>
             <p className="flex items-center gap-2 text-xs text-slate-800">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />A final decision has been recorded. No further decisions can be made on this bid.
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />A final decision has been recorded, so the bid is locked. A new decision is possible only after you accept a re-evaluation request from the bidder.
             </p>
           </Card>
         ) : (

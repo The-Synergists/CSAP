@@ -227,6 +227,22 @@ export interface AuditEvent {
   entryHash?: string;
 }
 
+// ---------------------------------------------------------------- re-evaluation
+
+/** A bidder's response to a clarification, or request to re-evaluate a decided bid. */
+export interface ReevaluationRequest {
+  id: string;
+  bidId: string;
+  gemBidNo: string | null;
+  kind: 'CLARIFICATION_RESPONSE' | 'REEVALUATION';
+  reason: string;
+  documents: { requirementCode: string; name: string; path: string; fileName: string; mimeType: string; sizeBytes: number }[];
+  status: 'OPEN' | 'ACCEPTED' | 'DECLINED';
+  requestedAt: string;
+  decidedAt: string | null;
+  decisionNote: string | null;
+}
+
 // ---------------------------------------------------------------- government portal verification
 
 export type RegistryId = 'PAN' | 'GSTN' | 'UDYAM' | 'MCA21' | 'EPFO' | 'ESIC' | 'STARTUP_INDIA' | 'NSIC' | 'DEBARMENT' | 'DIGILOCKER';
@@ -274,6 +290,8 @@ export interface Database {
   decisions: OfficerDecision[];
   auditEvents: AuditEvent[];
   portalVerifications: PortalVerification[];
+  /** Bidder responses and re-evaluation requests (database only). */
+  reevaluationRequests?: ReevaluationRequest[];
 }
 
 // ---------------------------------------------------------------- document verification pipeline

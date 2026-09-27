@@ -17,7 +17,7 @@ export const DocumentsTab: React.FC<TabProps> = ({ view, goTo, openDocument }) =
   const showAi = source === 'api';
   return (
     <div className="space-y-4">
-      {showAi && <IntelligenceCard state={ai} stored={stored} />}
+      {showAi && <IntelligenceCard state={ai} stored={stored} locked={view.flags.closed} />}
       <Card
         title="Document verification"
         subtitle={`${view.documents.length} of ${view.documentsRequired} required documents submitted. Each document is matched to the tender requirement it supports.`}

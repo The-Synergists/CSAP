@@ -51,14 +51,23 @@ export const EvaluationReports: React.FC<{ view: BidView }> = ({ view }) => {
     }
   };
 
+  // One report per decision: once it exists, the button opens it instead of making another.
+  const current = reports?.find((r) => r.decisionId === view.latestDecision?.id);
+
   return (
     <Card
       title="Evaluation report"
       subtitle={`A signed record of your evaluation: the decision with its score, requirements, findings, document readings, registries and audit history.${fromGem ? ' For GeM bids it is generated and sent to GeM automatically when you decide.' : ''}`}
       actions={
-        <Button size="sm" variant="primary" onClick={() => void generate()} disabled={!!busy || !decided} title={decided ? undefined : 'Available after you record a decision'}>
-          {busy === 'generate' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Generate report
-        </Button>
+        current ? (
+          <Link to={`/reports/evaluation/${current.id}`} className={buttonClass('primary', 'sm')}>
+            <FileText className="h-3.5 w-3.5" /> Open report {current.reportNo.split('/').pop()}
+          </Link>
+        ) : (
+          <Button size="sm" variant="primary" onClick={() => void generate()} disabled={!!busy || !decided || reports === null} title={decided ? undefined : 'Available after you record a decision'}>
+            {busy === 'generate' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Generate report
+          </Button>
+        )
       }
     >
       {reports === null ? (

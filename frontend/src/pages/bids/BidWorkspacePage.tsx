@@ -11,6 +11,7 @@ import { EMD_RESULT } from '../../domain/labels';
 import { bidPath, formatDateTime, tenderPath } from '../../lib/format';
 import { NotFoundPage } from '../common/NotFoundPage';
 import { NextStep } from './NextStep';
+import { BidStatePanel, LOCKED_HINT } from './ReevaluationPanel';
 import { VerificationPanel } from './VerificationPanel';
 import { DocumentViewer } from './DocumentViewer';
 import { OverviewTab } from './tabs/OverviewTab';
@@ -77,8 +78,8 @@ export const BidWorkspacePage: React.FC = () => {
           <>
             <Button
               onClick={() => void startVerification(bid.id)}
-              disabled={running}
-              title="Re-checks the submission against every tender requirement using the verification engine"
+              disabled={running || view.flags.closed}
+              title={view.flags.closed ? LOCKED_HINT : 'Re-checks the submission against every tender requirement using the verification engine'}
             >
               <RefreshCw className={`h-4 w-4 ${running ? 'animate-spin' : ''}`} />
               {running ? 'Verifying…' : 'Run verification'}
@@ -111,6 +112,8 @@ export const BidWorkspacePage: React.FC = () => {
           Tender {tender.id} · {tender.title} · submitted {formatDateTime(bid.submittedAt)} · last verified {formatDateTime(bid.lastVerifiedAt)}
         </p>
       </Card>
+
+      <BidStatePanel view={view} />
 
       {run && <VerificationPanel run={run} onReviewFindings={() => goTo('evidence')} />}
 

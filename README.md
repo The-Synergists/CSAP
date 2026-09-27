@@ -9,6 +9,26 @@ advisory AI recommendation, and record the decision — which is written to the 
 > simulated Government Gateway with one dataset per registry; bank integrations are simulated.
 > AI output is advisory; the designated procurement officer makes the final decision.
 
+## AI models in use (for reference)
+
+| Use | Model | Since |
+| --- | --- | --- |
+| Reading documents (OCR) | `nvidia/nemotron-ocr-v2` (hosted NIM) | Phase 1 |
+| Field extraction, cited explanation, officer assistant | `nvidia/nemotron-3-super-120b-a12b` (integrate.api.nvidia.com) | 2026-09-27, replacing `nvidia/nemotron-3-ultra-550b-a55b` (same results on CSAP's tasks, about ten times faster) |
+
+Keys and the model name are environment variables (`NVIDIA_OCR_API_KEY`, `NVIDIA_EXTRACTION_API_KEY`,
+`NVIDIA_EXTRACTION_MODEL` in `ai_engine/.env` and in Vercel); the UI shows them as "CSAP AI".
+
+## Evaluation workflow rules
+
+- The evaluation report is generated only after the officer's decision, and only once per decision.
+- Approve or Reject is final: the bid is locked (no verification runs, document reading, registry
+  checks, AI explanation or further decisions). The database enforces this (`bid_is_final`,
+  trigger `officer_decisions_final_guard`, unique report per decision).
+- A bid reopens only when the bidder sends a clarification response or re-evaluation request from
+  GeM and the officer accepts it; replacement documents are applied and the bid is verified again.
+- Duplicate clicks are refused while document reading or registry checks for the same bid are running.
+
 ## Architecture
 
 ```

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isFinal } from './bidRules.service.js';
 import type { DecisionType } from '../../../shared/domain/types.js';
 import { HttpError, must } from '../lib/http.js';
 
@@ -27,12 +28,9 @@ export function validateDecision(body: unknown): DecisionRequest {
  * officer identity comes from auth.uid(), not from the request body.
  */
 export async function submitDecision(db: SupabaseClient, input: DecisionRequest): Promise<{ id: string }> {
-  const latest = must<{ decision: DecisionType }[]>(
-    await db.from('officer_decisions').select('decision').eq('bid_id', input.bidId).order('created_at', { ascending: false }).limit(1),
-    'decision history',
-  );
-  if (latest[0] && FINAL.includes(latest[0].decision)) {
-    throw new HttpError(409, 'A final decision has already been recorded for this bid.', 'ALREADY_DECIDED');
+  // A final decision closes the bid unless a re-evaluation was accepted after it (also enforced in the database).
+  if (await isFinal(db, input.bidId)) {
+    throw new HttpError(409, 'A final decision has already been recorded for this bid. It can be decided again only after a re-evaluation request is accepted.', 'ALREADY_DECIDED');
   }
 
   const { data, error } = await db.rpc('submit_officer_decision', {

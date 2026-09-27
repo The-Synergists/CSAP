@@ -1,12 +1,102 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, FileUp, Loader2 } from 'lucide-react';
 import { formatDateTime } from '../../lib/format';
-import { GemCard, gemPrimary, gemSecondary } from './GemLayout';
-import { EVALUATION_STATUS, gemApi, inr, type GemSubmission } from './gemApi';
+import { GemCard, gemInput, gemPrimary, gemSecondary } from './GemLayout';
+import { EVALUATION_STATUS, fileToBase64, gemApi, inr, type GemDocument, type GemSubmission } from './gemApi';
+
+const DECIDED = ['TECHNICALLY_QUALIFIED', 'DISQUALIFIED', 'UNDER_COMMITTEE_REVIEW'];
+
+/** The seller answers a clarification, or asks the buyer to evaluate a decided bid again. */
+const ResponseForm: React.FC<{ sub: GemSubmission; onSent: (s: GemSubmission) => void }> = ({ sub, onSent }) => {
+  const clarification = sub.evaluationStatus === 'CLARIFICATION_SOUGHT';
+  const draftId = useMemo(() => crypto.randomUUID(), []);
+  const [open, setOpen] = useState(clarification);
+  const [reason, setReason] = useState('');
+  const [docs, setDocs] = useState<Record<string, GemDocument>>({});
+  const [reqs, setReqs] = useState<{ code: string; title: string }[]>(sub.documents.map((d) => ({ code: d.requirementCode, title: d.name })));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    gemApi
+      .tenders()
+      .then((ts) => {
+        const t = ts.find((x) => x.id === sub.tenderId);
+        if (t) setReqs(t.requirements.map((r) => ({ code: r.code, title: r.title })));
+      })
+      .catch(() => {});
+  }, [sub.tenderId]);
+
+  const upload = async (code: string, title: string, file?: File) => {
+    if (!file) return;
+    setError(null);
+    setBusy(code);
+    try {
+      const r = await gemApi.upload({ draftId, requirementCode: code, fileName: file.name, mimeType: file.type, contentBase64: await fileToBase64(file) });
+      setDocs((d) => ({ ...d, [code]: { requirementCode: code, name: title, path: r.path, fileName: file.name, mimeType: file.type, sizeBytes: r.sizeBytes } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const send = async () => {
+    setError(null);
+    setBusy('send');
+    try {
+      onSent(await gemApi.respond(sub.id, { reason, documents: Object.values(docs) }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!open)
+    return (
+      <button type="button" className={gemSecondary} onClick={() => setOpen(true)}>
+        Request re-evaluation
+      </button>
+    );
+  return (
+    <div className="space-y-2 rounded border border-slate-200 p-3">
+      <p className="font-semibold text-slate-900">{clarification ? 'Respond to the clarification' : 'Request re-evaluation'}</p>
+      <p className="text-xs text-slate-600">
+        {clarification
+          ? 'Explain your response and attach corrected or missing documents. The buyer reviews it before evaluating your bid again.'
+          : 'Explain why the buyer should evaluate your bid again, and attach any corrected documents. The buyer decides whether to reopen the evaluation.'}
+      </p>
+      <label className="block text-xs font-medium text-slate-700">
+        Your response
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} className={`${gemInput} mt-1`} />
+      </label>
+      <div className="space-y-1">
+        <p className="text-xs font-medium text-slate-700">Replacement documents (optional) · PDF, PNG or JPEG, under 3 MB</p>
+        {reqs.map((r) => (
+          <label key={r.code} className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="w-60 truncate"><span className="font-mono text-slate-500">{r.code}</span> {r.title}</span>
+            <span className="inline-flex cursor-pointer items-center gap-1 text-[#1b3a6b] hover:underline">
+              {busy === r.code ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
+              {docs[r.code] ? docs[r.code].fileName : 'Attach'}
+              <input type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" aria-label={`Replacement for ${r.title}`} onChange={(e) => void upload(r.code, r.title, e.target.files?.[0])} />
+            </span>
+          </label>
+        ))}
+      </div>
+      {error && <p role="alert" className="text-xs text-rose-700">{error}</p>}
+      <button type="button" className={gemPrimary} disabled={!!busy || reason.trim().length < 10} onClick={() => void send()}>
+        {busy === 'send' ? 'Sending…' : 'Send to the buyer'}
+      </button>
+    </div>
+  );
+};
 
 /** The buyer's evaluation of one bid, as the seller sees it. */
-export const EvaluationPanel: React.FC<{ sub: GemSubmission }> = ({ sub }) => {
+export const EvaluationPanel: React.FC<{ sub: GemSubmission; onChange?: (s: GemSubmission) => void }> = ({ sub, onChange }) => {
+  const responses = sub.responses ?? [];
+  const last = responses[responses.length - 1];
+  const waiting = !!last && (!sub.evaluationReceivedAt || last.sentAt > sub.evaluationReceivedAt);
+  const canRespond = !!onChange && !waiting && (sub.evaluationStatus === 'CLARIFICATION_SOUGHT' || DECIDED.includes(sub.evaluationStatus ?? ''));
   const st = EVALUATION_STATUS[sub.evaluationStatus ?? 'UNDER_EVALUATION'] ?? EVALUATION_STATUS.UNDER_EVALUATION;
   const ev = sub.evaluation;
   return (
@@ -21,11 +111,13 @@ export const EvaluationPanel: React.FC<{ sub: GemSubmission }> = ({ sub }) => {
               {ev.remarks}
             </p>
           )}
+          {ev.report && (
           <p className="text-slate-700">
             Evaluation report <span className="font-mono font-semibold">{ev.report.reportNo}</span> · {ev.report.requirementsMet} requirements met · received{' '}
             {sub.evaluationReceivedAt ? formatDateTime(sub.evaluationReceivedAt) : '—'}
           </p>
-          {ev.report.issues.length > 0 && (
+          )}
+          {ev.report && ev.report.issues.length > 0 && (
             <div>
               <p className="font-semibold text-slate-900">Points raised by the buyer</p>
               <ul className="mt-1 space-y-1.5">
@@ -38,7 +130,24 @@ export const EvaluationPanel: React.FC<{ sub: GemSubmission }> = ({ sub }) => {
               </ul>
             </div>
           )}
-          <p className="break-all font-mono text-[11px] text-slate-500">Report fingerprint (SHA-256): {ev.report.sha256}</p>
+          {ev.report && <p className="break-all font-mono text-[11px] text-slate-500">Report fingerprint (SHA-256): {ev.report.sha256}</p>}
+        </div>
+      )}
+      {responses.length > 0 && (
+        <div className="mt-3 space-y-1 border-t border-slate-100 pt-2 text-xs">
+          <p className="font-semibold text-slate-900">Your responses</p>
+          {responses.map((r, i) => (
+            <p key={i} className="text-slate-700">
+              {formatDateTime(r.sentAt)} · {r.kind === 'CLARIFICATION_RESPONSE' ? 'Clarification response' : 'Re-evaluation request'}: “{r.reason}”
+              {r.documents.length > 0 && ` (${r.documents.length} document${r.documents.length > 1 ? 's' : ''})`}
+            </p>
+          ))}
+          {waiting && <p className="font-medium text-amber-800">Your latest response is with the buyer.</p>}
+        </div>
+      )}
+      {canRespond && (
+        <div className="mt-3 text-sm">
+          <ResponseForm key={sub.evaluationReceivedAt ?? ''} sub={sub} onSent={onChange!} />
         </div>
       )}
     </GemCard>
@@ -86,7 +195,7 @@ export const GemReceiptPage: React.FC = () => {
         </div>
       </GemCard>
 
-      <EvaluationPanel sub={sub} />
+      <EvaluationPanel sub={sub} onChange={setSub} />
 
       <GemCard title="What you submitted">
         <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">

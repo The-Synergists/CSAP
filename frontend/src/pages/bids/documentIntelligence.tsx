@@ -12,6 +12,7 @@ import { useToast } from '../../components/ui/toast';
 import { formatDateTime } from '../../lib/format';
 import { api } from '../../state/api';
 import type { DocumentIntelligence } from './useDocumentIntelligence';
+import { LOCKED_HINT } from './ReevaluationPanel';
 
 const done = (r: DocumentVerificationRun) => r.status === 'COMPLETED' || r.status === 'FAILED';
 
@@ -49,7 +50,7 @@ const fieldLabel = (k: string) =>
     .replace(/\b(Pan|Gstin|Udin|Epfo|Esic|Oem)\b/g, (w) => w.toUpperCase());
 
 /** Top card: start the reading, see progress, the summary and the cross-document check. */
-export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: number }> = ({ state, stored }) => {
+export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: number; locked?: boolean }> = ({ state, stored, locked }) => {
   const toast = useToast();
   const [starting, setStarting] = useState(false);
   const { batch, runs, running, live } = state;
@@ -73,7 +74,7 @@ export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: n
       actions={
         <>
           <Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>
-          <Button variant="primary" size="sm" disabled={running || starting || stored === 0} onClick={() => void go()}>
+          <Button variant="primary" size="sm" disabled={running || starting || stored === 0 || locked} title={locked ? LOCKED_HINT : undefined} onClick={() => void go()}>
             {running || starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanText className="h-3.5 w-3.5" />}
             {running ? `Reading ${finished} of ${batch?.total ?? runs.length}…` : batch ? 'Read all documents again' : `Read all ${stored} documents`}
           </Button>
