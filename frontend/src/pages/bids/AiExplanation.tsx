@@ -9,7 +9,7 @@ import { formatDateTime } from '../../lib/format';
 import { api, type RecommendationDraft } from '../../state/api';
 import type { TabProps } from './bidTabs';
 
-export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo']; locked?: boolean }> = ({ bidId, goTo, locked }) => {
+export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo']; locked?: boolean; since?: string }> = ({ bidId, goTo, locked, since }) => {
   const toast = useToast();
   const [draft, setDraft] = useState<RecommendationDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,12 +18,17 @@ export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo']; lo
     let active = true;
     api
       .recommendationDraft(bidId)
-      .then((d) => active && setDraft(d))
+      .then((d) => {
+        if (!active) return;
+        setDraft(d);
+        // Real time: write the explanation automatically when there is none, or the checks changed since.
+        if (!locked && (!d || (since && d.createdAt < since))) void run();
+      })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [bidId]);
+  }, [bidId, since]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = async () => {
     setBusy(true);

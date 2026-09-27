@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { listBidViews, type BidView } from '@shared/domain/selectors';
@@ -8,6 +8,7 @@ import { Card, EmptyState, PageHeader } from '../../components/ui/primitives';
 import { buttonClass } from '../../components/ui/styles';
 import { DECISION } from '../../domain/labels';
 import { bidPath, formatDateTime } from '../../lib/format';
+import { openedBids } from '../../lib/openedBids';
 
 const Row: React.FC<{ v: BidView; action: string; tab?: string }> = ({ v, action, tab }) => (
   <li className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -31,35 +32,37 @@ const Row: React.FC<{ v: BidView; action: string; tab?: string }> = ({ v, action
 );
 
 export const MyReviewsPage: React.FC = () => {
-  const { db } = useApp();
-  const views = listBidViews(db).sort((a, b) => b.bid.riskScore - a.bid.riskScore);
-  const toDecide = views.filter((v) => v.flags.awaitingDecision);
-  const waiting = views.filter((v) => v.bid.status === 'CLARIFICATION_REQUIRED' || v.bid.status === 'COMMITTEE_REVIEW');
-  const done = views.filter((v) => v.flags.closed);
+  const { db, currentUser } = useApp();
+  const [opened, setOpened] = useState(() => openedBids(currentUser?.id));
+  useEffect(() => {
+    const refresh = () => setOpened(openedBids(currentUser?.id));
+    refresh();
+    window.addEventListener('csap:opened-bids', refresh);
+    return () => window.removeEventListener('csap:opened-bids', refresh);
+  }, [currentUser?.id]);
+
+  const views = listBidViews(db);
+  const mine = (v: BidView) => !!v.latestDecision && v.latestDecision.officerId === currentUser?.id;
+  // In progress: bids you opened that have no final decision yet (newest opened first).
+  const inProgress = views.filter((v) => !v.flags.closed && opened[v.bid.id]).sort((a, b) => opened[b.bid.id].localeCompare(opened[a.bid.id]));
+  // Done: bids with your final decision (newest first).
+  const done = views.filter((v) => v.flags.closed && mine(v)).sort((a, b) => b.latestDecision!.decidedAt.localeCompare(a.latestDecision!.decidedAt));
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My reviews" subtitle="Bids that need your decision, bids waiting on others, and bids you have closed." />
+      <PageHeader title="My reviews" subtitle="Reviews you have started and bids you have decided." />
 
-      <Card title={`Awaiting your decision (${toDecide.length})`} subtitle="Highest risk first" padded={false}>
-        {toDecide.length === 0 ? (
-          <EmptyState icon={<CheckCircle2 className="h-7 w-7 text-emerald-600" />} title="Nothing awaiting your decision" />
+      <Card title={`In progress (${inProgress.length})`} subtitle="Bids you opened that have no final decision yet" padded={false}>
+        {inProgress.length === 0 ? (
+          <EmptyState title="No reviews in progress" description="A bid appears here once you open it." />
         ) : (
-          <ul className="divide-y divide-slate-100">{toDecide.map((v) => <Row key={v.bid.id} v={v} action="Start review" />)}</ul>
+          <ul className="divide-y divide-slate-100">{inProgress.map((v) => <Row key={v.bid.id} v={v} action="Continue review" />)}</ul>
         )}
       </Card>
 
-      <Card title={`Waiting on bidder or committee (${waiting.length})`} padded={false}>
-        {waiting.length === 0 ? (
-          <EmptyState title="No bids are waiting on clarification or committee review" />
-        ) : (
-          <ul className="divide-y divide-slate-100">{waiting.map((v) => <Row key={v.bid.id} v={v} action="Open case" />)}</ul>
-        )}
-      </Card>
-
-      <Card title={`Decided (${done.length})`} padded={false}>
+      <Card title={`Decided by you (${done.length})`} padded={false}>
         {done.length === 0 ? (
-          <EmptyState title="No final decisions recorded yet" />
+          <EmptyState icon={<CheckCircle2 className="h-7 w-7 text-emerald-600" />} title="No final decisions recorded yet" />
         ) : (
           <ul className="divide-y divide-slate-100">{done.map((v) => <Row key={v.bid.id} v={v} action="View decision" tab="decision" />)}</ul>
         )}

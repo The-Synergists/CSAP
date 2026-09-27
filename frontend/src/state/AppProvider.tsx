@@ -222,7 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               exceptions: view.counts.exceptions,
               total: view.counts.total,
               riskLevel: view.bid.riskLevel,
-              suggestedDecision: view.recommendation?.suggestedDecision ?? 'COMMITTEE_REVIEW',
+              suggestedDecision: view.recommendation?.suggestedDecision ?? 'REQUEST_CLARIFICATION',
               differences: [],
               simulatedRegistryChecks: 0,
             },

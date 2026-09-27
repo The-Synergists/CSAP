@@ -13,9 +13,9 @@ import type { TabProps } from '../bidTabs';
 import { AiExplanation } from '../AiExplanation';
 import { EvaluationReports } from '../EvaluationReports';
 
-const ORDER: DecisionType[] = ['APPROVE', 'REQUEST_CLARIFICATION', 'COMMITTEE_REVIEW', 'REJECT'];
+const ORDER: DecisionType[] = ['APPROVE', 'REQUEST_CLARIFICATION', 'REJECT'];
 const OTHER = '__other__';
-const MIN_REMARKS = 20;
+const MIN_REMARKS = 1;
 
 interface Preset {
   decision?: string;
@@ -38,7 +38,7 @@ const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> =
           AI recommendation <AdvisoryTag />
         </span>
       }
-      subtitle={`Generated ${formatDateTime(rec.generatedAt)} from the verification findings`}
+      subtitle={`Suggested by CSAP from the current checks (last verified ${formatDateTime(rec.generatedAt)}); it updates as soon as a check changes`}
     >
       <p className="text-xs">
         <span className="text-slate-500">Suggested action: </span>
@@ -74,7 +74,7 @@ const RecommendationPanel: React.FC<{ view: BidView; goTo: TabProps['goTo'] }> =
           </ul>
         </div>
       </div>
-      {source === 'api' && <AiExplanation bidId={view.bid.id} goTo={goTo} locked={view.flags.closed} />}
+      {source === 'api' && <AiExplanation bidId={view.bid.id} goTo={goTo} locked={view.flags.closed} since={view.bid.lastVerifiedAt} />}
       <p className="mt-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
         AI advisory — the final decision remains with the designated procurement officer.
       </p>
@@ -109,7 +109,7 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
     const e: Record<string, string> = {};
     if (!decision) e.decision = 'Choose a decision.';
     if (!reason) e.reason = 'Select or enter a reason.';
-    if (remarks.trim().length < MIN_REMARKS) e.remarks = `Remarks must be at least ${MIN_REMARKS} characters.`;
+    if (remarks.trim().length < MIN_REMARKS) e.remarks = 'Enter your remarks for the decision.';
     if (!acknowledged) e.ack = 'Confirm that you have reviewed the evidence.';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -215,9 +215,11 @@ const DecisionForm: React.FC<{ view: BidView; preset: Preset }> = ({ view, prese
             className={inputClass}
             placeholder="Record the basis for your decision, including how each open finding was considered."
           />
-          <p id="remarks-help" className={`mt-1 text-xs ${errors.remarks ? 'text-rose-700' : 'text-slate-500'}`}>
-            {errors.remarks ?? `${remarks.trim().length} characters · minimum ${MIN_REMARKS}`}
-          </p>
+          {errors.remarks && (
+            <p id="remarks-help" className="mt-1 text-xs text-rose-700">
+              {errors.remarks}
+            </p>
+          )}
         </div>
 
         {decision === 'APPROVE' && openSerious.length > 0 && (

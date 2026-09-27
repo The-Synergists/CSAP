@@ -106,9 +106,86 @@ const answer = (db: Database, question: string, context?: BidView): Answer => {
 
 let seq = 0;
 
+type Corner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+const CORNER_KEY = 'csap.assistantCorner';
+const readCorner = (): Corner => {
+  try {
+    const c = localStorage.getItem(CORNER_KEY);
+    return c === 'bottom-left' || c === 'top-right' || c === 'top-left' ? c : 'bottom-right';
+  } catch {
+    return 'bottom-right';
+  }
+};
+const MARGIN = 20;
+
+/**
+ * The assistant's floating button. Drag it anywhere; on release it settles in the nearest of the
+ * four corners (remembered in this browser). A click without dragging opens the assistant.
+ */
+const FloatingAssistantButton: React.FC<{ onOpen: () => void; onCorner: (c: Corner) => void }> = ({ onOpen, onCorner }) => {
+  const [corner, setCorner] = useState<Corner>(readCorner);
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const start = useRef<{ px: number; py: number; moved: boolean } | null>(null);
+  const size = 56;
+
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    start.current = { px: e.clientX, py: e.clientY, moved: false };
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const s0 = start.current;
+    if (!s0) return;
+    if (!s0.moved && Math.hypot(e.clientX - s0.px, e.clientY - s0.py) < 6) return;
+    s0.moved = true;
+    setDrag({ x: e.clientX - size / 2, y: e.clientY - size / 2 });
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const s0 = start.current;
+    start.current = null;
+    if (!s0?.moved) {
+      onOpen();
+      return;
+    }
+    const next: Corner = `${e.clientY < window.innerHeight / 2 ? 'top' : 'bottom'}-${e.clientX < window.innerWidth / 2 ? 'left' : 'right'}`;
+    setCorner(next);
+    onCorner(next);
+    try {
+      localStorage.setItem(CORNER_KEY, next);
+    } catch {
+      /* not remembered */
+    }
+    setDrag(null);
+  };
+
+  const pos: React.CSSProperties = drag
+    ? { left: drag.x, top: drag.y, transition: 'none' }
+    : {
+        [corner.startsWith('top') ? 'top' : 'bottom']: corner.startsWith('top') ? 80 : MARGIN,
+        [corner.endsWith('left') ? 'left' : 'right']: corner.endsWith('left') && window.innerWidth >= 1024 ? 256 + MARGIN : MARGIN,
+      };
+
+  return (
+    <button
+      type="button"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
+      aria-label="Open AI Assistant"
+      title="AI Assistant: click to open, drag to move to another corner"
+      style={pos}
+      className={`fixed z-40 flex h-14 w-14 touch-none select-none items-center justify-center rounded-full bg-indigo-700 text-white shadow-lg transition-[top,left,right,bottom] duration-300 ease-out hover:bg-indigo-800 ${drag ? 'cursor-grabbing' : 'cursor-grab'}`}
+    >
+      <Bot className="h-6 w-6" />
+      <span className="absolute -right-1 -top-1 rounded-full border border-indigo-200 bg-white px-1.5 py-0.5 text-[8px] font-bold leading-none text-indigo-700 shadow-xs">AI</span>
+    </button>
+  );
+};
+
 export const AssistantPanel: React.FC = () => {
   const { db, source, assistantOpen, setAssistantOpen } = useApp();
   const location = useLocation();
+  const [corner, setCorner] = useState<Corner>(readCorner);
   const [thinking, setThinking] = useState(false);
   const match = useMatch('/bids/:bidId/*');
   const context = match?.params.bidId ? getBidView(db, match.params.bidId) : undefined;
@@ -151,24 +228,15 @@ export const AssistantPanel: React.FC = () => {
     : ['Which bids need my decision?', 'Why is BID-003 high risk?', 'Where do I verify the audit trail?'];
 
   if (!assistantOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAssistantOpen(true)}
-        aria-label="Open AI Assistant"
-        title="AI Assistant (Advisory)"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-700 text-white shadow-lg transition-colors hover:bg-indigo-800"
-      >
-        <Bot className="h-6 w-6" />
-        <span className="absolute -right-1 -top-1 rounded-full border border-indigo-200 bg-white px-1.5 py-0.5 text-[8px] font-bold leading-none text-indigo-700 shadow-xs">AI</span>
-      </button>
-    );
+    return <FloatingAssistantButton onOpen={() => setAssistantOpen(true)} onCorner={setCorner} />;
   }
 
   return (
     <aside
       aria-label="AI assistant"
-      className="fixed inset-x-2 bottom-2 z-40 flex h-[70vh] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:right-5 sm:bottom-5 sm:h-[560px] sm:w-[380px]"
+      className={`fixed inset-x-2 z-40 flex h-[70vh] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:h-[560px] sm:w-[380px] ${
+        corner.startsWith('top') ? 'top-20 sm:top-20' : 'bottom-2 sm:bottom-5'
+      } ${corner.endsWith('left') ? 'sm:left-5 lg:left-[272px]' : 'sm:right-5'}`}
     >
       <header className="flex items-center justify-between gap-2 bg-indigo-700 px-4 py-3 text-white">
         <div className="flex min-w-0 items-center gap-2">

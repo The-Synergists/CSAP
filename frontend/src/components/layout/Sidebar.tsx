@@ -7,12 +7,11 @@ import {
   FileText,
   History,
   LayoutDashboard,
-  Network,
   Settings,
   Users,
 } from 'lucide-react';
 import { useApp } from '../../state/appContext';
-import { getAlerts, getDashboardMetrics } from '@shared/domain/selectors';
+import { getAlerts } from '@shared/domain/selectors';
 import { BrandMark } from './BrandMark';
 
 const itemBase = 'flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm font-medium transition-colors';
@@ -43,7 +42,6 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; coun
 
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { db } = useApp();
-  const metrics = getDashboardMetrics(db);
   const alertCount = getAlerts(db).length;
 
   return (
@@ -65,13 +63,12 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             <NavItem to="/bidders" icon={<Users className="h-4 w-4" />} label="Bidders" onNavigate={onClose} />
           </div>
           <div className="space-y-0.5 border-t border-slate-800/80 pt-4">
-            <NavItem to="/reviews" icon={<CheckSquare className="h-4 w-4" />} label="My Reviews" count={metrics.awaitingDecision} onNavigate={onClose} />
+            <NavItem to="/reviews" icon={<CheckSquare className="h-4 w-4" />} label="My Reviews" onNavigate={onClose} />
             <NavItem to="/alerts" icon={<AlertTriangle className="h-4 w-4" />} label="Alerts" count={alertCount} tone="danger" onNavigate={onClose} />
             <NavItem to="/reports" icon={<BarChart3 className="h-4 w-4" />} label="Reports" onNavigate={onClose} />
           </div>
           <div className="space-y-0.5 border-t border-slate-800/80 pt-4">
             <NavItem to="/audit" icon={<History className="h-4 w-4" />} label="Audit Trail" onNavigate={onClose} />
-            <NavItem to="/gateway" icon={<Network className="h-4 w-4" />} label="Govt. Registries" onNavigate={onClose} />
             <NavItem to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" onNavigate={onClose} />
           </div>
         </nav>

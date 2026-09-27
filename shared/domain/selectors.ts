@@ -85,6 +85,36 @@ export const findTender = (db: Database, idOrSlug?: string): Tender | undefined 
 export const findBid = (db: Database, bidId?: string): Bid | undefined =>
   bidId ? db.bids.find((b) => b.id.toLowerCase() === bidId.toLowerCase()) : undefined;
 
+/**
+ * The suggested action, recomputed from the current checks every time they change: a mandatory
+ * requirement not met or missing suggests rejection, an item needing review suggests clarification,
+ * otherwise approval. Advisory only; the officer decides.
+ */
+export const liveRecommendation = (bid: Bid, checks: CheckRow[], score: number): Recommendation => {
+  const open = (c: CheckRow) => !c.finding || c.finding.status === 'OPEN' || c.finding.status === 'CLARIFICATION_REQUESTED';
+  const blockers = checks.filter((c) => c.requirement.mandatory && (c.status === 'NOT_MET' || c.status === 'MISSING') && open(c));
+  const reviews = checks.filter((c) => c.status === 'REVIEW' && open(c));
+  const met = checks.filter((c) => c.status === 'MET' || c.status === 'EXEMPTED');
+  const label = (c: CheckRow) => c.finding?.title ?? `${c.requirement.title}: ${c.submitted}`;
+  const list = (cs: CheckRow[]) => cs.map((c) => c.requirement.title.toLowerCase()).join(', ');
+  const suggestedDecision = blockers.length ? 'REJECT' : reviews.length ? 'REQUEST_CLARIFICATION' : 'APPROVE';
+  const summary =
+    suggestedDecision === 'REJECT'
+      ? `${blockers.length} mandatory requirement${blockers.length > 1 ? 's' : ''} not met or missing (${list(blockers)}). The bid is liable for rejection unless these are resolved.`
+      : suggestedDecision === 'REQUEST_CLARIFICATION'
+        ? `All mandatory requirements are met except ${reviews.length} item${reviews.length > 1 ? 's' : ''} that need${reviews.length > 1 ? '' : 's'} clarification (${list(reviews)}).`
+        : `All ${checks.length} requirements are met or validly exempted.`;
+  return {
+    bidId: bid.id,
+    suggestedDecision,
+    summary,
+    rationale: `${met.length} of ${checks.length} requirements met · compliance score ${score}/100 · ${bid.riskLevel.toLowerCase()} risk.`,
+    strengths: met.slice(0, 5).map((c) => `${c.requirement.title}: ${c.submitted}.`),
+    concerns: [...blockers, ...reviews].map(label),
+    generatedAt: bid.lastVerifiedAt,
+  };
+};
+
 export const getBidView = (db: Database, bidId: string): BidView | undefined => {
   const bid = findBid(db, bidId);
   if (!bid) return undefined;
@@ -155,7 +185,7 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
     findings,
     openFindings,
     riskFactors: db.riskFactors.filter((r) => r.bidId === bid.id),
-    recommendation: db.recommendations.find((r) => r.bidId === bid.id),
+    recommendation: checks.length ? liveRecommendation(bid, checks, score.score) : db.recommendations.find((r) => r.bidId === bid.id),
     decisions,
     latestDecision: decisions[0],
     audit: db.auditEvents.filter((e) => e.bidId === bid.id).sort(byNewest((e) => e.timestamp)),

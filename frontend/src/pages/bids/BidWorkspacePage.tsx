@@ -8,8 +8,8 @@ import { BidStatusBadge } from '../../components/ui/Badge';
 import { Button, CountPill, PageHeader, Tabs } from '../../components/ui/primitives';
 import { bidPath, tenderPath } from '../../lib/format';
 import { NotFoundPage } from '../common/NotFoundPage';
-import { NextStep } from './NextStep';
 import { BidStatePanel, LOCKED_HINT } from './ReevaluationPanel';
+import { markBidOpened } from '../../lib/openedBids';
 import { VerificationPanel } from './VerificationPanel';
 import { DocumentViewer } from './DocumentViewer';
 import { OverviewTab } from './tabs/OverviewTab';
@@ -28,7 +28,7 @@ export const BidWorkspacePage: React.FC = () => {
   const { bidId, tab } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { db, verificationRuns, startVerification, setActiveTenderId } = useApp();
+  const { db, currentUser, verificationRuns, startVerification, setActiveTenderId } = useApp();
   const view = bidId ? getBidView(db, bidId) : undefined;
   const [viewingDoc, setViewingDoc] = useState<BidDocument | null>(null);
 
@@ -38,6 +38,10 @@ export const BidWorkspacePage: React.FC = () => {
   useEffect(() => {
     if (view) setActiveTenderId(view.tender.id);
   }, [view, setActiveTenderId]);
+  const openedId = view?.bid.id;
+  useEffect(() => {
+    if (openedId) markBidOpened(currentUser?.id, openedId);
+  }, [openedId, currentUser?.id]);
 
   if (!view) return <NotFoundPage what="bid" id={bidId} />;
 
@@ -88,8 +92,6 @@ export const BidWorkspacePage: React.FC = () => {
       <BidStatePanel view={view} />
 
       {run && <VerificationPanel run={run} onReviewFindings={() => goTo('evidence')} />}
-
-      <NextStep view={view} goTo={goTo} />
 
       <Tabs
         label="Bid sections"

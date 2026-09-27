@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Search, X } from 'lucide-react';
@@ -125,6 +125,19 @@ export function Tabs<T extends string>({
   label: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  // Sliding underline: measured from the selected tab so the move between tabs is visible.
+  const [bar, setBar] = useState<{ left: number; width: number } | null>(null);
+  const activeIndex = tabs.findIndex((t) => t.id === active);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = refs.current[activeIndex];
+      if (el) setBar({ left: el.offsetLeft, width: el.offsetWidth });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [activeIndex, tabs.length]);
   const onKeyDown = (e: React.KeyboardEvent, index: number) => {
     const delta = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
     if (!delta) return;
@@ -134,7 +147,7 @@ export function Tabs<T extends string>({
     onChange(tabs[next].id);
   };
   return (
-    <div role="tablist" aria-label={label} className="relative flex overflow-x-auto border-b border-slate-200">
+    <div ref={listRef} role="tablist" aria-label={label} className="relative flex overflow-x-auto border-b-2 border-slate-200">
       {tabs.map((t, i) => {
         const selected = t.id === active;
         return (
@@ -149,8 +162,8 @@ export function Tabs<T extends string>({
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`-mb-px flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-xs font-semibold transition-colors ${
-              selected ? 'border-blue-600 bg-blue-50/40 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'
+            className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-3 text-[13px] font-bold transition-colors ${
+              selected ? 'text-blue-700' : 'text-slate-800 hover:bg-slate-100 hover:text-slate-950'
             }`}
           >
             {t.label}
@@ -158,6 +171,13 @@ export function Tabs<T extends string>({
           </button>
         );
       })}
+      {bar && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -bottom-0.5 h-[3px] rounded-t bg-blue-600 transition-all duration-300 ease-out"
+          style={{ left: bar.left, width: bar.width }}
+        />
+      )}
     </div>
   );
 }

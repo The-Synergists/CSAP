@@ -3,7 +3,7 @@ import { isFinal } from './bidRules.service.js';
 import type { DecisionType } from '../../../shared/domain/types.js';
 import { HttpError, must } from '../lib/http.js';
 
-const DECISIONS: DecisionType[] = ['APPROVE', 'REJECT', 'REQUEST_CLARIFICATION', 'COMMITTEE_REVIEW'];
+const DECISIONS: DecisionType[] = ['APPROVE', 'REJECT', 'REQUEST_CLARIFICATION'];
 const FINAL: DecisionType[] = ['APPROVE', 'REJECT'];
 
 export interface DecisionRequest {
@@ -18,7 +18,7 @@ export function validateDecision(body: unknown): DecisionRequest {
   if (!b.bidId || typeof b.bidId !== 'string') throw new HttpError(400, 'bidId is required.', 'VALIDATION');
   if (!b.decision || !DECISIONS.includes(b.decision)) throw new HttpError(400, `decision must be one of ${DECISIONS.join(', ')}.`, 'VALIDATION');
   if (!b.reason?.trim()) throw new HttpError(400, 'Select a reason for the decision.', 'VALIDATION');
-  if (!b.remarks || b.remarks.trim().length < 20) throw new HttpError(400, 'Remarks must be at least 20 characters.', 'VALIDATION');
+  if (!b.remarks?.trim()) throw new HttpError(400, 'Enter your remarks for the decision.', 'VALIDATION');
   return { bidId: b.bidId, decision: b.decision, reason: b.reason.trim(), remarks: b.remarks.trim() };
 }
 

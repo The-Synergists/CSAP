@@ -41,7 +41,7 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center bg-[#F7F8F9] px-4 py-10 text-[#172B4D] sm:py-16"
+      className="flex min-h-screen flex-col items-center justify-center bg-[#F7F8F9] px-4 py-10 text-[#172B4D]"
       style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Helvetica Neue", sans-serif' }}
     >
       <main className="w-full max-w-[400px] rounded-[3px] bg-white px-6 py-8 shadow-[0_0_1px_rgba(9,30,66,0.31),0_8px_12px_rgba(9,30,66,0.15)] sm:px-10">

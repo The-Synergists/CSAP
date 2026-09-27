@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useApp } from '../../state/appContext';
 import { Badge } from '../../components/ui/Badge';
@@ -9,7 +9,7 @@ import { useToast } from '../../components/ui/toast';
 const INTEGRATIONS = [
   { name: 'CSAP AI', note: 'Reads every bid document (PDF or image), extracts its fields, checks them against the tender, writes cited explanations and answers the assistant.', state: 'Integrated' },
   { name: 'GeM portal (simulated)', note: 'Bids submitted on GeM arrive in CSAP automatically with their documents and are verified straight away; evaluation outcomes and bidder re-evaluation requests flow both ways.', state: 'Connected' },
-  { name: 'Government Gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker. Each registry answers from its own dataset; real APIs plug in behind the same adapters.', state: 'Simulated' },
+  { name: 'Government Gateway', link: '/gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker. Each registry answers from its own dataset; real APIs plug in behind the same adapters.', state: 'Simulated' },
   { name: 'Live GSTIN provider (gstinapi.in)', note: 'Real GST registration and GSTR-3B filing data for real GSTINs. Answers are cached so repeat checks use no credits.', state: 'Live' },
   { name: 'Bank / treasury (EMD)', note: 'EMD amounts compared with the submitted instrument; no bank confirmation.', state: 'Simulated' },
   { name: 'Digital signature (DSC)', note: 'Decisions are recorded against the signed-in officer, not digitally signed.', state: 'Not connected' },
@@ -50,6 +50,11 @@ export const SettingsPage: React.FC = () => {
               <div>
                 <p className="text-xs font-medium text-slate-900">{i.name}</p>
                 <p className="text-xs text-slate-500">{i.note}</p>
+                {'link' in i && i.link && (
+                  <Link to={i.link} className="mt-1 inline-block text-xs font-semibold text-blue-700 hover:underline">
+                    Open the Government Gateway (registries, records and live checks) →
+                  </Link>
+                )}
               </div>
               <Badge tone={i.state === 'Integrated' || i.state === 'Live' || i.state === 'Connected' ? 'success' : i.state === 'Simulated' ? 'warning' : 'neutral'}>{i.state}</Badge>
             </li>

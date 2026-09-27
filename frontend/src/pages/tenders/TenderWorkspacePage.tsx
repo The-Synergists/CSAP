@@ -69,17 +69,6 @@ export const TenderWorkspacePage: React.FC = () => {
         }
       />
 
-      <Card>
-        <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <Stat label="Bids received" value={stats.bidCount} />
-          <Stat label="Awaiting decision" value={stats.awaitingDecision} />
-          <Stat label="Open findings" value={stats.openFindings} />
-          <Stat label="High-risk bids" value={stats.highRiskCount} />
-          <Stat label="Estimated value" value={formatCrore(tender.estimatedValue)} />
-          <Stat label="EMD required" value={formatINR(tender.emdAmount)} />
-        </dl>
-      </Card>
-
       <Tabs
         label="Tender sections"
         active={activeTab}
@@ -93,6 +82,17 @@ export const TenderWorkspacePage: React.FC = () => {
       />
 
       {activeTab === 'overview' && (
+        <div className="space-y-5">
+        <Card>
+          <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <Stat label="Bids received" value={stats.bidCount} />
+            <Stat label="Awaiting decision" value={stats.awaitingDecision} />
+            <Stat label="Open findings" value={stats.openFindings} />
+            <Stat label="High-risk bids" value={stats.highRiskCount} />
+            <Stat label="Estimated value" value={formatCrore(tender.estimatedValue)} />
+            <Stat label="EMD required" value={formatINR(tender.emdAmount)} />
+          </dl>
+        </Card>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <Card title="About this tender" className="lg:col-span-2">
             <p className="text-xs leading-relaxed text-slate-700">{tender.description}</p>
@@ -129,6 +129,7 @@ export const TenderWorkspacePage: React.FC = () => {
               </ul>
             )}
           </Card>
+        </div>
         </div>
       )}
 
