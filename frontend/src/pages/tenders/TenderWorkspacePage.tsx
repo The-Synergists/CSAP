@@ -55,11 +55,6 @@ export const TenderWorkspacePage: React.FC = () => {
         subtitle={tender.division}
         actions={
           <>
-            {stats.stage === 'OPEN_FOR_BIDS' && (
-              <a href={`/gem/tenders/${encodeURIComponent(tender.id)}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'md')}>
-                Open on GeM (simulated) ↗
-              </a>
-            )}
             {views.length > 0 && (
               <Button variant="primary" onClick={() => setTab('bids')}>
                 <Users className="h-4 w-4" /> Review bids ({views.length})

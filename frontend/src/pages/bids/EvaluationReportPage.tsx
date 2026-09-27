@@ -12,31 +12,11 @@ import { api, type EvaluationReport } from '../../state/api';
 const H: React.FC<{ children: React.ReactNode }> = ({ children }) => <h2 className="mt-6 border-b border-slate-300 pb-1 text-sm font-bold uppercase tracking-wide text-slate-800">{children}</h2>;
 const label = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
 
-export const EvaluationReportPage: React.FC = () => {
-  const { id = '' } = useParams();
-  const [report, setReport] = useState<(EvaluationReport & { verified: boolean }) | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api.report(id).then(setReport).catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [id]);
 
-  if (error) return <p className="p-8 text-sm text-rose-700">{error}</p>;
-  if (!report) return <p className="flex items-center gap-2 p-8 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading report…</p>;
-  const c = report.content as any;
+/** The report document itself (frozen content as fingerprinted), used by CSAP and by the GeM buyer desk. */
+export const ReportArticle: React.FC<{ content: any; sha256: string }> = ({ content: c, sha256 }) => {
   const td = 'border border-slate-300 px-2 py-1 align-top';
-
   return (
-    <div className="min-h-screen bg-slate-100 print:bg-white">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 print:hidden">
-        <Link to={`/bids/${report.bidId}/decision`} className="text-xs font-medium text-blue-700 hover:underline">← Back to {report.bidId}</Link>
-        <span className={`flex items-center gap-1.5 text-xs font-medium ${report.verified ? 'text-emerald-700' : 'text-rose-700'}`}>
-          {report.verified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
-          {report.verified ? 'Fingerprint verified: this report is unchanged since it was generated.' : 'Fingerprint mismatch: this report was changed after it was generated.'}
-        </span>
-        <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800">
-          <Printer className="h-4 w-4" /> Print / Save as PDF
-        </button>
-      </div>
       <article className="mx-auto max-w-4xl bg-white p-8 text-[12px] leading-relaxed text-slate-900 shadow print:shadow-none">
         <header className="border-b-2 border-slate-800 pb-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">CSAP · Technical evaluation</p>
@@ -44,7 +24,7 @@ export const EvaluationReportPage: React.FC = () => {
           <p className="mt-1">
             <strong>{c.reportNo}</strong> · generated {formatDateTime(c.generatedAt)} by {c.generatedBy}
           </p>
-          <p className="mt-1 break-all font-mono text-[10.5px] text-slate-600">SHA-256 fingerprint: {report.sha256}</p>
+          <p className="mt-1 break-all font-mono text-[10.5px] text-slate-600">SHA-256 fingerprint: {sha256}</p>
         </header>
 
         <H>Tender and bid</H>
@@ -170,6 +150,34 @@ export const EvaluationReportPage: React.FC = () => {
           {c.advisoryNote} Prototype: tender data and registries are simulated where stated. Verify this report by recomputing the SHA-256 of its content.
         </footer>
       </article>
+  );
+};
+
+export const EvaluationReportPage: React.FC = () => {
+  const { id = '' } = useParams();
+  const [report, setReport] = useState<(EvaluationReport & { verified: boolean }) | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api.report(id).then(setReport).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [id]);
+
+  if (error) return <p className="p-8 text-sm text-rose-700">{error}</p>;
+  if (!report) return <p className="flex items-center gap-2 p-8 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading report…</p>;
+  const c = report.content as any;
+
+  return (
+    <div className="min-h-screen bg-slate-100 print:bg-white">
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 print:hidden">
+        <Link to={`/bids/${report.bidId}/decision`} className="text-xs font-medium text-blue-700 hover:underline">← Back to {report.bidId}</Link>
+        <span className={`flex items-center gap-1.5 text-xs font-medium ${report.verified ? 'text-emerald-700' : 'text-rose-700'}`}>
+          {report.verified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+          {report.verified ? 'Fingerprint verified: this report is unchanged since it was generated.' : 'Fingerprint mismatch: this report was changed after it was generated.'}
+        </span>
+        <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded bg-blue-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-800">
+          <Printer className="h-4 w-4" /> Print / Save as PDF
+        </button>
+      </div>
+      <ReportArticle content={c} sha256={report.sha256} />
     </div>
   );
 };

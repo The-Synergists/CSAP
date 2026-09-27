@@ -212,6 +212,8 @@ export async function sendReportToGem(db: SupabaseClient, userId: string | null,
       // Bidder-facing: what needs attention, never internal risk scoring.
       issues: c.findings.map((f: any) => ({ id: f.id, title: f.title, requiredAction: f.suggestedAction })),
     },
+    // The complete report, for the buyer on GeM (never shown to the seller).
+    fullReport: { reportNo: report.reportNo, sha256: report.sha256, content: report.content },
   };
   const body = JSON.stringify(payload);
   const timestamp = new Date().toISOString();

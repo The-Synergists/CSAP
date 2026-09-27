@@ -9,6 +9,7 @@ import { config } from '../config/env.js';
 import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 import { sign, type GemBidPayload } from './gemIntake.service.js';
+import { fingerprint } from './report.service.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -152,15 +153,30 @@ export async function getSubmissionWithEvaluation(id: string) {
 /** CSAP -> GeM: the buyer's evaluation outcome and report summary for one bid (signed by CSAP). */
 export async function receiveEvaluation(payload: any) {
   if (!payload?.gemBidNo || !payload?.status) throw new HttpError(400, 'gemBidNo and status are required.', 'VALIDATION');
-  const row = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('id, evaluation').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
+  const row = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('id, evaluation, buyer_reports').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
   if (!row) throw new HttpError(404, `GeM bid ${payload.gemBidNo} not found.`, 'NOT_FOUND');
   // A status message without a report (re-evaluation started / request declined) keeps the last
   // report on record, except while the bid is being evaluated again.
-  const report = payload.report ?? (payload.status === 'UNDER_EVALUATION' ? null : row.evaluation?.report ?? null);
+  const { fullReport, ...sellerView } = payload;
+  const report = sellerView.report ?? (payload.status === 'UNDER_EVALUATION' ? null : row.evaluation?.report ?? null);
+  const receivedAt = new Date().toISOString();
+  const buyerReports = [...(row.buyer_reports ?? [])];
+  if (fullReport?.content && fullReport.sha256) {
+    // GeM checks the fingerprint itself: the report is what CSAP signed, unchanged in transit.
+    buyerReports.push({
+      reportNo: fullReport.reportNo,
+      sha256: fullReport.sha256,
+      verified: fingerprint(fullReport.content) === fullReport.sha256,
+      status: payload.status,
+      remarks: payload.remarks ?? null,
+      receivedAt,
+      content: fullReport.content,
+    });
+  }
   must(
     await serviceClient
       .from('gem_bid_submissions')
-      .update({ evaluation_status: payload.status, evaluation: { ...payload, report }, evaluation_received_at: new Date().toISOString() })
+      .update({ evaluation_status: payload.status, evaluation: { ...sellerView, report }, evaluation_received_at: receivedAt, buyer_reports: buyerReports })
       .eq('id', row.id),
     'submission',
   );

@@ -16,6 +16,7 @@ import { clearResults, receiveGemBid, runIntakePipeline, verifySignature, type G
 import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, submitResponse, uploadDocument } from '../services/gemPortal.service.js';
 import { acceptRequest, declineRequest, receiveBidderResponse, type BidderResponsePayload } from '../services/reevaluation.service.js';
 import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertNoVerificationRunning, assertOpenForVerification } from '../services/bidRules.service.js';
+import { buyerLogin, buyerOverview, buyerSubmission, requireBuyer } from '../services/gemBuyer.service.js';
 import { generateReport, getReport, listAllReports, listReports, sendReportToGem } from '../services/report.service.js';
 import { askAssistant } from '../services/assistant.service.js';
 import { waitUntil } from '@vercel/functions';
@@ -98,6 +99,30 @@ router.get(
   '/gem/submissions/:id',
   asyncHandler(async (req, res) => {
     res.json({ success: true, data: await getSubmissionWithEvaluation(String(req.params.id)) });
+  }),
+);
+
+// Buyer desk (GeM side): the procurement officer signed in on GeM.
+router.post(
+  '/gem/buyer/login',
+  asyncHandler(async (req, res) => {
+    res.json({ success: true, data: await buyerLogin(String(req.body?.identifier ?? ''), String(req.body?.password ?? '')) });
+  }),
+);
+
+router.get(
+  '/gem/buyer/overview',
+  asyncHandler(async (req, res) => {
+    requireBuyer(req.get('authorization'));
+    res.json({ success: true, data: await buyerOverview() });
+  }),
+);
+
+router.get(
+  '/gem/buyer/submissions/:id',
+  asyncHandler(async (req, res) => {
+    requireBuyer(req.get('authorization'));
+    res.json({ success: true, data: await buyerSubmission(String(req.params.id)) });
   }),
 );
 

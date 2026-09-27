@@ -43,6 +43,7 @@ export const GemLayout: React.FC = () => {
           <div className="mx-auto flex max-w-6xl gap-1 px-4">
             <NavLink to="/gem" end className={nav}>Bids</NavLink>
             <NavLink to="/gem/my-bids" className={nav}>My Bids</NavLink>
+            <NavLink to="/gem/buyer" className={nav}>Buyer desk</NavLink>
           </div>
         </nav>
       </header>

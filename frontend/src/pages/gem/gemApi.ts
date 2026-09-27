@@ -106,6 +106,55 @@ export const fileToBase64 = (file: File) =>
     r.readAsDataURL(file);
   });
 
+export interface BuyerBid {
+  id: string;
+  gemBidNo: string;
+  tenderId: string;
+  seller: string;
+  pan: string;
+  submittedAt: string;
+  documents: number;
+  evaluationStatus: string;
+  nextStage: string;
+  remarks: string | null;
+  latestReport: { reportNo: string; receivedAt: string; verified: boolean; complianceScore: number | null } | null;
+  reports: number;
+  requestPending: boolean;
+}
+export interface BuyerTender { id: string; title: string; division: string; closes: string; technicalOpening: string; bids: BuyerBid[] }
+export interface BuyerSubmission extends BuyerBid {
+  company: GemCompany;
+  responses: { kind: string; reason: string; sentAt: string; documents: GemDocument[] }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  reportsReceived: { reportNo: string; sha256: string; verified: boolean; status: string; remarks: string | null; receivedAt: string; content: any }[];
+}
+
+const BUYER_KEY = 'csap.gemBuyerToken';
+export const buyerToken = {
+  get: () => {
+    try {
+      return sessionStorage.getItem(BUYER_KEY);
+    } catch {
+      return null;
+    }
+  },
+  set: (t: string | null) => {
+    try {
+      if (t) sessionStorage.setItem(BUYER_KEY, t);
+      else sessionStorage.removeItem(BUYER_KEY);
+    } catch {
+      /* private mode: sign in again next time */
+    }
+  },
+};
+const buyerHeaders = (): RequestInit => ({ headers: { Authorization: `Bearer ${buyerToken.get() ?? ''}` } });
+
+export const gemBuyerApi = {
+  login: (identifier: string, password: string) => publicCall<{ token: string; expiresAt: string }>('/api/gem/buyer/login', post({ identifier, password })),
+  overview: () => publicCall<BuyerTender[]>('/api/gem/buyer/overview', buyerHeaders()),
+  submission: (id: string) => publicCall<BuyerSubmission>(`/api/gem/buyer/submissions/${id}`, buyerHeaders()),
+};
+
 export const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 export const crore = (n: number) => `₹${(n / 1e7).toFixed(2)} Cr`;
 export const gemTenderPath = (id: string) => `/gem/tenders/${encodeURIComponent(id)}`;

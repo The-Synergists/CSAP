@@ -21,6 +21,8 @@ import { GemSubmitPage } from './pages/gem/GemSubmitPage';
 import { GemReceiptPage } from './pages/gem/GemReceiptPage';
 import { GemBidPage } from './pages/gem/GemBidPage';
 import { GemMyBidsPage } from './pages/gem/GemMyBidsPage';
+import { GemBuyerPage } from './pages/gem/GemBuyerPage';
+import { GemBuyerReportPage } from './pages/gem/GemBuyerReportPage';
 import { EvaluationReportPage } from './pages/bids/EvaluationReportPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { NotFoundPage } from './pages/common/NotFoundPage';
@@ -62,6 +64,8 @@ export const App: React.FC = () => (
             <Route path="tenders/:tenderId/participate" element={<GemSubmitPage />} />
             <Route path="my-bids" element={<GemMyBidsPage />} />
             <Route path="submissions/:id" element={<GemReceiptPage />} />
+            <Route path="buyer" element={<GemBuyerPage />} />
+            <Route path="buyer/bids/:id" element={<GemBuyerReportPage />} />
           </Route>
           <Route
             path="/login"
