@@ -83,11 +83,6 @@ export const DocumentsTab: React.FC<TabProps> = ({ view, goTo, openDocument }) =
                           <Eye className="h-3.5 w-3.5" /> View
                         </Button>
                       )}
-                      {c.requirement.code === 'REQ-07' && c.document?.storagePath && (
-                        <Button size="sm" variant="ghost" onClick={() => goTo('pan')}>
-                          Verify PAN
-                        </Button>
-                      )}
                       {c.findingId && (
                         <Button size="sm" variant="ghost" onClick={() => goTo('evidence', { finding: c.findingId! })}>
                           Finding

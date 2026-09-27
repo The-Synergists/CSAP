@@ -33,6 +33,28 @@ export async function submitDecision(db: SupabaseClient, input: DecisionRequest)
     throw new HttpError(409, 'A final decision has already been recorded for this bid. It can be decided again only after a re-evaluation request is accepted.', 'ALREADY_DECIDED');
   }
 
+  // The officer decides on a verified bid: its documents must have been read and the latest
+  // verification must have finished (not still running, not stopped).
+  const { data: batches } = await db.from('document_batches').select('status').eq('bid_id', input.bidId).eq('status', 'COMPLETED').limit(1);
+  if (!batches?.length) {
+    throw new HttpError(409, "CSAP has not read this bid's documents yet. Run Re-run verification and decide on the verified result.", 'NOT_VERIFIED');
+  }
+  const { data: marks } = await db
+    .from('audit_events')
+    .select('summary')
+    .eq('bid_id', input.bidId)
+    .in('summary', ['Re-verification requested', 'Bid received from GeM', 'Automatic verification completed', 'Automatic verification stopped'])
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const lastMark = marks?.[0]?.summary;
+  if (lastMark && lastMark !== 'Automatic verification completed') {
+    throw new HttpError(
+      409,
+      lastMark === 'Automatic verification stopped' ? 'The last verification did not finish. Run Re-run verification before deciding.' : 'CSAP is still verifying this bid. Decide once it has finished.',
+      'NOT_VERIFIED',
+    );
+  }
+
   const { data, error } = await db.rpc('submit_officer_decision', {
     p_bid_id: input.bidId,
     p_decision: input.decision,

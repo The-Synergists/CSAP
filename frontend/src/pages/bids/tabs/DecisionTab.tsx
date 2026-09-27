@@ -328,6 +328,13 @@ const DecisionHistory: React.FC<{ view: BidView }> = ({ view }) =>
     </Card>
   );
 
+/** Where the bid's verification stands, from its latest start / finish event. */
+const verificationState = (view: BidView): 'done' | 'running' | 'stopped' | 'never' => {
+  const mark = view.audit.find((e) => ['Re-verification requested', 'Bid received from GeM', 'Automatic verification completed', 'Automatic verification stopped'].includes(e.summary));
+  if (!mark) return 'never';
+  return mark.summary === 'Automatic verification completed' ? 'done' : mark.summary === 'Automatic verification stopped' ? 'stopped' : 'running';
+};
+
 export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, preset, goTo }) => {
   const { source } = useApp();
   return (
@@ -336,7 +343,17 @@ export const DecisionTab: React.FC<TabProps & { preset: Preset }> = ({ view, pre
         <RecommendationPanel view={view} goTo={goTo} />
       </div>
       <div className="space-y-5">
-        {view.flags.closed ? (
+        {!view.flags.closed && verificationState(view) !== 'done' ? (
+          <Card title="Verify before deciding">
+            <p className="text-xs text-slate-700">
+              {verificationState(view) === 'running'
+                ? 'CSAP is still verifying this bid (reading its documents, checking the tender rules and the registries). The decision form opens as soon as it finishes.'
+                : verificationState(view) === 'stopped'
+                  ? 'The last verification did not finish. Use Re-run verification at the top of the bid, then decide on the verified result.'
+                  : "CSAP has not verified this bid's documents yet. Use Re-run verification at the top of the bid, then decide on the verified result."}
+            </p>
+          </Card>
+        ) : view.flags.closed ? (
           <Card>
             <p className="flex items-center gap-2 text-xs text-slate-800">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />A final decision has been recorded, so the bid is locked. A new decision is possible only after you accept a re-evaluation request from the bidder.

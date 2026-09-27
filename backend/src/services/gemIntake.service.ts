@@ -332,6 +332,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
     }
     // 1. NVIDIA reads every document; its fields become the text the rules engine checks.
     const runs: DocumentVerificationRun[] = await readAllDocumentsNow(db, actor, bidId);
+    if (!runs.length) throw new Error('The bid has no stored document files to read');
     for (const r of runs) {
       const code = r.document.code;
       if (!code) continue;

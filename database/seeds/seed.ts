@@ -146,30 +146,18 @@ async function main() {
     const view = getBidView(demo, bid.id)!;
     ok(await sb.from('bids').insert({
       id: bid.id, tender_id: bid.tenderId, company_id: companyId.get(bid.bidderId),
-      make_in_india_percentage: bid.makeInIndiaPercentage, overall_compliance_score: view.score.score,
-      risk_level: bid.riskLevel, risk_score: bid.riskScore, primary_concern: bid.primaryConcern, submission_timestamp: bid.submittedAt,
+      make_in_india_percentage: bid.makeInIndiaPercentage, overall_compliance_score: 0,
+      risk_level: 'LOW', risk_score: 0, primary_concern: 'Verification in progress.', submission_timestamp: bid.submittedAt,
     }), `bid ${bid.id}`);
 
-    const evidence = ok(await sb.from('evidence_items').insert(view.findings.map((f) => {
-      const req = reqCode.get(f.requirementId)!;
-      return {
-        bid_id: bid.id, display_code: f.id, requirement_title: evidenceRequirementTitle(req.code, req.title),
-        finding_type: SEVERITY_TO_FINDING_TYPE[f.severity], ai_finding: f.title,
-        submitted_document_name: view.documents.find((d) => d.id === f.documentId)?.fileName ?? '—',
-        document_snippet: f.evidenceExcerpt, tender_clause_requirement: f.expected, verification_timestamp: f.detectedAt,
-        source: f.evidenceSource, resolution_status: 'OPEN',
-      };
-    })).select('id, display_code'), `evidence ${bid.id}`);
-    const evidenceUuid = new Map(evidence.map((e) => [e.display_code, e.id]));
-
+    // Results are never typed in: every check, finding and score comes from CSAP reading the bid's
+    // documents (step 10 below runs the real verification for each bid).
     ok(await sb.from('bid_documents').insert(view.documents.map((d) => {
       const req = reqCode.get(d.requirementId)!;
-      const check = view.checks.find((c) => c.requirementId === d.requirementId);
       return {
         bid_id: bid.id, display_code: d.id, name: d.name, doc_type: req.category, file_name: d.fileName, file_size: d.fileSize,
-        upload_timestamp: d.uploadedAt, ocr_status: 'COMPLETED', verification_status: CHECK_TO_DB[check?.status ?? 'MET'],
-        status_message: check?.note ?? null, extracted_snippet: d.extractedText, tender_clause_reference: docClauseRef(req.code, req.clause),
-        evidence_item_id: check?.findingId ? evidenceUuid.get(check.findingId) : null,
+        upload_timestamp: d.uploadedAt, ocr_status: 'PROCESSING', verification_status: 'PENDING',
+        status_message: 'Waiting for CSAP AI reading.', extracted_snippet: '', tender_clause_reference: docClauseRef(req.code, req.clause),
       };
     })), `documents ${bid.id}`);
 
@@ -179,53 +167,12 @@ async function main() {
         bid_id: bid.id, required_amount: e.requiredAmount, submitted_amount: e.submittedAmount, instrument_type: e.instrument,
         transaction_or_bg_no: e.reference, bank_name: e.bankName, issuing_branch: e.branch ?? null, valid_until: e.validUntil ?? null,
         payment_date: e.paymentDate, payment_status: e.instrument === 'MSME_EXEMPTION' ? 'EXEMPTED' : 'SUCCESSFUL',
-        bidder_match: e.remitterMatchesBidder, verification_result: EMD_TO_DB[e.result], officer_note: e.note,
+        bidder_match: e.remitterMatchesBidder, verification_result: 'EMD_VERIFIED', officer_note: 'Declared with the bid; checked against its document during verification.',
       }), `emd ${bid.id}`);
     }
 
-    ok(await sb.from('compliance_check_items').insert(view.checks.map((c) => ({
-      bid_id: bid.id, display_code: c.requirement.code, requirement_name: c.requirement.title, category: c.requirement.category,
-      status: CHECK_TO_DB[c.status], mandatory: c.requirement.mandatory, score_contribution: 0,
-      notes: complianceNotes(c.submitted, c.note), evidence_item_id: c.findingId ? evidenceUuid.get(c.findingId) : null,
-    }))), `checks ${bid.id}`);
-
-    if (view.riskFactors.length) {
-      ok(await sb.from('risk_factors').insert(view.riskFactors.map((r) => ({
-        bid_id: bid.id, display_code: r.id, category: r.category, title: r.title, level: r.level, description: r.description,
-        impact_score: 0, evidence_item_id: r.findingId ? evidenceUuid.get(r.findingId) : null,
-      }))), `risks ${bid.id}`);
-    }
-
-    // The recorded verification run carries the per-requirement detail (see StoredRun).
-    const checks: EngineCheck[] = view.checks.map((c) => ({
-      requirementCode: c.requirement.code, status: c.status, submitted: c.submitted, note: c.note,
-      documentId: c.documentId ?? null, riskPoints: 0,
-      finding: c.finding && {
-        title: c.finding.title, severity: c.finding.severity, expected: c.finding.expected, submitted: c.finding.submitted,
-        comparison: c.finding.comparison, evidenceExcerpt: c.finding.evidenceExcerpt, evidenceSource: c.finding.evidenceSource,
-        impact: c.finding.impact, suggestedAction: c.finding.suggestedAction,
-      },
-    }));
-    const started = view.audit.find((a) => a.summary === 'Verification started')?.timestamp ?? bid.submittedAt;
-    const run = ok(await sb.from('ai_verification_runs').insert({
-      bid_id: bid.id, initiated_by: officerId, status: 'COMPLETED', started_at: started, completed_at: bid.lastVerifiedAt,
-      steps: { kind: 'bidsure.verification.v1', source: 'seed', steps: buildSteps(view), checks } satisfies StoredRun,
-    }).select('id').single(), `run ${bid.id}`);
-
-    if (view.recommendation) {
-      const r = view.recommendation;
-      const rec = ok(await sb.from('ai_recommendations').insert({
-        bid_id: bid.id, ai_verification_run_id: run.id, summary: r.summary, details: r.rationale,
-        suggested_action: r.suggestedDecision, confidence: 0, created_at: r.generatedAt,
-      }).select('id').single(), `recommendation ${bid.id}`);
-      const pts = [
-        ...r.strengths.map((t, i) => ({ ai_recommendation_id: rec.id, kind: 'PRO', point_text: t, sort_order: i })),
-        ...r.concerns.map((t, i) => ({ ai_recommendation_id: rec.id, kind: 'CON', point_text: t, sort_order: i })),
-      ];
-      if (pts.length) ok(await sb.from('ai_recommendation_points').insert(pts), `points ${bid.id}`);
-    }
-
-    for (const d of view.decisions) {
+    // Decisions are the officer's to make on the verified result; the demo starts with none.
+    for (const d of [] as typeof view.decisions) {
       ok(await sb.from('officer_decisions').insert({
         bid_id: bid.id, tender_id: bid.tenderId, officer_profile_id: userIdMap.get(d.officerId) ?? officerId, decision: d.decision,
         remarks: d.remarks, justification_reason: d.reason, dsc_signed: false, created_at: d.decidedAt,
@@ -235,7 +182,7 @@ async function main() {
   }
 
   // 5. Audit trail (tender- and bid-level).
-  ok(await sb.from('audit_events').insert(demo.auditEvents.map((a) => ({
+  ok(await sb.from('audit_events').insert(demo.auditEvents.filter((a) => a.actorType === 'BIDDER' || a.summary === 'Tender published').map((a) => ({
     bid_id: a.bidId ?? null, tender_id: a.tenderId,
     actor_profile_id: a.actorType === 'OFFICER' ? officerId : null,
     actor_display_name: a.actor, actor_role: ACTOR_TO_DB[a.actorType].role, action_type: ACTOR_TO_DB[a.actorType].actionType,
@@ -288,6 +235,33 @@ async function main() {
   // 9. The demo reset removed audit events; re-seal the tamper-evident chain over what remains.
   const sealed = ok(await sb.rpc('reseal_audit_chain'), 'reseal audit chain');
   console.log(`Audit chain re-sealed over ${sealed} events`);
+
+  // 10. Verify every demo bid for real: documents read by CSAP AI, tender rules, document evidence,
+  //     registries. Uses the deployed CSAP (CSAP_API_URL) exactly as an officer's Re-run would.
+  const api = (process.env.CSAP_API_URL ?? 'https://csap-kappa.vercel.app').replace(/\/+$/, '');
+  const login = await fetch(`${api}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: demoUser.employeeId, password: DEMO_PASSWORD }) });
+  const token = ((await login.json()) as any)?.data?.accessToken;
+  if (!token) throw new Error(`could not sign in to ${api} to run verification`);
+  const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const started = new Date(Date.now() - 5000).toISOString();
+  for (const bid of demo.bids) {
+    const r = await fetch(`${api}/api/verification/run`, { method: 'POST', headers: auth, body: JSON.stringify({ bidId: bid.id }) });
+    if (r.status !== 202) throw new Error(`verification of ${bid.id} not started (HTTP ${r.status})`);
+  }
+  console.log(`Verification started for ${demo.bids.length} bids on ${api}; waiting…`);
+  const pending = new Set(demo.bids.map((b) => b.id));
+  for (let i = 0; i < 120 && pending.size; i++) {
+    await new Promise((res) => setTimeout(res, 4000));
+    for (const id of [...pending]) {
+      const v = ((await (await fetch(`${api}/api/bids/${id}`, { headers: auth }).catch(() => null))?.json().catch(() => null)) as any)?.data;
+      const ev = v?.audit?.find((e: any) => /^Automatic verification (completed|stopped)/.test(e.summary) && e.timestamp >= started);
+      if (ev) {
+        pending.delete(id);
+        console.log(`  ${id}: ${ev.summary} · score ${v.bid.complianceScore} · ${v.counts.met} of ${v.counts.total} met`);
+      }
+    }
+  }
+  if (pending.size) throw new Error(`verification did not finish for ${[...pending].join(', ')}`);
 
   console.log(`\nDone. Officer login: ${demoUser.email} or employee ID ${demoUser.employeeId}`);
 }

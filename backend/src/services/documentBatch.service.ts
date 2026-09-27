@@ -27,7 +27,7 @@ import type {
 import { loadWorkspace } from '../db/workspace.repository.js';
 import { HttpError, must } from '../lib/http.js';
 import { nameMatches } from '../registries/adapters.js';
-import { callPanApi, compare as comparePan, download, engine } from './documentPipeline.service.js';
+import { download, engine } from './documentPipeline.service.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -159,6 +159,11 @@ export function compareWithBid(view: BidView, type: DocumentType, f: Record<stri
         ...(nameValue ? [nameRow] : []),
       ];
     }
+    case 'PAN':
+      return [
+        row('PAN', f.pan, b.pan, f.pan ? code(f.pan) === code(b.pan) : null),
+        ...(nameValue ? [nameRow] : []),
+      ];
     case 'EPFO_ESIC':
       return [
         row('EPFO code', f.epfo_code, b.epfoCode, f.epfo_code && b.epfoCode ? code(f.epfo_code) === code(b.epfoCode) : null),
@@ -344,31 +349,12 @@ async function readOne(db: SupabaseClient, view: BidView, run: ReturnType<typeof
         verdict = 'DISCREPANCY';
         summary = 'No PAN number was found in this document; it is not a PAN card or it is the wrong document.';
       } else {
-        await update({ status: 'CALLING_API' });
-        const verifyPan = async (x: ExtractionResult) => {
-          const { request, response } = await retry(() => callPanApi(x.fields.pan!, x.fields.name));
-          await db.from('external_api_calls').insert({
-            run_id: run.id,
-            bid_id: view.bid.id,
-            api_name: request.apiName,
-            method: request.method,
-            url: request.url,
-            request_body: request.body,
-            response_status: response.httpStatus,
-            response_body: response.body,
-            latency_ms: response.latencyMs,
-          });
-          await update({ api_request: request, api_response: response });
-          return comparePan(view, x, response);
-        };
-        let judged = await verifyPan(extraction);
+        let judged = judgeDocument(view, run.documentType, extraction);
         // OCR can misread one character of a PAN: read the card once more before reporting a disagreement.
-        if (judged.verdict !== 'VERIFIED') {
+        if (judged.verdict === 'DISCREPANCY') {
           const second = await read();
-          if (second.extraction.fields.pan) {
-            const again = await verifyPan(second.extraction);
-            if (again.verdict === 'VERIFIED') ({ ocr, extraction } = second), (judged = again);
-          }
+          const again = second.extraction.fields.pan ? judgeDocument(view, run.documentType, second.extraction) : judged;
+          if (again.verdict === 'CONSISTENT') ({ ocr, extraction } = second), (judged = again);
         }
         ({ rows, verdict, summary } = judged);
       }

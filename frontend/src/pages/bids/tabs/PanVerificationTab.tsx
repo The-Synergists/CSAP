@@ -26,7 +26,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view, openDocument }) =
     <div className="space-y-4">
       <Card
         title="PAN verification"
-        subtitle="The PAN document in the bid, read by CSAP AI and compared with the bid record and the PAN registry. Re-run verification reads it again."
+        subtitle="The PAN document in the bid, read by CSAP AI and compared with the PAN declared in the bid. The PAN registry is checked once, below."
         actions={doc && <Button size="sm" onClick={() => openDocument(doc)}>View document</Button>}
       >
         {!doc ? (
@@ -49,7 +49,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view, openDocument }) =
             {run.comparison && (
               <>
                 <p className="text-slate-700">{run.comparison.summary}</p>
-                <ComparisonTable rows={run.comparison.rows} registry />
+                <ComparisonTable rows={run.comparison.rows} registry={false} />
               </>
             )}
             <Button size="sm" onClick={() => setOpen(true)}>Show how it was read</Button>
