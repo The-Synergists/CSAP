@@ -19,11 +19,11 @@ interface Health {
 }
 
 const INTEGRATIONS = [
-  { name: 'CSAP AI — document reading (NVIDIA Nemotron OCR V2)', note: 'Reads uploaded PAN document images (PAN verification tab).', state: 'Live' },
-  { name: 'CSAP AI — extraction, explanations, assistant (NVIDIA Nemotron)', note: 'LLM that extracts PAN, name and other fields from the OCR text.', state: 'Live' },
+  { name: 'CSAP AI — document reading (NVIDIA Nemotron OCR V2)', note: 'Reads every bid document, PDF or image (Documents and PAN verification tabs, and automatically for bids from GeM).', state: 'Live' },
+  { name: 'CSAP AI — extraction, explanations, assistant (NVIDIA Nemotron)', note: 'Extracts the fields of each document type, writes cited explanations and answers the assistant.', state: 'Live' },
   { name: 'Government Gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker — each registry answers from its own dataset. Real APIs plug in behind the same adapters.', state: 'Simulated' },
   { name: 'Live GSTIN provider (gstinapi.in)', note: 'Real GST registration and GSTR-3B filing data for real GSTINs (Portal verification tab). Answers are cached so repeat checks use no credits; demo GSTINs stay simulated.', state: 'Live' },
-  { name: 'GeM tender feed', note: 'Tenders and bids are loaded from the CSAP database.', state: 'Not connected' },
+  { name: 'GeM portal (simulated)', note: 'Bids submitted on the GeM portal arrive in CSAP automatically (signed webhook) with their documents and are verified straight away; tenders published in CSAP open on GeM; evaluation reports go back to GeM after the decision.', state: 'Connected' },
   { name: 'Bank / treasury (EMD)', note: 'EMD amounts compared with submitted instrument; no bank confirmation.', state: 'Simulated' },
   { name: 'Digital signature (DSC)', note: 'Decisions are recorded against the signed-in officer, not digitally signed.', state: 'Not connected' },
 ];
@@ -122,7 +122,7 @@ export const SettingsPage: React.FC = () => {
                 <p className="text-xs font-medium text-slate-900">{i.name}</p>
                 <p className="text-xs text-slate-500">{i.note}</p>
               </div>
-              <Badge tone={i.state === 'Live' ? 'success' : i.state === 'Simulated' || i.state === 'Dummy API' ? 'warning' : 'neutral'}>{i.state}</Badge>
+              <Badge tone={i.state === 'Live' || i.state === 'Connected' ? 'success' : i.state === 'Simulated' || i.state === 'Dummy API' ? 'warning' : 'neutral'}>{i.state}</Badge>
             </li>
           ))}
         </ul>
