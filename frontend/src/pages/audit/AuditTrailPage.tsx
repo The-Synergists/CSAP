@@ -16,7 +16,6 @@ type ActorFilter = 'ALL' | AuditActorType;
 const ACTOR_OPTIONS: { id: ActorFilter; label: string }[] = [
   { id: 'ALL', label: 'All' },
   { id: 'OFFICER', label: 'Officer actions' },
-  { id: 'SYSTEM', label: 'Verification' },
   { id: 'BIDDER', label: 'Bidder submissions' },
 ];
 
@@ -117,7 +116,7 @@ export const AuditTrailPage: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Audit trail"
-        subtitle={`Chronological record of bid submissions, verification runs and officer decisions. ${
+        subtitle={`Key workflow events: tenders published, officer decisions and clarifications, bidder re-evaluation requests and evaluation reports. Each bid's step-by-step verification is on its Overview. ${
           source === 'api' ? 'Stored in the CSAP database; officer entries are written together with the decision.' : 'Held in this browser session (demo data).'
         }`}
         actions={<Button onClick={exportCsv} disabled={!sorted.length}><Download className="h-4 w-4" /> Export CSV</Button>}
