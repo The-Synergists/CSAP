@@ -91,9 +91,10 @@ export const findBid = (db: Database, bidId?: string): Bid | undefined =>
  * otherwise approval. Advisory only; the officer decides.
  */
 export const liveRecommendation = (bid: Bid, checks: CheckRow[], score: number): Recommendation => {
-  const open = (c: CheckRow) => !c.finding || c.finding.status === 'OPEN' || c.finding.status === 'CLARIFICATION_REQUESTED';
-  const blockers = checks.filter((c) => c.requirement.mandatory && (c.status === 'NOT_MET' || c.status === 'MISSING') && open(c));
-  const reviews = checks.filter((c) => c.status === 'REVIEW' && open(c));
+  // From the checks alone: what the officer later did with a finding never changes the suggestion
+  // (a report generated after a rejection must still show why rejection was suggested).
+  const blockers = checks.filter((c) => c.requirement.mandatory && (c.status === 'NOT_MET' || c.status === 'MISSING'));
+  const reviews = checks.filter((c) => c.status === 'REVIEW');
   const met = checks.filter((c) => c.status === 'MET' || c.status === 'EXEMPTED');
   const label = (c: CheckRow) => c.finding?.title ?? `${c.requirement.title}: ${c.submitted}`;
   const list = (cs: CheckRow[]) => cs.map((c) => c.requirement.title.toLowerCase()).join(', ');
