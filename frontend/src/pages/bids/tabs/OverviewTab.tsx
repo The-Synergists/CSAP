@@ -134,12 +134,14 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
         />
       </Card>
       <Card
-        title="Activity"
-        subtitle="Submission, verification and officer actions on this bid"
-        actions={<Link to={`/audit?bidId=${view.bid.id}`} className="text-xs font-medium text-blue-700 hover:underline">Audit trail</Link>}
+        title={`Activity (${view.audit.length})`}
+        subtitle="Newest first · scroll for earlier events"
+        actions={<Link to={`/audit?bidId=${view.bid.id}`} className="text-xs font-medium text-blue-700 hover:underline">Full audit trail →</Link>}
       >
-        <ActivityTimeline events={view.audit.slice(0, 8)} />
-        {view.audit.length > 8 && <p className="mt-2 text-xs text-slate-500">{view.audit.length - 8} earlier events in the audit trail.</p>}
+        {/* Fixed height: the card never grows with the bid's history; the full record is on the Audit Trail page. */}
+        <div className="max-h-[360px] overflow-y-auto pr-1" tabIndex={0} aria-label="Activity on this bid">
+          <ActivityTimeline events={view.audit} />
+        </div>
       </Card>
       </div>
     </div>

@@ -510,7 +510,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
     await audit(
       view,
       'Tender rules checked',
-      `${met.length} of ${result.checks.length} requirements met; ${withFindings.length} finding(s); compliance score ${view.score.score}/100; risk ${result.risk.level.toLowerCase()}. Suggested action: ${result.recommendation.suggestedDecision.replace('_', ' ').toLowerCase()} (advisory).`,
+      `${met.length} of ${result.checks.length} requirements met; ${withFindings.length} finding(s); compliance score ${view.score.score}/100; risk ${result.risk.level.toLowerCase()}. Suggested action: ${(view.recommendation?.suggestedDecision ?? result.recommendation.suggestedDecision).replace(/_/g, ' ').toLowerCase()} (advisory).`,
     );
 
     // 3. Government registries.
