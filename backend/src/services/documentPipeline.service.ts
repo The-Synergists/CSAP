@@ -21,6 +21,7 @@ import type {
   PipelineDocument,
 } from '../../../shared/domain/types.js';
 import { config } from '../config/env.js';
+import { apiSetuCertificate, shownHeaders, xmlElement } from '../registries/apiSetu.js';
 import { loadWorkspace } from '../db/workspace.repository.js';
 import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
@@ -193,40 +194,39 @@ export function compare(view: BidView, extraction: ExtractionResult, api: ApiRes
 }
 
 export async function callPanApi(pan: string, name: string | null): Promise<{ request: ApiRequestRecord; response: ApiResponseRecord }> {
-  const url = `${config.govGatewayUrl}/v1/pan/verify`;
-  const body = { pan, name };
+  // API Setu: PAN Verification Record, with the PAN and name read from the document.
+  const r = await apiSetuCertificate('/pan/v3/pancr/certificate', 'Income Tax Department', 'PANCR', { panno: pan, PANFullName: name || 'NOT READ' }, { idType: 'PAN', idNumber: pan }, 'Verification of a PAN document submitted with a bid');
   const request: ApiRequestRecord = {
     apiName: PAN_API_NAME,
     method: 'POST',
-    url,
-    headers: { 'content-type': 'application/json', 'x-api-key': '••••••••' },
-    body,
+    url: r.url,
+    headers: { 'content-type': 'application/json', ...shownHeaders },
+    body: r.requestBody,
     sentAt: new Date().toISOString(),
   };
-  const started = performance.now();
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': config.govGatewayKey },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch {
-    throw new Error(`PAN Verification API not reachable at ${config.govGatewayUrl}.`);
+  // The XML certificate is kept as returned; CSAP reads its fields for the comparison.
+  let body: Record<string, unknown>;
+  if (r.xml) {
+    const rec = xmlElement(r.xml, 'PANVerificationRecord') ?? {};
+    const person = xmlElement(r.xml, 'Person') ?? {};
+    body = {
+      status: rec.status,
+      pan: rec.num,
+      registered_name: person.name,
+      category: person.category,
+      name_match: rec.nameMatch === 'Y' ? 'MATCH' : 'NO_MATCH',
+      name_match_score: rec.nameMatchScore ? Number(rec.nameMatchScore) : undefined,
+      verified_on: rec.verifiedOn,
+      certificate: r.xml,
+    };
+  } else {
+    body = {
+      status: r.error?.error === 'record_not_found' ? 'NOT_FOUND' : r.httpStatus === 400 ? 'INVALID_FORMAT' : 'ERROR',
+      message: r.error?.errorDescription,
+      error: r.error,
+    };
   }
-  const json = (await res.json().catch(() => ({}))) as Record<string, any>;
-  if (res.status === 401) throw new Error('PAN Verification API rejected the API key.');
-  if (res.status >= 500) throw new Error(`PAN Verification API returned HTTP ${res.status}.`);
-  return {
-    request,
-    response: {
-      httpStatus: res.status,
-      latencyMs: Math.round(performance.now() - started),
-      receivedAt: new Date().toISOString(),
-      body: res.status === 400 ? (json.detail ?? json) : json,
-    },
-  };
+  return { request, response: { httpStatus: r.httpStatus, latencyMs: r.latencyMs, receivedAt: new Date().toISOString(), body } };
 }
 
 /** Creates the run and returns it immediately; the stages then continue in the background. */

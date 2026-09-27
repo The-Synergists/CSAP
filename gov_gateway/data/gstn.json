@@ -1,7 +1,7 @@
 {
   "dataset": "CSAP simulated GSTN taxpayer registry",
   "description": "Registration status and GSTR-3B filing history. Fictitious demo data.",
-  "version": "2026.09.2",
+  "version": "2026.09.2+aug2026",
   "updated_at": "2026-09-26",
   "records": [
     {
@@ -55,6 +55,13 @@
           "return_type": "GSTR-3B",
           "due_date": "2026-08-20",
           "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": "2026-09-20",
           "status": "ON_TIME"
         }
       ]
@@ -111,6 +118,13 @@
           "due_date": "2026-08-20",
           "filed_on": "2026-08-20",
           "status": "ON_TIME"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": "2026-09-20",
+          "status": "ON_TIME"
         }
       ]
     },
@@ -166,6 +180,13 @@
           "due_date": "2026-08-20",
           "filed_on": "2026-08-28",
           "status": "LATE"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": "2026-09-20",
+          "status": "ON_TIME"
         }
       ]
     },
@@ -220,6 +241,13 @@
           "return_type": "GSTR-3B",
           "due_date": "2026-08-20",
           "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": "2026-09-20",
           "status": "ON_TIME"
         }
       ]
@@ -277,6 +305,13 @@
           "due_date": "2026-08-20",
           "filed_on": null,
           "status": "NOT_FILED"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
         }
       ]
     },
@@ -330,6 +365,13 @@
           "period": "Jul 2026",
           "return_type": "GSTR-3B",
           "due_date": "2026-08-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
           "filed_on": null,
           "status": "NOT_FILED"
         }
@@ -387,6 +429,13 @@
           "due_date": "2026-08-20",
           "filed_on": null,
           "status": "NOT_FILED"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": null,
+          "status": "NOT_FILED"
         }
       ]
     },
@@ -441,6 +490,13 @@
           "return_type": "GSTR-3B",
           "due_date": "2026-08-20",
           "filed_on": "2026-08-20",
+          "status": "ON_TIME"
+        },
+        {
+          "period": "Aug 2026",
+          "return_type": "GSTR-3B",
+          "due_date": "2026-09-20",
+          "filed_on": "2026-09-20",
           "status": "ON_TIME"
         }
       ]

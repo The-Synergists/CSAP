@@ -7,6 +7,7 @@ import type { PortalCheck, PortalStatus, RegistryId, RegistryMode } from '../../
 import { config } from '../config/env.js';
 import { liveGstn } from './gstnLive.js';
 import { backupConfigured, isValidGstin, providerConfigured } from './gstinProvider.js';
+import { apiSetuCertificate, ddmmyyyy, gstnPublic, shownHeaders, xmlElement } from './apiSetu.js';
 
 export interface RegistryResult {
   registry: RegistryId;
@@ -16,7 +17,7 @@ export interface RegistryResult {
   summary: string;
   facts: { label: string; value: string }[];
   checks: PortalCheck[];
-  request: { method: string; url: string; body: unknown } | null;
+  request: { method: string; url: string; headers?: Record<string, string>; body: unknown } | null;
   response: { httpStatus: number; body: unknown } | null;
   latencyMs: number | null;
 }
@@ -101,70 +102,124 @@ const pan: RegistryAdapter = {
   mode: 'SIMULATED',
   identifier: (v) => v.bidder.pan,
   async verify(v, id) {
-    const body = { pan: id, name: v.bidder.companyName };
-    const r = await gateway('/v1/pan/verify', body);
-    const b = r.body;
-    const base = { registry: 'PAN' as const, mode: 'SIMULATED' as const, identifier: id, request: { method: 'POST', url: r.url, body }, response: { httpStatus: r.httpStatus, body: b }, latencyMs: r.latencyMs };
-    if (b.status === 'NOT_FOUND') return { ...base, status: 'NOT_FOUND', summary: `PAN ${id} not found in the PAN registry.`, facts: [], checks: [check('PAN exists', false, 'Registered', 'Not found')] };
-    const checks = [check('PAN status', b.status === 'VALID', 'VALID', b.status), check('Name matches bid', b.name_match === 'MATCH', v.bidder.companyName, b.registered_name)];
-    const status = b.status !== 'VALID' ? 'FAILED' : worst(checks);
+    // API Setu: PAN Verification Record (Income Tax Department).
+    const params = { panno: id, PANFullName: v.bidder.companyName, FullName: v.bidder.companyName, DOB: ddmmyyyy(v.bidder.incorporationDate), GENDER: '', UID: '' };
+    const r = await apiSetuCertificate('/pan/v3/pancr/certificate', 'Income Tax Department', 'PANCR', params, { idType: 'PAN', idNumber: id }, `Bid verification for tender ${v.tender.id}`);
+    const base = {
+      registry: 'PAN' as const,
+      mode: 'SIMULATED' as const,
+      identifier: id,
+      request: { method: 'POST', url: r.url, headers: shownHeaders, body: r.requestBody },
+      response: { httpStatus: r.httpStatus, body: r.xml ?? r.error },
+      latencyMs: r.latencyMs,
+    };
+    if (!r.xml) {
+      return r.error?.error === 'record_not_found'
+        ? { ...base, status: 'NOT_FOUND', summary: `PAN ${id} not found in the PAN registry.`, facts: [], checks: [check('PAN exists', false, 'Registered', 'Not found')] }
+        : { ...base, status: 'FAILED', summary: `PAN registry refused the request: ${r.error?.errorDescription ?? 'error'}.`, facts: [], checks: [check('Request accepted', false, 'Accepted', r.error?.error)] };
+    }
+    const rec = xmlElement(r.xml, 'PANVerificationRecord') ?? {};
+    const person = xmlElement(r.xml, 'Person') ?? {};
+    const checks = [check('PAN status', rec.status === 'VALID', 'VALID', rec.status), check('Name matches bid', rec.nameMatch === 'Y', v.bidder.companyName, person.name)];
+    const status = rec.status !== 'VALID' ? 'FAILED' : worst(checks);
     return {
       ...base,
       status,
-      summary: status === 'VERIFIED' ? `PAN valid and registered to ${b.registered_name}.` : b.status !== 'VALID' ? `PAN is ${b.status}. ${b.remarks ?? ''}` : `PAN valid but registered to ${b.registered_name}.`,
+      summary: status === 'VERIFIED' ? `PAN valid and registered to ${person.name}.` : rec.status !== 'VALID' ? `PAN is ${rec.status}.` : `PAN valid but registered to ${person.name}.`,
       facts: [
-        { label: 'Registered name', value: b.registered_name },
-        { label: 'Category', value: b.category },
-        { label: 'Status', value: b.status },
+        { label: 'Registered name', value: person.name },
+        { label: 'Category', value: person.category },
+        { label: 'Status', value: rec.status },
+        { label: 'Verified on', value: rec.verifiedOn },
       ],
       checks,
     };
   },
 };
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** The six monthly GSTR-3B periods already due (20th of the next month) before the bid opening. */
+function returnWindow(openingIso: string) {
+  let y = Number(openingIso.slice(0, 4));
+  let m = Number(openingIso.slice(5, 7));
+  const due = (yy: number, mm: number) => new Date(Date.UTC(mm === 12 ? yy + 1 : yy, mm === 12 ? 0 : mm, 20)).toISOString().slice(0, 10);
+  while (due(y, m) >= openingIso) [y, m] = m === 1 ? [y - 1, 12] : [y, m - 1];
+  const out: { period: string; label: string; due: string; fy: string }[] = [];
+  for (let i = 0; i < 6; i++) {
+    const fyStart = m >= 4 ? y : y - 1;
+    out.unshift({ period: `${String(m).padStart(2, '0')}${y}`, label: `${MONTH_NAMES.at(m - 1)} ${y}`, due: due(y, m), fy: `${fyStart}-${String(fyStart + 1).slice(2)}` });
+    [y, m] = m === 1 ? [y - 1, 12] : [y, m - 1];
+  }
+  return out;
+}
+
 const gstn: RegistryAdapter = {
   registry: 'GSTN',
   mode: 'SIMULATED',
   identifier: (v) => v.bidder.gstin,
   async verify(v, id) {
-    const simulated = await lookup('GSTN', '/v1/gstn/lookup', id, (rec) => {
-      const filings = (rec.filings ?? []) as Json[];
-      const missed = filings.filter((f) => f.status === 'NOT_FILED');
-      const late = filings.filter((f) => f.status === 'LATE');
-      const checks = [
-        check('Registration active', rec.status === 'Active', 'Active', rec.status),
-        check('Legal name matches bid', nameMatches(rec.legal_name, v.bidder.companyName) || nameMatches(rec.trade_name, v.bidder.companyName), v.bidder.companyName, rec.legal_name),
-        check('PAN embedded in GSTIN', id.slice(2, 12) === v.bidder.pan, v.bidder.pan, id.slice(2, 12)),
-        check('GSTR-3B filed (last 6 months)', missed.length === 0, '6 of 6 filed', `${filings.length - missed.length} of ${filings.length} filed`),
-        check('GSTR-3B filed on time', late.length === 0, 'On time', late.length ? `${late.length} late (${late.map((f) => f.period).join(', ')})` : 'On time'),
-      ];
-      const status = worst(checks, ['Registration active', 'GSTR-3B filed (last 6 months)', 'PAN embedded in GSTIN']);
+    // GSTN public APIs through a GSP: Search Taxpayer, then Track Return for the financial years concerned.
+    const search = await gstnPublic('/commonapi/v1.1/search', { action: 'TP', gstin: id });
+    const base = { registry: 'GSTN' as const, mode: 'SIMULATED' as const, identifier: id, latencyMs: search.latencyMs };
+    if (search.httpStatus === 404 || search.httpStatus === 400) {
+      // GSTINs the simulated registry does not hold (i.e. real ones) go to the live provider.
+      if (search.httpStatus === 404 && (providerConfigured() || backupConfigured()) && isValidGstin(id)) return liveGstn(id, { name: v.bidder.companyName, pan: v.bidder.pan });
       return {
-        status,
-        summary:
-          rec.status !== 'Active'
-            ? `GST registration is ${rec.status}.`
-            : missed.length
-              ? `Active, but ${missed.length} GSTR-3B return(s) not filed in the last 6 months.`
-              : late.length
-                ? `Active; all returns filed, ${late.length} filed late.`
-                : 'Active; all GSTR-3B returns for the last 6 months filed on time.',
-        facts: [
-          { label: 'Legal name', value: rec.legal_name },
-          { label: 'Status', value: rec.status },
-          { label: 'Constitution', value: rec.constitution },
-          { label: 'Registered', value: rec.registration_date },
-          { label: 'State', value: rec.state },
-          { label: 'Filing history', value: filings.map((f) => `${f.period}: ${String(f.status).replace('_', ' ').toLowerCase()}`).join(' · ') },
-        ],
-        checks,
+        ...base,
+        request: { method: 'GET', url: search.url, body: null },
+        response: { httpStatus: search.httpStatus, body: search.body },
+        status: search.httpStatus === 404 ? 'NOT_FOUND' : 'FAILED',
+        summary: search.httpStatus === 404 ? `${id} was not found in the GST registry.` : `${id} is not a valid GSTIN.`,
+        facts: [],
+        checks: [check(search.httpStatus === 404 ? 'Record exists' : 'Identifier format', false, 'Registered', search.body?.error?.message ?? 'Not found')],
       };
-    });
-    // GSTINs the simulated registry does not hold (i.e. real ones) go to the live provider.
-    if (simulated.status === 'NOT_FOUND' && (providerConfigured() || backupConfigured()) && isValidGstin(id)) {
-      return liveGstn(id, { name: v.bidder.companyName, pan: v.bidder.pan });
     }
-    return simulated;
+    const tp = search.body;
+    const window = returnWindow(v.tender.technicalOpeningDate);
+    const fys = [...new Set(window.map((w) => w.fy))];
+    const calls = await Promise.all(fys.map((fy) => gstnPublic('/commonapi/v1.0/returns', { action: 'RETTRACK', gstin: id, fy })));
+    const filed = calls.flatMap((c) => (c.body?.EFiledlist ?? []) as Json[]).filter((f) => f.rtntype === 'GSTR3B');
+    const rows = window.map((w) => {
+      const f = filed.find((x) => x.ret_prd === w.period);
+      const on = f ? `${String(f.dof).slice(6, 10)}-${String(f.dof).slice(3, 5)}-${String(f.dof).slice(0, 2)}` : null;
+      return { ...w, filedOn: on, late: !!on && on > w.due };
+    });
+    const missed = rows.filter((r) => !r.filedOn);
+    const late = rows.filter((r) => r.late);
+    const filedLabel = `GSTR-3B filed (${rows.length} months due before bid opening)`;
+    const checks = [
+      check('Registration active', tp.sts === 'Active', 'Active', tp.sts),
+      check('Legal name matches bid', nameMatches(tp.lgnm, v.bidder.companyName) || nameMatches(tp.tradeNam, v.bidder.companyName), v.bidder.companyName, tp.lgnm),
+      check('PAN embedded in GSTIN', id.slice(2, 12) === v.bidder.pan, v.bidder.pan, id.slice(2, 12)),
+      check(filedLabel, missed.length === 0, `${rows.length} of ${rows.length} filed`, `${rows.length - missed.length} of ${rows.length} filed`),
+      check('GSTR-3B filed on time', late.length === 0, 'On time', late.length ? `${late.length} late (${late.map((r) => r.label).join(', ')})` : 'On time'),
+    ];
+    const status = worst(checks, ['Registration active', filedLabel, 'PAN embedded in GSTIN']);
+    return {
+      ...base,
+      latencyMs: search.latencyMs + calls.reduce((t, c) => t + c.latencyMs, 0),
+      request: { method: 'GET', url: search.url, body: { alsoCalled: calls.map((c) => c.url) } },
+      response: { httpStatus: search.httpStatus, body: { searchTaxpayer: tp, trackReturn: calls.map((c) => c.body) } },
+      status,
+      summary:
+        tp.sts !== 'Active'
+          ? `GST registration is ${tp.sts}.`
+          : missed.length
+            ? `Active, but ${missed.length} GSTR-3B return(s) due before the bid opening not filed (${missed.map((r) => r.label).join(', ')}).`
+            : late.length
+              ? `Active; all returns filed, ${late.length} filed late.`
+              : `Active; all ${rows.length} GSTR-3B returns due before the bid opening filed on time.`,
+      facts: [
+        { label: 'Legal name', value: tp.lgnm },
+        { label: 'Status', value: tp.sts },
+        { label: 'Constitution', value: tp.ctb },
+        { label: 'Registered', value: tp.rgdt },
+        { label: 'State', value: tp.stj },
+        { label: 'Filing history', value: rows.map((r) => `${r.label}: ${r.filedOn ? (r.late ? 'filed late' : 'filed on time') : 'not filed'}`).join(' · ') },
+      ],
+      checks,
+    };
   },
 };
 
@@ -172,32 +227,48 @@ const udyam: RegistryAdapter = {
   registry: 'UDYAM',
   mode: 'SIMULATED',
   identifier: (v) => v.bidder.udyamNumber || null,
-  verify: (v, id) =>
-    lookup('UDYAM', '/v1/udyam/lookup', id, (rec) => {
-      const claimsExemption = v.emd?.instrument === 'MSME_EXEMPTION';
-      const mse = rec.type === 'Micro' || rec.type === 'Small';
-      const checks = [
-        check('Registration active', rec.status === 'Active', 'Active', rec.status),
-        check('Name matches bid', nameMatches(rec.enterprise_name, v.bidder.companyName), v.bidder.companyName, rec.enterprise_name),
-        ...(claimsExemption ? [check('Eligible for EMD exemption (Micro/Small)', mse, 'Micro or Small', rec.type)] : []),
-      ];
-      const status = worst(checks, ['Registration active', 'Eligible for EMD exemption (Micro/Small)']);
-      return {
-        status,
-        summary: `${rec.type} enterprise (${rec.major_activity}), ${String(rec.status).toLowerCase()}.${claimsExemption ? (mse ? ' Supports the EMD exemption claim.' : ' Not eligible for the EMD exemption claimed.') : ''}`,
-        facts: [
-          { label: 'Enterprise', value: rec.enterprise_name },
-          { label: 'Type', value: rec.type },
-          { label: 'Activity', value: rec.major_activity },
-          { label: 'NIC', value: (rec.nic_codes ?? []).join(', ') },
-          { label: 'Registered', value: rec.date_of_registration },
-          ...(rec.remarks ? [{ label: 'Remarks', value: rec.remarks }] : []),
-        ],
-        checks,
-      };
-    }),
+  async verify(v, id) {
+    // API Setu: Udyam Registration Certificate (Ministry of MSME). The registered mobile number is
+    // not part of a GeM bid, so it is sent only when known.
+    const r = await apiSetuCertificate('/msme/v3/udcer/certificate', 'Ministry of MSME', 'UDCER', { udyamNumber: id }, { idType: 'UDYAM', idNumber: id }, `Bid verification for tender ${v.tender.id}`);
+    const base = {
+      registry: 'UDYAM' as const,
+      mode: 'SIMULATED' as const,
+      identifier: id,
+      request: { method: 'POST', url: r.url, headers: shownHeaders, body: r.requestBody },
+      response: { httpStatus: r.httpStatus, body: r.xml ?? r.error },
+      latencyMs: r.latencyMs,
+    };
+    if (!r.xml) {
+      return r.error?.error === 'record_not_found'
+        ? { ...base, status: 'NOT_FOUND', summary: `${id} was not found in the Udyam registry.`, facts: [], checks: [check('Record exists', false, 'Registered', 'Not found')] }
+        : { ...base, status: 'FAILED', summary: `${id} is not a valid Udyam number.`, facts: [], checks: [check('Identifier format', false, 'Valid format', id)] };
+    }
+    const rec = xmlElement(r.xml, 'UdyamRegistration') ?? {};
+    const claimsExemption = v.emd?.instrument === 'MSME_EXEMPTION';
+    const mse = rec.enterpriseType === 'Micro' || rec.enterpriseType === 'Small';
+    const checks = [
+      check('Registration active', rec.status === 'Active', 'Active', rec.status),
+      check('Name matches bid', nameMatches(rec.enterpriseName, v.bidder.companyName), v.bidder.companyName, rec.enterpriseName),
+      ...(claimsExemption ? [check('Eligible for EMD exemption (Micro/Small)', mse, 'Micro or Small', rec.enterpriseType)] : []),
+    ];
+    const status = worst(checks, ['Registration active', 'Eligible for EMD exemption (Micro/Small)']);
+    return {
+      ...base,
+      status,
+      summary: `${rec.enterpriseType} enterprise (${rec.majorActivity}), ${String(rec.status).toLowerCase()}.${claimsExemption ? (mse ? ' Supports the EMD exemption claim.' : ' Not eligible for the EMD exemption claimed.') : ''}`,
+      facts: [
+        { label: 'Enterprise', value: rec.enterpriseName },
+        { label: 'Type', value: rec.enterpriseType },
+        { label: 'Activity', value: rec.majorActivity },
+        { label: 'NIC', value: rec.nicCodes },
+        { label: 'Registered', value: rec.dateOfRegistration },
+        ...(rec.remarks ? [{ label: 'Remarks', value: rec.remarks }] : []),
+      ],
+      checks,
+    };
+  },
 };
-
 const mca21: RegistryAdapter = {
   registry: 'MCA21',
   mode: 'SIMULATED',

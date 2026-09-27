@@ -357,7 +357,7 @@ export interface ApiRequestRecord {
   method: string;
   url: string;
   headers: Record<string, string>;
-  body: { pan: string; name?: string | null };
+  body: Record<string, unknown>;
   sentAt: string;
 }
 
