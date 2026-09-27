@@ -7,8 +7,8 @@ import type { BidView } from '@shared/domain/selectors';
 import { Card } from '../../components/ui/primitives';
 import { formatDateTime } from '../../lib/format';
 
-const STAGES = [
-  { summary: 'Bid received from GeM', label: 'Received from GeM (signed delivery verified)' },
+const STAGES: { summary: string; also?: string; label: string }[] = [
+  { summary: 'Bid received from GeM', also: 'Bid submitted', label: 'Received from GeM (signed delivery verified)' },
   { summary: 'Documents read by CSAP AI', label: 'Every document read by CSAP AI' },
   { summary: 'Tender rules checked', label: 'Tender requirements checked on the extracted values' },
   { summary: 'Portal verification completed', label: 'Government registries checked' },
@@ -18,7 +18,10 @@ const STAGES = [
 export const GemIntakeCard: React.FC<{ view: BidView }> = ({ view }) => {
   if (view.bid.source !== 'GEM') return null;
   const events = view.audit; // newest first
-  const find = (summary: string) => [...events].reverse().find((e) => e.summary === summary);
+  const find = (summary: string) => {
+    const also = STAGES.find((s) => s.summary === summary)?.also;
+    return [...events].reverse().find((e) => e.summary === summary || (!!also && e.summary === also));
+  };
   const stopped = events.find((e) => e.summary === 'Automatic verification stopped');
   const firstOpen = STAGES.findIndex((s) => !find(s.summary));
 
