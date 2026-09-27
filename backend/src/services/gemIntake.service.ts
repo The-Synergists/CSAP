@@ -185,7 +185,7 @@ export async function receiveGemBid(payload: GemBidPayload) {
       const req = requirements.find((r) => r.code === d.requirementCode);
       if (!req) continue;
       const code = `DOC-${n}${String(i + 1).padStart(2, '0')}`;
-      const target = `${bidId}/${code}.png`;
+      const target = `${bidId}/${code}.${d.path.split('.').pop() ?? 'png'}`;
       await db.storage.from('bid-documents').remove([target]); // a leftover from an earlier demo run
       const { error } = await db.storage.from('bid-documents').copy(d.path, target);
       if (error) throw new HttpError(502, `Could not copy ${d.fileName}: ${error.message}`, 'STORAGE_ERROR');
@@ -199,7 +199,7 @@ export async function receiveGemBid(payload: GemBidPayload) {
         upload_timestamp: payload.submittedAt,
         ocr_status: 'PROCESSING',
         verification_status: 'PENDING',
-        status_message: 'Waiting for NVIDIA reading.',
+        status_message: 'Waiting for CSAP AI reading.',
         extracted_snippet: '',
         tender_clause_reference: docClauseRef(req.code, clauseOf(req.code)),
         storage_path: target,
@@ -251,7 +251,7 @@ const audit = (bid: BidView, summary: string, details: string) =>
     bid_id: bid.bid.id,
     tender_id: bid.tender.id,
     actor_profile_id: null,
-    actor_display_name: 'Automatic verification (GeM intake)',
+    actor_display_name: 'CSAP AI · automatic verification (NVIDIA Nemotron)',
     actor_role: 'Automated service',
     action_type: 'SYSTEM_AI',
     summary,
@@ -282,7 +282,7 @@ export async function runIntakePipeline(bidId: string) {
         .eq('display_code', code);
     }
     const read = runs.filter((r) => r.status === 'COMPLETED').length;
-    await audit(view, 'Documents read by NVIDIA', `${read} of ${runs.length} documents read; the extracted values are now the input to the tender rules.`);
+    await audit(view, 'Documents read by CSAP AI', `${read} of ${runs.length} documents read; the extracted values are now the input to the tender rules.`);
 
     // 2. Rules engine on the extracted values; persist checks, findings, risk and recommendation.
     view = await viewOf(bidId);
@@ -387,7 +387,7 @@ export async function runIntakePipeline(bidId: string) {
           bid_id: bidId,
           ai_verification_run_id: run.id,
           summary: result.recommendation.summary,
-          details: `${met.length} of ${result.checks.length} requirements met by the documents as read by NVIDIA. ${withFindings.length ? `Findings: ${withFindings.map((c) => c.finding!.title).join('; ')}.` : 'No exceptions found.'}`,
+          details: `${met.length} of ${result.checks.length} requirements met by the documents as read by CSAP AI. ${withFindings.length ? `Findings: ${withFindings.map((c) => c.finding!.title).join('; ')}.` : 'No exceptions found.'}`,
           suggested_action: result.recommendation.suggestedDecision,
           confidence: 0,
         })

@@ -189,7 +189,7 @@ export const AssistantPanel: React.FC = () => {
       <p className="flex items-start gap-1.5 border-b border-slate-100 px-3 pb-1.5 pt-2.5 text-[10px] text-slate-500">
         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-500" />
         {source === 'api'
-          ? 'Answers by NVIDIA Nemotron from the case data you can see, with links to where you can act. It never acts for you. Advisory only.'
+          ? 'Answers by CSAP AI from the case data you can see, with links to where you can act. It never acts for you. Advisory only.'
           : 'Answers are assembled from the case data on record by fixed rules. Advisory only.'}
       </p>
 
@@ -199,7 +199,7 @@ export const AssistantPanel: React.FC = () => {
           <div key={m.id} className={m.from === 'officer' ? 'flex justify-end' : ''}>
             <div className={`max-w-[88%] rounded-md p-2.5 ${m.from === 'officer' ? 'bg-blue-600 font-medium text-white' : 'border border-slate-200 bg-slate-50 text-slate-800'}`}>
               <p className="leading-relaxed">{m.text}</p>
-              {m.fallback && <p className="mt-1 text-[10px] text-amber-700">NVIDIA was unreachable; this answer comes from CSAP's built-in rules.</p>}
+              {m.fallback && <p className="mt-1 text-[10px] text-amber-700">CSAP AI was unreachable; this answer comes from CSAP's built-in rules.</p>}
               {m.links && m.links.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
                   {m.links.map((l) => (

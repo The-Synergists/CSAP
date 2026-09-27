@@ -3,6 +3,7 @@
 // identifiers across documents. Progress streams in through Supabase Realtime (polling fallback).
 
 import React, { useEffect, useState } from 'react';
+import { DocPreview } from '../../components/DocPreview';
 import { CheckCircle2, Loader2, MinusCircle, ScanText, XCircle } from 'lucide-react';
 import type { ComparisonRow, DocumentVerificationRun } from '@shared/domain/types';
 import { Badge } from '../../components/ui/Badge';
@@ -27,7 +28,7 @@ export const ReadingBadge: React.FC<{ run?: DocumentVerificationRun; onOpen: () 
   const tone = v === 'CONSISTENT' || v === 'VERIFIED' ? 'success' : v === 'ERROR' ? 'warning' : 'danger';
   const label = v === 'CONSISTENT' ? 'Agrees with bid' : v === 'VERIFIED' ? 'PAN verified' : v === 'ERROR' ? 'Could not read' : v === 'DISCREPANCY' ? 'Differs from bid' : (v ?? '').replace(/_/g, ' ').toLowerCase();
   return (
-    <button type="button" onClick={onOpen} className="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" aria-label={`NVIDIA reading: ${label}. Show details`}>
+    <button type="button" onClick={onOpen} className="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" aria-label={`CSAP AI reading: ${label}. Show details`}>
       <Badge tone={tone} dot>{label}</Badge>
     </button>
   );
@@ -67,8 +68,8 @@ export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: n
 
   return (
     <Card
-      title="Read documents with NVIDIA"
-      subtitle="NVIDIA OCR reads each document image and an NVIDIA language model extracts its fields. CSAP compares every field with the bid record, and names and identifiers across all documents."
+      title="Read documents with CSAP AI"
+      subtitle="CSAP AI reads each document (image or PDF) and extracts its fields. CSAP compares every field with the bid record, and names and identifiers across all documents."
       actions={
         <>
           <Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>
@@ -182,7 +183,7 @@ export const ReadingModal: React.FC<{ run: DocumentVerificationRun | null; onClo
       open={!!run}
       onClose={onClose}
       size="lg"
-      title={run ? `${run.document.title ?? run.document.fileName} — NVIDIA reading` : ''}
+      title={run ? `${run.document.title ?? run.document.fileName} — CSAP AI reading` : ''}
       description={run && `${run.document.code} · ${run.document.requirement} · ${run.document.fileName}${run.document.sha256 ? ` · SHA-256 ${run.document.sha256.slice(0, 12)}…` : ''}`}
       footer={<Button variant="primary" onClick={onClose}>Close</Button>}
     >
@@ -197,12 +198,12 @@ export const ReadingModal: React.FC<{ run: DocumentVerificationRun | null; onClo
           {run.comparison && <ComparisonTable rows={run.comparison.rows} registry={run.documentType === 'PAN'} />}
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded border border-slate-200 bg-slate-50 p-2">
-              {preview ? <img src={preview} alt={`Specimen image of ${run.document.title ?? 'the document'}`} className="w-full rounded bg-white" /> : <p className="p-6 text-center text-slate-500">Loading preview…</p>}
+              {preview ? <DocPreview url={preview} mimeType={run.document.mimeType} title={`Document ${run.document.title ?? ''}`} /> : <p className="p-6 text-center text-slate-500">Loading preview…</p>}
             </div>
             {fields.length > 0 && (
               <div className="relative overflow-x-auto rounded border border-slate-200 self-start">
                 <table className="w-full text-left text-xs">
-                  <caption className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">Fields extracted by NVIDIA</caption>
+                  <caption className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">Fields extracted by CSAP AI</caption>
                   <tbody className="divide-y divide-slate-100">
                     {fields.map(([k, v]) => (
                       <tr key={k}>

@@ -98,6 +98,13 @@ async function main() {
     ok(await sb.from('companies').delete().in('id', gemBids.map((b) => b.company_id)).like('vendor_code', 'V-GEM-%'), 'clear GeM companies');
   }
   ok(await sb.from('gem_bid_submissions').delete().neq('gem_bid_no', ''), 'clear GeM submissions');
+  // Tenders an officer created during a demo.
+  const officerTenders = ok(await sb.from('tenders').select('id').eq('created_by_officer', true), 'officer tenders');
+  if (officerTenders.length) {
+    const ids = officerTenders.map((t) => t.id);
+    ok(await sb.from('audit_events').delete().in('tender_id', ids), 'clear officer tender audit');
+    ok(await sb.from('tenders').delete().in('id', ids), 'clear officer tenders');
+  }
   const { data: gemFolders } = await sb.storage.from('bid-documents').list('gem/submissions', { limit: 1000 });
   for (const folder of gemFolders ?? []) {
     const { data: files } = await sb.storage.from('bid-documents').list(`gem/submissions/${folder.name}`, { limit: 100 });
@@ -237,12 +244,12 @@ async function main() {
 
   // 6. Document files for the PAN verification pipeline (bucket `bid-documents`).
   const samplesDir = new URL('../sample_documents/', import.meta.url);
-  for (const file of readdirSync(samplesDir).filter((f) => f.endsWith('.png'))) {
+  for (const file of readdirSync(samplesDir).filter((f) => f.endsWith('.png') || f.endsWith('.pdf'))) {
     const bidId = /^(BID-\d{3})_/.exec(file)?.[1];
     const path = bidId ? `${bidId}/${file}` : `samples/${file}`;
     const { error } = await sb.storage
       .from('bid-documents')
-      .upload(path, readFileSync(new URL(file, samplesDir)), { contentType: 'image/png', upsert: true });
+      .upload(path, readFileSync(new URL(file, samplesDir)), { contentType: file.endsWith('.pdf') ? 'application/pdf' : 'image/png', upsert: true });
     if (error) throw new Error(`upload ${path}: ${error.message}`);
     if (bidId) {
       ok(

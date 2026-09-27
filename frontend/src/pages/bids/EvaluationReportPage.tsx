@@ -107,7 +107,7 @@ export const EvaluationReportPage: React.FC = () => {
 
         {c.documentReading && (
           <>
-            <H>Documents read by NVIDIA</H>
+            <H>Documents read by CSAP AI</H>
             <p className="mt-1">{c.documentReading.summary}</p>
             <table className="mt-2 w-full border-collapse">
               <thead><tr className="bg-slate-100 text-left">{['Document', 'Result', 'Detail'].map((h) => <th key={h} className={td}>{h}</th>)}</tr></thead>
@@ -148,7 +148,7 @@ export const EvaluationReportPage: React.FC = () => {
 
         {c.recommendation?.explanation?.length > 0 && (
           <>
-            <H>Explanation (NVIDIA, cited)</H>
+            <H>Explanation (CSAP AI, cited)</H>
             <ul className="mt-1 list-disc pl-5">
               {c.recommendation.explanation.map((s: any, i: number) => <li key={i}>{s.text} [{s.citations.join(', ')}]</li>)}
             </ul>

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { DocPreview } from '../../../components/DocPreview';
 import { AlertTriangle, CheckCircle2, Circle, Loader2, Upload, XCircle } from 'lucide-react';
 import { mapRunRow } from '@shared/domain/pipeline';
 import type { DocumentVerificationRun, PipelineStatus } from '@shared/domain/types';
@@ -80,7 +81,7 @@ const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string
         <div className="grid gap-3 sm:grid-cols-[220px_1fr]">
           {preview ? (
             <a href={preview} target="_blank" rel="noreferrer" className="block overflow-hidden rounded border border-slate-200">
-              <img src={preview} alt={`Uploaded document ${run.document.fileName}`} className="w-full" />
+              <DocPreview url={preview} mimeType={run.document.mimeType} title={`Uploaded document ${run.document.fileName}`} />
             </a>
           ) : (
             <div className="flex h-28 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-400">Preview unavailable</div>
@@ -94,7 +95,7 @@ const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string
         </div>
       </Stage>
 
-      <Stage n={2} title="OCR — NVIDIA Nemotron OCR V2" source={ocr ? `${ocr.model} · ${ocr.latencyMs} ms` : 'nvidia/nemotron-ocr-v2'} state={stageState(run, 1, !!ocr)}>
+      <Stage n={2} title="OCR — CSAP AI" source={ocr ? `${ocr.model} · ${ocr.latencyMs} ms` : 'nvidia/nemotron-ocr-v2'} state={stageState(run, 1, !!ocr)}>
         {ocr ? (
           <>
             <p className="mb-1.5 text-xs text-slate-500">
@@ -105,7 +106,7 @@ const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string
         ) : failedAt ? <p className="text-rose-700">{run.error}</p> : null}
       </Stage>
 
-      <Stage n={3} title="Information extraction — NVIDIA model" source={ex ? `${ex.model} · ${ex.latencyMs} ms` : undefined} state={stageState(run, 2, !!ex)}>
+      <Stage n={3} title="Information extraction — CSAP AI" source={ex ? `${ex.model} · ${ex.latencyMs} ms` : undefined} state={stageState(run, 2, !!ex)}>
         {ex ? (
           <>
             <table className="w-full text-left text-xs">
@@ -162,7 +163,7 @@ const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string
             <div className="relative overflow-x-auto">
               <table className="w-full min-w-[560px] text-left text-xs">
                 <thead className="border-b border-slate-200 text-slate-500">
-                  <tr><th className="py-1.5 pr-3 font-medium">Field</th><th className="py-1.5 pr-3 font-medium">Document (NVIDIA)</th><th className="py-1.5 pr-3 font-medium">PAN registry (API)</th><th className="py-1.5 pr-3 font-medium">Bid record</th><th className="py-1.5 font-medium">Result</th></tr>
+                  <tr><th className="py-1.5 pr-3 font-medium">Field</th><th className="py-1.5 pr-3 font-medium">Document (CSAP AI)</th><th className="py-1.5 pr-3 font-medium">PAN registry (API)</th><th className="py-1.5 pr-3 font-medium">Bid record</th><th className="py-1.5 font-medium">Result</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {run.comparison.rows.map((r) => (
@@ -193,7 +194,7 @@ const TechnicalDetails: React.FC<{ run: DocumentVerificationRun; preview: string
 type Step = { label: string; done: (r: DocumentVerificationRun) => boolean; active: (r: DocumentVerificationRun) => boolean };
 const STEPS: Step[] = [
   { label: 'Document', done: () => true, active: (r) => r.status === 'QUEUED' },
-  { label: 'NVIDIA OCR', done: (r) => !!r.ocr, active: (r) => r.status === 'OCR_RUNNING' },
+  { label: 'CSAP AI reading', done: (r) => !!r.ocr, active: (r) => r.status === 'OCR_RUNNING' },
   { label: 'Extraction', done: (r) => !!r.extraction, active: (r) => r.status === 'EXTRACTING' },
   { label: 'PAN Registry API', done: (r) => !!r.apiResponse, active: (r) => r.status === 'CALLING_API' },
   { label: 'Result', done: (r) => !!r.comparison, active: () => false },
@@ -309,7 +310,7 @@ const RunView: React.FC<{ run: DocumentVerificationRun }> = ({ run }) => {
           <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
             {preview ? (
               <a href={preview} target="_blank" rel="noreferrer" className="block self-start overflow-hidden rounded border border-slate-200" title="Open document">
-                <img src={preview} alt={`Uploaded document ${run.document.fileName}`} className="w-full" />
+                <DocPreview url={preview} mimeType={run.document.mimeType} title={`Uploaded document ${run.document.fileName}`} />
               </a>
             ) : (
               <div className="flex h-24 items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-400">Preview unavailable</div>
@@ -431,7 +432,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
   }, [live, inProgress, load]);
 
   if (source !== 'api') {
-    return <Card><EmptyState title="Needs the CSAP backend" description="PAN verification calls the NVIDIA models and the PAN Verification API through the backend. Switch VITE_DATA_SOURCE to api." /></Card>;
+    return <Card><EmptyState title="Needs the CSAP backend" description="PAN verification uses CSAP AI and the PAN Verification API through the backend. Switch VITE_DATA_SOURCE to api." /></Card>;
   }
 
   const start = async (body: Parameters<typeof api.startDocumentRun>[1]) => {
@@ -449,8 +450,8 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
 
   const onUpload = async (file: File | undefined) => {
     if (!file) return;
-    if (!['image/png', 'image/jpeg'].includes(file.type)) {
-      toast({ kind: 'error', title: 'Unsupported file', message: 'Upload a PNG or JPEG image of the PAN document.' });
+    if (!['image/png', 'image/jpeg', 'application/pdf'].includes(file.type)) {
+      toast({ kind: 'error', title: 'Unsupported file', message: 'Upload the PAN document as a PDF, PNG or JPEG file.' });
       return;
     }
     await start({ source: 'upload', fileName: file.name, mimeType: file.type, contentBase64: await fileToBase64(file) });
@@ -465,7 +466,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
       <div className="min-w-0 space-y-4">
         <Card
           title="PAN verification"
-          subtitle="Document → NVIDIA OCR → NVIDIA information extraction → PAN Verification API → result. Each stage appears as it completes."
+          subtitle="Document → CSAP AI reads it → extracts the fields → PAN registry → result. Each stage appears as it completes."
           actions={<Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>}
         >
           <div className="flex flex-wrap items-end gap-2">
@@ -475,7 +476,7 @@ export const PanVerificationTab: React.FC<TabProps> = ({ view }) => {
             <Button disabled={starting} onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4" /> Upload PAN document
             </Button>
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" aria-label="Upload PAN document" onChange={(e) => void onUpload(e.target.files?.[0])} />
+            <input ref={fileRef} type="file" accept="application/pdf,image/png,image/jpeg" className="hidden" aria-label="Upload PAN document" onChange={(e) => void onUpload(e.target.files?.[0])} />
             {samples.length > 0 && (
               <div className="flex items-end gap-2">
                 <label className="text-xs text-slate-600">

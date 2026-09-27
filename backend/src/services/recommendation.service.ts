@@ -94,11 +94,11 @@ export async function draftExplanation(db: SupabaseClient, userId: string, offic
     bid_id: bidId,
     tender_id: view.tender.id,
     actor_profile_id: null,
-    actor_display_name: 'AI explanation (NVIDIA)',
+    actor_display_name: 'CSAP AI (NVIDIA Nemotron)',
     actor_role: 'Automated service',
     action_type: 'SYSTEM_AI',
     summary: 'AI explanation drafted',
-    details: `${officerName} asked NVIDIA to explain the suggested decision. ${result.sentences.length} sentence(s) kept, each citing evidence; ${result.dropped.length} removed as unsupported.`,
+    details: `${officerName} asked CSAP AI to explain the suggested decision. ${result.sentences.length} sentence(s) kept, each citing evidence; ${result.dropped.length} removed as unsupported.`,
   });
   return mapDraft(row);
 }

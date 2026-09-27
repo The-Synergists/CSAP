@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getTenderStats } from '@shared/domain/selectors';
 import type { TenderStatus } from '@shared/domain/types';
@@ -18,7 +19,7 @@ const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
 ];
 
 export const TenderListPage: React.FC = () => {
-  const { db } = useApp();
+  const { db, source } = useApp();
   const navigate = useNavigate();
   const [term, setTerm] = useState('');
   const [status, setStatus] = useState<StatusFilter>('ALL');
@@ -31,7 +32,17 @@ export const TenderListPage: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Tenders" subtitle="Tenders published by CPCL and the bids received against them." />
+      <PageHeader
+        title="Tenders"
+        subtitle="Tenders published by CPCL and the bids received against them."
+        actions={
+          source === 'api' && (
+            <Link to="/tenders/new" className={buttonClass('primary', 'md')}>
+              <Plus className="h-4 w-4" /> New tender
+            </Link>
+          )
+        }
+      />
 
       <Card padded={false}>
         <div className="flex flex-col gap-3 border-b border-slate-200 p-3 lg:flex-row lg:items-center lg:justify-between">

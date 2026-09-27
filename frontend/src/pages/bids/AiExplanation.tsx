@@ -43,16 +43,16 @@ export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo'] }> 
     <div className="mt-4 rounded border border-indigo-200 bg-indigo-50/40 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
-          <Sparkles aria-hidden className="h-3.5 w-3.5 text-indigo-600" /> Explanation written by NVIDIA
+          <Sparkles aria-hidden className="h-3.5 w-3.5 text-indigo-600" /> Explanation written by CSAP AI
         </h3>
         <Button size="sm" onClick={() => void run()} disabled={busy}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {busy ? 'Writing…' : draft ? 'Write again' : 'Explain with NVIDIA'}
+          {busy ? 'Writing…' : draft ? 'Write again' : 'Explain with CSAP AI'}
         </Button>
       </div>
       {!draft ? (
         <p className="mt-2 text-xs text-slate-600">
-          NVIDIA explains the suggested action in plain words from the findings. Every sentence must cite its evidence; CSAP removes any sentence that does not.
+          CSAP AI explains the suggested action in plain words from the findings. Every sentence must cite its evidence; CSAP removes any sentence that does not.
         </p>
       ) : (
         <div className="mt-2 space-y-2 text-xs">

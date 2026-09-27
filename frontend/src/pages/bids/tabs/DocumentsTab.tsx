@@ -38,7 +38,7 @@ export const DocumentsTab: React.FC<TabProps> = ({ view, goTo, openDocument }) =
                 </th>
                 {showAi && (
                   <th scope="col" className="px-4 py-3">
-                    Document vs bid (NVIDIA)
+                    Document vs bid (CSAP AI)
                   </th>
                 )}
                 <th scope="col" className="px-4 py-3">

@@ -14,7 +14,7 @@ import { engine } from './documentPipeline.service.js';
 const PAGES = `
 /dashboard — work summary, alerts, time saved
 /tenders — all tenders; /tenders/<TENDER_ID> — one tender (URL-encode the slashes, e.g. /tenders/GEM%2F2026%2FCPCL%2F001)
-/bids/<BID_ID>/<tab> — one bid; tabs: overview, documents (read all documents with NVIDIA), portal (government registry checks), pan (PAN document verification), emd, compliance (score and why), risk, evidence (findings), decision (recommendation, officer decision, evaluation report), activity
+/bids/<BID_ID>/<tab> — one bid; tabs: overview, documents (read all documents with CSAP AI), portal (government registry checks), pan (PAN document verification), emd, compliance (score and why), risk, evidence (findings), decision (recommendation, officer decision, evaluation report), activity
 /bids/<BID_ID>/evidence?finding=<EVD_ID> — open one finding
 /bids/<BID_ID>/decision?decision=<APPROVE|REJECT|REQUEST_CLARIFICATION|COMMITTEE_REVIEW>&finding=<EVD_ID> — decision form pre-filled (the officer still reviews, writes remarks and confirms)
 /reviews — bids awaiting the officer's decision; /alerts — open findings; /reports — reports and time saved

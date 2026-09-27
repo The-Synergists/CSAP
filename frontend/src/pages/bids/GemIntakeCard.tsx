@@ -9,7 +9,7 @@ import { formatDateTime } from '../../lib/format';
 
 const STAGES = [
   { summary: 'Bid received from GeM', label: 'Received from GeM (signed delivery verified)' },
-  { summary: 'Documents read by NVIDIA', label: 'Every document read by NVIDIA' },
+  { summary: 'Documents read by CSAP AI', label: 'Every document read by CSAP AI' },
   { summary: 'Tender rules checked', label: 'Tender requirements checked on the extracted values' },
   { summary: 'Portal verification completed', label: 'Government registries checked' },
   { summary: 'Automatic verification completed', label: 'Ready for the officer' },

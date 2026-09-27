@@ -4,6 +4,7 @@
 // The dataset is normalised: every fact lives in exactly one row. Screens join rows with
 // the selectors in src/domain/selectors.ts.
 
+import { SAFETY_EQUIPMENT_TEMPLATE } from '../domain/tenderTemplate.js';
 import type {
   AuditEvent,
   Bid,
@@ -119,39 +120,10 @@ const tenders: Tender[] = [
   },
 ];
 
-const req = (
-  id: string,
-  clause: string,
-  category: TenderRequirement['category'],
-  title: string,
-  criterion: string,
-  benchmark: string,
-  mandatory = true,
-): TenderRequirement => ({ id, code: id, tenderId: T1, clause, category, title, criterion, benchmark, mandatory });
-
-const requirements: TenderRequirement[] = [
-  req('REQ-01', 'Clause 4.1', 'FINANCIAL', 'Minimum average turnover', 'Average annual turnover over the last 3 audited financial years must be at least ₹5.00 crore.', '≥ ₹5.00 Cr average'),
-  req('REQ-02', 'Clause 4.2', 'STATUTORY', 'GST registration', 'Active GSTIN with regular GSTR-3B filings for the preceding 6 months.', 'Active registration'),
-  req('REQ-03', 'Clause 3.3', 'POLICY', 'Udyam / MSME registration', 'Valid Udyam certificate, required only when claiming MSE benefits such as EMD exemption.', 'Required for MSE benefits', false),
-  req('REQ-04', 'Clause 3.4', 'POLICY', 'Make in India local content', 'Minimum 50% local content (Class-I local supplier) per the Public Procurement (Make in India) Order.', '≥ 50% local content'),
-  req('REQ-05', 'Clause 5.1(b)', 'TECHNICAL', 'OEM authorization', 'Manufacturer authorization with back-to-back warranty, valid for at least 90 days after technical bid opening.', 'Valid ≥ 90 days after opening'),
-  req('REQ-06', 'Clause 3.1', 'EMD', 'Earnest Money Deposit (EMD)', 'EMD of ₹2,00,000 by online payment or bank guarantee from a scheduled bank. Bids with short EMD are liable for rejection. MSEs may claim exemption.', '₹2,00,000 or MSE exemption'),
-  req('REQ-07', 'Clause 4.3', 'STATUTORY', 'PAN & income tax returns', 'Valid PAN and ITR acknowledgements for FY 2023-24, 2024-25 and 2025-26.', '3 years filed'),
-  req('REQ-08', 'Clause 4.4', 'STATUTORY', 'EPFO & ESIC compliance', 'Active EPFO and ESIC codes with the latest monthly electronic challan (ECR).', 'Active with recent ECR'),
-  req('REQ-09', 'Clause 5.2', 'TECHNICAL', 'Past execution record', 'At least 2 completed contracts for similar safety equipment to PSU or oil & gas customers.', '2 completed POs'),
-  req('REQ-10', 'Clause 5.3', 'TECHNICAL', 'Product test certificates', 'NABL-accredited lab test certificates for EN 137 / IS 10245 respiratory equipment.', 'NABL certificates'),
-  req('REQ-11', 'Clause 2.4', 'POLICY', 'Non-blacklisting undertaking', 'Affidavit confirming no debarment by CPPP, MoPNG or CPCL.', 'Signed affidavit'),
-  req('REQ-12', 'Clause 2.5', 'POLICY', 'Land border declaration', 'Declaration regarding bidders from countries sharing a land border with India (GFR Rule 144(xi)).', 'Signed declaration'),
-];
+const requirements: TenderRequirement[] = SAFETY_EQUIPMENT_TEMPLATE({ turnoverCr: 5, emdAmount: 200000 }).map((r) => ({ ...r, id: r.code, tenderId: T1 }));
 
 /** Tender GEM/2026/CPCL/005 uses the same requirement template with its own thresholds. */
-const t5Requirements: TenderRequirement[] = requirements.map((r) => ({
-  ...r,
-  id: `T5-${r.code}`,
-  tenderId: T5,
-  criterion: r.criterion.replace('₹5.00 crore', '₹4.00 crore').replace('₹2,00,000', '₹1,50,000'),
-  benchmark: r.benchmark.replace('₹5.00 Cr', '₹4.00 Cr').replace('₹2,00,000', '₹1,50,000'),
-}));
+const t5Requirements: TenderRequirement[] = SAFETY_EQUIPMENT_TEMPLATE({ turnoverCr: 4, emdAmount: 150000 }).map((r) => ({ ...r, id: `T5-${r.code}`, tenderId: T5 }));
 
 const bidders: Bidder[] = [
   {

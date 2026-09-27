@@ -249,14 +249,14 @@ async function processBatch(db: SupabaseClient, view: BidView, batchId: string, 
       bid_id: view.bid.id,
       tender_id: view.tender.id,
       actor_profile_id: null,
-      actor_display_name: 'Document intelligence (NVIDIA)',
+      actor_display_name: 'CSAP AI (NVIDIA Nemotron)',
       actor_role: 'Automated service',
       action_type: 'SYSTEM_AI',
       summary,
       details,
     });
   try {
-    await audit('Document reading started', `${officerName} started NVIDIA reading of ${runs.length} documents in the bid package.`);
+    await audit('Document reading started', `${officerName} started CSAP AI reading of ${runs.length} documents in the bid package.`);
     const reads: { type: DocumentType; code: string; title: string; fields: Record<string, string | null>; verdict: DocumentVerdict }[] = [];
     const queue = [...runs];
     const worker = async () => {
@@ -272,7 +272,7 @@ async function processBatch(db: SupabaseClient, view: BidView, batchId: string, 
     const discrepancies = reads.filter((r) => r.verdict !== 'CONSISTENT' && r.verdict !== 'VERIFIED');
     const failed = runs.length - reads.length;
     const summary =
-      `${reads.length} of ${runs.length} documents read by NVIDIA.` +
+      `${reads.length} of ${runs.length} documents read by CSAP AI.` +
       (discrepancies.length ? ` ${discrepancies.length} ${discrepancies.length === 1 ? 'differs' : 'differ'} from the bid record (${discrepancies.map((d) => d.code).join(', ')}).` : ' All agree with the bid record.') +
       (mismatches.length ? ` Cross-document check: ${mismatches.map((m) => `${m.field.toLowerCase()} differs`).join(', ')}.` : ' Names and identifiers agree across documents.') +
       (failed ? ` ${failed} could not be read.` : '');

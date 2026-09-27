@@ -15,6 +15,7 @@ import { AlertsPage } from './pages/work/AlertsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
 import { AuditTrailPage } from './pages/audit/AuditTrailPage';
 import { GatewayPage, RegistryPage } from './pages/gateway/GatewayPage';
+import { NewTenderPage } from './pages/tenders/NewTenderPage';
 import { GemLayout } from './pages/gem/GemLayout';
 import { GemHomePage } from './pages/gem/GemHomePage';
 import { GemSubmitPage } from './pages/gem/GemSubmitPage';
@@ -90,6 +91,7 @@ export const App: React.FC = () => (
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="tenders" element={<TenderListPage />} />
+            <Route path="tenders/new" element={<NewTenderPage />} />
             <Route path="tenders/:tenderId/:tab?" element={<TenderWorkspacePage />} />
             <Route path="bidders" element={<BidderListPage />} />
             <Route path="bidders/:bidderId" element={<BidderRedirect />} />

@@ -14,7 +14,8 @@ import { sign, type GemBidPayload } from './gemIntake.service.js';
 
 const BUCKET = 'bid-documents';
 const MAX_FILE = 3 * 1024 * 1024; // request bodies on the hosting platform are limited to 4.5 MB (base64 adds a third)
-const MIME = new Set(['image/png', 'image/jpeg']);
+const MIME = new Set(['image/png', 'image/jpeg', 'application/pdf']);
+const EXT: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'application/pdf': 'pdf' };
 
 export async function openTenders() {
   const tenders = must<any[]>(await serviceClient.from('tenders').select('*').eq('status', 'OPEN_FOR_BIDS').order('deadline_date'), 'tenders');
@@ -46,10 +47,10 @@ export function demoKit() {
 export async function uploadDocument(input: { draftId: string; requirementCode: string; fileName: string; mimeType: string; contentBase64: string }) {
   if (!/^[0-9a-f-]{36}$/.test(input.draftId)) throw new HttpError(400, 'Invalid draft.', 'VALIDATION');
   if (!/^REQ-\d{2}$/.test(input.requirementCode)) throw new HttpError(400, 'Invalid requirement.', 'VALIDATION');
-  if (!MIME.has(input.mimeType)) throw new HttpError(415, 'Upload a PNG or JPEG image (scan or photo) of the document.', 'UNSUPPORTED_TYPE');
+  if (!MIME.has(input.mimeType)) throw new HttpError(415, 'Upload the document as a PDF, or a scan or photo (PNG or JPEG).', 'UNSUPPORTED_TYPE');
   const bytes = Buffer.from(input.contentBase64 ?? '', 'base64');
   if (!bytes.length || bytes.length > MAX_FILE) throw new HttpError(413, 'Each document must be under 3 MB.', 'FILE_SIZE');
-  const path = `gem/submissions/${input.draftId}/${input.requirementCode}.${input.mimeType === 'image/png' ? 'png' : 'jpg'}`;
+  const path = `gem/submissions/${input.draftId}/${input.requirementCode}.${EXT[input.mimeType]}`;
   const { error } = await serviceClient.storage.from(BUCKET).upload(path, bytes, { contentType: input.mimeType, upsert: true });
   if (error) throw new HttpError(502, `Storage error: ${error.message}`, 'STORAGE_ERROR');
   return { path, sizeBytes: bytes.length };
@@ -74,7 +75,7 @@ export async function submitBid(input: { tenderId: string; company: GemBidPayloa
   const tenders = await openTenders();
   const tender = tenders.find((t) => t.id === input.tenderId);
   if (!tender) throw new HttpError(409, 'This tender is not open for bids.', 'TENDER_CLOSED');
-  const allowed = (p: string) => /^gem\/(submissions\/[0-9a-f-]{36}|demo-kit)\/REQ-\d{2}\.(png|jpg)$/.test(p);
+  const allowed = (p: string) => /^gem\/(submissions\/[0-9a-f-]{36}|demo-kit)\/REQ-\d{2}\.(png|jpg|pdf)$/.test(p);
   if (!input.documents?.length || input.documents.some((d) => !allowed(d.path))) throw new HttpError(400, 'Attach the documents before submitting.', 'VALIDATION');
 
   const company = { ...input.company, pan: input.company.pan?.trim().toUpperCase(), gstin: input.company.gstin?.trim().toUpperCase(), udyamNumber: input.company.udyamNumber?.trim().toUpperCase() || undefined };

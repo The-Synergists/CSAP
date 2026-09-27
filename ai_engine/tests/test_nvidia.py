@@ -140,3 +140,29 @@ def test_recommendation_keeps_only_grounded_sentences():
     assert reasons[0] == "cites no evidence"
     assert "EVD-099" in reasons[1]
     assert "75000" in reasons[2]
+
+
+def _pdf(pages):
+    import pymupdf
+    doc = pymupdf.open()
+    for text in pages:
+        doc.new_page().insert_text((72, 72), text)
+    return doc.tobytes()
+
+
+def test_pdf_pages_are_rendered_and_read_in_order():
+    pdf = base64.b64encode(_pdf(["PAN AABCA1234F", "Page two"])).decode()
+    with patch("src.nvidia.ocr.requests.post", return_value=_ok(OCR_RESPONSE)) as post, patch("src.nvidia.ocr.settings") as s:
+        s.nvidia_ocr_api_key, s.nemotron_ocr_endpoint, s.nemotron_ocr_merge_level = "k", "https://x", "paragraph"
+        body = client.post("/api/v1/documents/ocr", json={"fileName": "a.pdf", "mimeType": "application/pdf", "contentBase64": pdf}).json()
+    assert post.call_count == 2  # one OCR call per page
+    assert body["pages"] == 2
+    assert body["blocks"][0]["page"] == 1 and body["blocks"][-1]["page"] == 2
+    assert post.call_args_list[0].kwargs["json"]["input"][0]["url"].startswith("data:image/png;base64,")
+
+
+def test_broken_pdf_is_rejected():
+    with patch("src.nvidia.ocr.settings") as s:
+        s.nvidia_ocr_api_key = "k"
+        res = client.post("/api/v1/documents/ocr", json={"fileName": "a.pdf", "mimeType": "application/pdf", "contentBase64": base64.b64encode(b"not a pdf").decode()})
+    assert res.status_code == 422

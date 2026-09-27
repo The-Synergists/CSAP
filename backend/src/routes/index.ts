@@ -16,8 +16,8 @@ import { draftExplanation, latestDraft } from '../services/recommendation.servic
 import { receiveGemBid, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
 import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, uploadDocument } from '../services/gemPortal.service.js';
 import { generateReport, getReport, listReports, sendReportToGem } from '../services/report.service.js';
-import { timeSaved } from '../services/metrics.service.js';
 import { askAssistant } from '../services/assistant.service.js';
+import { createTender } from '../services/tender.service.js';
 import { waitUntil } from '@vercel/functions';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
@@ -156,6 +156,15 @@ router.get(
   }),
 );
 
+router.post(
+  '/tenders',
+  asyncHandler(async (req, res) => {
+    const { db, userId } = authOf(res);
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    res.status(201).json({ success: true, data: await createTender(db, userId, profile?.full_name ?? 'Officer', req.body ?? {}) });
+  }),
+);
+
 router.get(
   '/tenders/:id',
   asyncHandler(async (req, res) => {
@@ -255,13 +264,6 @@ router.post(
   '/assistant',
   asyncHandler(async (req, res) => {
     res.json({ success: true, data: await askAssistant(authOf(res).db, req.body ?? {}) });
-  }),
-);
-
-router.get(
-  '/metrics/time-saved',
-  asyncHandler(async (_req, res) => {
-    res.json({ success: true, data: await timeSaved(authOf(res).db) });
   }),
 );
 

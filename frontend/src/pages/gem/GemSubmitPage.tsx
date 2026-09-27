@@ -184,7 +184,7 @@ export const GemSubmitPage: React.FC = () => {
         </div>
       </GemCard>
 
-      <GemCard title="3. Documents" actions={<span className="text-xs text-slate-500">{Object.keys(docs).length} of {tender.requirements.length} attached · PNG or JPEG, under 3 MB</span>}>
+      <GemCard title="3. Documents" actions={<span className="text-xs text-slate-500">{Object.keys(docs).length} of {tender.requirements.length} attached · PDF, PNG or JPEG, under 3 MB</span>}>
         <ul className="divide-y divide-slate-100">
           {tender.requirements.map((r) => {
             const d = docs[r.code];
@@ -206,7 +206,7 @@ export const GemSubmitPage: React.FC = () => {
                   <label className={`${gemButton} cursor-pointer border border-slate-300 bg-white text-slate-800 hover:bg-slate-50`}>
                     {uploading === r.code ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp aria-hidden className="h-4 w-4" />}
                     {d ? 'Replace' : 'Upload'}
-                    <input type="file" accept="image/png,image/jpeg" className="sr-only" aria-label={`Upload ${r.title}`} onChange={(e) => void upload(r.code, r.title, e.target.files?.[0])} />
+                    <input type="file" accept="application/pdf,image/png,image/jpeg" className="sr-only" aria-label={`Upload ${r.title}`} onChange={(e) => void upload(r.code, r.title, e.target.files?.[0])} />
                   </label>
                 </div>
               </li>

@@ -20,12 +20,6 @@ export interface EvaluationReport {
   gemResponse: unknown;
 }
 
-export interface TimeSaved {
-  assumptions: { perDocument: number; perRegistry: number; perRequirement: number; report: number };
-  bids: { bidId: string; documentsRead: number; registriesChecked: number; requirementsChecked: number; reportGenerated: boolean; automatedSeconds: number; manualMinutes: number }[];
-  totals: { automatedSeconds: number; manualMinutes: number; savedMinutes: number };
-}
-
 export interface RecommendationDraft {
   id: string;
   bidId: string;
@@ -197,13 +191,24 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
+  createTender: (b: {
+    title: string;
+    category: string;
+    division: string;
+    description: string;
+    estimatedValue: number;
+    emdAmount: number;
+    turnoverCr: number;
+    deadlineDate: string;
+    technicalOpeningDate: string;
+    exclude: string[];
+  }) => call<{ id: string; requirements: number }>('/api/tenders', { method: 'POST', body: JSON.stringify(b) }),
   reports: (bidId: string) => call<EvaluationReport[]>(`/api/bids/${bidId}/reports`),
   generateReport: (bidId: string) => call<EvaluationReport>(`/api/bids/${bidId}/reports`, { method: 'POST' }),
   report: (id: string) => call<EvaluationReport & { verified: boolean }>(`/api/reports/${id}`),
   sendReportToGem: (id: string) => call<EvaluationReport & { gemStatus: string }>(`/api/reports/${id}/send-to-gem`, { method: 'POST' }),
   assistant: (b: { message: string; path: string; bidId?: string; history: { role: string; content: string }[] }) =>
     call<{ answer: string; actions: { label: string; path: string }[]; model: string; latencyMs: number }>('/api/assistant', { method: 'POST', body: JSON.stringify(b) }),
-  timeSaved: () => call<TimeSaved>('/api/metrics/time-saved'),
   verifyAudit: (simulateSeq?: number) =>
     call<{ intact: boolean; checked: number; brokenAt: number | null; reason: string | null; lastHash: string; simulated: number | null }>(
       `/api/audit/verify${simulateSeq ? `?simulate=${simulateSeq}` : ''}`,

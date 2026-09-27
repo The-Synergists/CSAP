@@ -2,14 +2,14 @@
 // registry with its records and a "Check a number" box. How it is wired (API calls, JSON, the call
 // log) stays available under "For developers".
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Activity, AlertTriangle, ArrowRight, CheckCircle2, ChevronLeft, Database, Globe2, KeyRound, Loader2, Search, Server, UserCheck, XCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button, Card, PageHeader } from '../../components/ui/primitives';
 import { inputClass } from '../../components/ui/styles';
 import { formatDateTime } from '../../lib/format';
-import { api, type GatewayCall, type GatewayOverview } from '../../state/api';
+import { api, type GatewayCall, type GatewayOverview, type RegistryAnswer } from '../../state/api';
 import { useApp } from '../../state/appContext';
 import { mapPortalRow } from '@shared/domain/portal';
 import { PORTAL_STATUS } from '../../domain/labels';
@@ -166,7 +166,6 @@ export const GatewayPage: React.FC = () => {
     if (source === 'api') api.gateway().then(setOverview).catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, [source]);
   if (source !== 'api') return <PageHeader title="Government registries" subtitle="Needs the CSAP backend." />;
-  const count = (key: string) => overview?.registries.find((r) => r.registry === key)?.records;
 
   return (
     <div className="space-y-5">
@@ -187,9 +186,8 @@ export const GatewayPage: React.FC = () => {
             </div>
             <p className="mt-2 text-xs text-slate-700">{r.checks}</p>
             <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-              <Badge tone="neutral">Simulated</Badge>
+              <Badge tone="neutral">Simulated service</Badge>
               {r.key === 'gstn' && overview?.liveGstinProvider && <Badge tone="info">Live for real GSTINs</Badge>}
-              {count(r.key) != null && <span className="text-slate-500">{count(r.key)} records</span>}
             </div>
           </Link>
         ))}
@@ -231,29 +229,53 @@ const VerdictCard: React.FC<{ verdict: Verdict }> = ({ verdict }) => {
   );
 };
 
-/** One registry: check a number, browse its records. */
+/** A verification's result as a receipt: what the service answered, when, with its reference. */
+const Receipt: React.FC<{ meta: RegistryMeta; verdict: Verdict; at: string; reference?: string; latencyMs?: number; source: string }> = ({ meta, verdict, at, reference, latencyMs, source }) => (
+  <div className="space-y-2">
+    <VerdictCard verdict={verdict} />
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+      <span>
+        Checked {formatDateTime(at)}
+        {reference && (
+          <>
+            {' '}· reference <span className="font-mono">{reference}</span>
+          </>
+        )}
+        {latencyMs != null && <> · {latencyMs} ms</>} · source: {source}
+      </span>
+      <a href={meta.official.url} target="_blank" rel="noreferrer" className="font-medium text-blue-700 hover:underline">
+        Cross-check on {meta.official.name} ↗
+      </a>
+    </div>
+  </div>
+);
+
+/** One registry: verify a number through the registry's service and get a receipt. */
 export const RegistryPage: React.FC = () => {
   const { registry = '' } = useParams();
   const [params] = useSearchParams();
   const linked = (params.get('q') ?? '').trim().toUpperCase();
   const meta = REGISTRIES.find((r) => r.key === registry) as RegistryMeta | undefined;
   const [records, setRecords] = useState<Records | null>(null);
-  const [query, setQuery] = useState(linked);
   const [identifier, setIdentifier] = useState(linked);
-  const [checking, setChecking] = useState(false);
+  const [checking, setChecking] = useState<string | null>(null);
   const [result, setResult] = useState<TryResult | null>(null);
+  const [live, setLive] = useState<RegistryAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!meta) return;
     let active = true;
-    api.gatewayRecords(meta.key).then((r) => active && setRecords(r)).catch((e) => active && setError(e instanceof Error ? e.message : String(e)));
+    api
+      .gatewayRecords(meta.key)
+      .then((r) => active && setRecords(r))
+      .catch(() => {});
     return () => {
       active = false;
     };
   }, [meta]);
 
-  // Opened from a bid (…?q=<number>): check that number straight away.
+  // Opened from a bid (…?q=<number>): verify that number straight away.
   useEffect(() => {
     if (!meta || !linked) return;
     let active = true;
@@ -266,96 +288,180 @@ export const RegistryPage: React.FC = () => {
     };
   }, [meta, linked]);
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (records?.records ?? []).filter((r) => !q || Object.values(r).some((v) => typeof v === 'string' && v.toLowerCase().includes(q)));
-  }, [records, query]);
-
   if (!meta) return <PageHeader title="Registry not found" breadcrumbs={[{ label: 'Government registries', to: '/gateway' }]} />;
 
   const check = async (value = identifier) => {
-    if (!value.trim()) return;
-    setIdentifier(value);
-    setChecking(true);
+    const v = value.trim().toUpperCase();
+    if (!v) return;
+    setIdentifier(v);
+    setChecking(v);
     setError(null);
+    setLive(null);
     try {
-      setResult(await api.gatewayTry(meta.key, value.trim()));
+      setResult(await api.gatewayTry(meta.key, v));
     } catch (e) {
       setResult(null);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setChecking(false);
+      setChecking(null);
     }
   };
-  const verdict = result ? verdictOf(meta, result.response.httpStatus, result.response.body as Record<string, unknown>) : null;
+  const checkLive = async () => {
+    setChecking(identifier);
+    setError(null);
+    try {
+      setLive(await api.gstinLive(identifier));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setChecking(null);
+    }
+  };
+
+  const body = (result?.response.body ?? {}) as Record<string, unknown>;
+  const verdict = result ? verdictOf(meta, result.response.httpStatus, body) : null;
+  const notFoundGst = meta.key === 'gstn' && body.status === 'NOT_FOUND';
+  const examples = (records?.records ?? []).map((r) => String(r[meta.idField] ?? '')).filter(Boolean).slice(0, 3);
+  const liveTone = (s: string): Verdict['tone'] => (s === 'VERIFIED' ? 'good' : s === 'NOT_FOUND' || s === 'FAILED' ? 'bad' : 'warn');
 
   return (
     <div className="space-y-5">
       <div>
-        <Link to="/gateway" className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline"><ChevronLeft className="h-3.5 w-3.5" /> Government registries</Link>
-        <PageHeader title={`${meta.title} registry`} subtitle={`${meta.authority}. What CSAP checks here: ${meta.checks}`} actions={<Badge tone="neutral">Simulated registry</Badge>} />
+        <Link to="/gateway" className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline">
+          <ChevronLeft className="h-3.5 w-3.5" /> Government registries
+        </Link>
+        <PageHeader
+          title={`${meta.title} registry`}
+          subtitle={`${meta.authority}. What CSAP checks here: ${meta.checks}`}
+          actions={
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone="neutral">Simulated service</Badge>
+              {meta.key === 'gstn' && <Badge tone="info">Live for real GSTINs</Badge>}
+            </div>
+          }
+        />
       </div>
 
-      <Card title={`Check a ${meta.idLabel}`} subtitle="The same check CSAP runs on every bid. Pick a number from the list below or type one.">
-        <form onSubmit={(e) => { e.preventDefault(); void check(); }} className="flex flex-col gap-2 sm:flex-row">
-          <label className="sr-only" htmlFor="registry-id">{meta.idLabel}</label>
-          <input id="registry-id" value={identifier} onChange={(e) => setIdentifier(e.target.value.toUpperCase())} placeholder={`Enter ${meta.idLabel}`} className={`${inputClass} flex-1 font-mono`} />
-          <Button type="submit" variant="primary" disabled={!identifier.trim() || checking}>
-            {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Check
+      <Card title={`Verify a ${meta.idLabel}`} subtitle={`CSAP sends the number to the ${meta.service} and shows its answer. This is the same call CSAP makes for every bid.`}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void check();
+          }}
+          className="flex flex-col gap-2 sm:flex-row"
+        >
+          <label className="sr-only" htmlFor="registry-id">
+            {meta.idLabel}
+          </label>
+          <input
+            id="registry-id"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value.toUpperCase())}
+            placeholder={`Enter ${meta.idLabel}`}
+            className={`${inputClass} flex-1 font-mono`}
+          />
+          <Button type="submit" variant="primary" disabled={!identifier.trim() || !!checking}>
+            {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Verify
           </Button>
         </form>
-        {error && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
-        {verdict && <div className="mt-3"><VerdictCard verdict={verdict} /></div>}
-      </Card>
-
-      <Card
-        title={`${records?.records.length ?? '…'} records in this registry`}
-        subtitle="Fictitious demo data. Every answer this registry gives comes from these records."
-        padded={false}
-        actions={<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" aria-label="Search records" className={`${inputClass} w-44 py-1`} />}
-      >
-        {!records ? (
-          <p className="flex items-center gap-2 px-4 py-3 text-xs text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
-        ) : (
-          <div className="relative overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-xs text-slate-700">
-              <thead className="border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
-                <tr>
-                  {meta.columns.map((k) => <th key={k} scope="col" className="px-4 py-2.5">{LABEL[k] ?? k}</th>)}
-                  <th scope="col" className="px-4 py-2.5"><span className="sr-only">Check</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rows.map((r, i) => (
-                  <tr key={i} className={linked && String(r[meta.idField] ?? '').toUpperCase() === linked ? 'bg-amber-50' : undefined}>
-                    {meta.columns.map((k) => (
-                      <td key={k} className={`px-4 py-2 ${k === meta.idField ? 'font-mono' : ''}`}>{display(k, r[k])}</td>
-                    ))}
-                    <td className="px-4 py-2 text-right">
-                      {r[meta.idField] != null && (
-                        <Button size="sm" variant="ghost" onClick={() => { void check(String(r[meta.idField])); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Check</Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {examples.length > 0 && (
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+            Demo numbers:
+            {examples.map((x) => (
+              <button key={x} type="button" onClick={() => void check(x)} className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-slate-700 hover:bg-slate-100">
+                {x}
+              </button>
+            ))}
+          </p>
         )}
+        <div className="mt-3" aria-live="polite">
+          {checking && (
+            <p className="flex items-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+              <Loader2 className="h-4 w-4 animate-spin" /> Connecting to the {meta.service}… verifying <span className="font-mono">{checking}</span>
+            </p>
+          )}
+          {error && !checking && (
+            <p role="alert" className="text-xs text-rose-700">
+              {error}
+            </p>
+          )}
+          {!checking && live && (
+            <Receipt
+              meta={meta}
+              verdict={{ tone: liveTone(live.status), headline: live.summary, fields: live.facts.filter((f) => f.label !== 'Source').map((f) => [f.label, f.value]) }}
+              at={new Date().toISOString()}
+              latencyMs={live.latencyMs ?? undefined}
+              source="GST portal data via licensed provider (live)"
+            />
+          )}
+          {!checking && !live && verdict && result && (
+            <>
+              <Receipt
+                meta={meta}
+                verdict={verdict}
+                at={String(body.timestamp ?? result.request.sentAt)}
+                reference={body.request_id ? String(body.request_id) : undefined}
+                latencyMs={result.response.latencyMs}
+                source={`${meta.service} (simulated endpoint)`}
+              />
+              {notFoundGst && (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 px-3 py-2 text-xs">
+                  <span>Not a demo GSTIN. If it is a real one, check it on live GST portal data (uses a provider credit unless checked before).</span>
+                  <Button size="sm" onClick={() => void checkLive()}>
+                    Check live
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </Card>
 
       <LiveChecks registry={meta.key.toUpperCase()} />
 
-      <DevDetails summary="For developers: the API call and the calls CSAP made">
+      <DevDetails summary="For developers: the API call, the simulated test data and the call log">
         {result ? (
           <div className="grid gap-2 lg:grid-cols-2">
-            <pre className="max-h-72 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 font-mono text-[11px]">{`${result.request.method} ${result.request.url}\n${Object.entries(result.request.headers).map(([k, v]) => `${k}: ${v}`).join('\n')}\n\n${json(result.request.body)}`}</pre>
+            <pre className="max-h-72 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 font-mono text-[11px]">{`${result.request.method} ${result.request.url}\n${Object.entries(result.request.headers)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join('\n')}\n\n${json(result.request.body)}`}</pre>
             <pre className="max-h-72 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 font-mono text-[11px]">{`HTTP ${result.response.httpStatus} · ${result.response.latencyMs} ms\n\n${json(result.response.body)}`}</pre>
           </div>
         ) : (
-          <p className="text-xs text-slate-500">Run a check above to see the raw request and response.</p>
+          <p className="text-xs text-slate-500">Verify a number above to see the raw request and response.</p>
         )}
-        <CallLog registry={meta.key === 'gstn' ? 'GSTN' : meta.key.toUpperCase()} />
+        {records && (
+          <div>
+            <p className="mb-1 text-xs font-semibold text-slate-900">
+              Simulated registry test data ({records.records.length} records in {records.file})
+            </p>
+            <div className="relative max-h-72 overflow-auto rounded border border-slate-200">
+              <table className="w-full min-w-[720px] text-left text-[11px] text-slate-700">
+                <thead className="sticky top-0 border-b border-slate-200 bg-slate-100 font-semibold text-slate-600">
+                  <tr>
+                    {meta.columns.map((k) => (
+                      <th key={k} scope="col" className="px-3 py-1.5">
+                        {LABEL[k] ?? k}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {records.records.map((r, i) => (
+                    <tr key={i}>
+                      {meta.columns.map((k) => (
+                        <td key={k} className={`px-3 py-1.5 ${k === meta.idField ? 'font-mono' : ''}`}>
+                          {display(k, r[k])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        <CallLog registry={meta.key.toUpperCase()} />
       </DevDetails>
     </div>
   );

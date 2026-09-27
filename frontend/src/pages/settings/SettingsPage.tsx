@@ -19,8 +19,8 @@ interface Health {
 }
 
 const INTEGRATIONS = [
-  { name: 'NVIDIA Nemotron OCR V2', note: 'Reads uploaded PAN document images (PAN verification tab).', state: 'Live' },
-  { name: 'NVIDIA information extraction', note: 'LLM that extracts PAN, name and other fields from the OCR text.', state: 'Live' },
+  { name: 'CSAP AI — document reading (NVIDIA Nemotron OCR V2)', note: 'Reads uploaded PAN document images (PAN verification tab).', state: 'Live' },
+  { name: 'CSAP AI — extraction, explanations, assistant (NVIDIA Nemotron)', note: 'LLM that extracts PAN, name and other fields from the OCR text.', state: 'Live' },
   { name: 'Government Gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker — each registry answers from its own dataset. Real APIs plug in behind the same adapters.', state: 'Simulated' },
   { name: 'Live GSTIN provider (gstinapi.in)', note: 'Real GST registration and GSTR-3B filing data for real GSTINs (Portal verification tab). Answers are cached so repeat checks use no credits; demo GSTINs stay simulated.', state: 'Live' },
   { name: 'GeM tender feed', note: 'Tenders and bids are loaded from the CSAP database.', state: 'Not connected' },
@@ -96,8 +96,8 @@ export const SettingsPage: React.FC = () => {
                   { label: 'Backend', value: healthError ? <Badge tone="danger">{healthError}</Badge> : health ? <Badge tone={health.status === 'ok' ? 'success' : 'warning'}>{health.status}</Badge> : '…' },
                   { label: 'Database', value: health ? <Badge tone={tone(health.database)}>{health.database}</Badge> : '…' },
                   { label: 'Verification engine', value: health ? <Badge tone={tone(health.verificationEngine)}>{health.verificationEngine}</Badge> : '…' },
-                  { label: 'NVIDIA OCR', value: health?.nvidiaOcr ? <Badge tone={health.nvidiaOcr.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaOcr}</Badge> : '…' },
-                  { label: 'NVIDIA extraction', value: health?.nvidiaExtraction ? <Badge tone={health.nvidiaExtraction.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaExtraction}</Badge> : '…' },
+                  { label: 'CSAP AI — OCR', value: health?.nvidiaOcr ? <Badge tone={health.nvidiaOcr.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaOcr}</Badge> : '…' },
+                  { label: 'CSAP AI — language model', value: health?.nvidiaExtraction ? <Badge tone={health.nvidiaExtraction.startsWith('configured') ? 'success' : 'danger'}>{health.nvidiaExtraction}</Badge> : '…' },
                   { label: 'Government Gateway', value: health?.governmentGateway ? <Badge tone={tone(health.governmentGateway)}>{health.governmentGateway}</Badge> : '…' },
                   { label: 'Live GSTIN provider', value: health?.liveGstinProvider ? <Badge tone={health.liveGstinProvider.startsWith('configured') ? 'success' : 'neutral'}>{health.liveGstinProvider}</Badge> : '…' },
                   { label: 'Realtime', value: <Badge tone={realtimeLive ? 'success' : 'warning'}>{realtimeLive ? 'connected' : 'not connected (polling)'}</Badge> },

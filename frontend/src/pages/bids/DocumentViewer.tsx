@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { DocPreview } from '../../components/DocPreview';
 import type { BidView } from '@shared/domain/selectors';
 import type { BidDocument } from '@shared/domain/types';
 import { CheckBadge } from '../../components/ui/Badge';
@@ -78,8 +79,8 @@ export const DocumentViewer: React.FC<{
           )}
           {preview && preview.path === path ? (
             <div className="rounded border border-slate-200 bg-slate-50 p-2">
-              <img src={preview.url} alt={`Specimen image of ${doc.name}`} className="w-full rounded bg-white" />
-              <p className="mt-1.5 text-[11px] text-slate-500">Specimen image stored for this prototype. Use “Read all documents” on the Documents tab to have NVIDIA read it.</p>
+              <DocPreview url={preview.url} mimeType={doc.mimeType} title={doc.name} />
+              <p className="mt-1.5 text-[11px] text-slate-500">Stored document (specimen in this prototype). Use “Read all documents” on the Documents tab to have CSAP AI read it.</p>
             </div>
           ) : (
             <p className="text-xs text-slate-500">{path ? 'Loading preview…' : 'No stored file for this document in the prototype.'}</p>

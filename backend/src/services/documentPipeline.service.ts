@@ -26,8 +26,8 @@ import { HttpError, must } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 
 export const BUCKET = 'bid-documents';
-const MAX_UPLOAD = 5 * 1024 * 1024;
-const MIME = new Set(['image/png', 'image/jpeg']);
+const MAX_UPLOAD = 3 * 1024 * 1024; // the hosting platform limits request bodies to 4.5 MB (base64 adds a third)
+const MIME = new Set(['image/png', 'image/jpeg', 'application/pdf']);
 const PAN_API_NAME = 'PAN Verification API (dummy)';
 
 export type DocumentSource =
@@ -49,7 +49,7 @@ export async function listRuns(db: SupabaseClient, bidId: string) {
 export async function listSamples(): Promise<string[]> {
   const { data, error } = await serviceClient.storage.from(BUCKET).list('samples', { limit: 50 });
   if (error) throw new HttpError(502, `Storage error: ${error.message}`, 'STORAGE_ERROR');
-  return (data ?? []).map((f) => f.name).filter((n) => /\.(png|jpe?g)$/i.test(n));
+  return (data ?? []).map((f) => f.name).filter((n) => /\.(png|jpe?g|pdf)$/i.test(n));
 }
 
 /** Short-lived signed URL for previewing a stored document. Only bid and sample paths are allowed. */
@@ -78,14 +78,15 @@ async function resolveDocument(view: BidView, source: DocumentSource): Promise<{
     bytes = await download(panDoc.storagePath);
     doc = { path: panDoc.storagePath, fileName: panDoc.storagePath.split('/').pop()!, mimeType: panDoc.mimeType ?? 'image/png', source: 'bid_package' };
   } else if (source.kind === 'sample') {
-    if (!/^[\w.-]+\.(png|jpe?g)$/i.test(source.fileName)) throw new HttpError(400, 'Invalid sample name.', 'VALIDATION');
+    if (!/^[\w.-]+\.(png|jpe?g|pdf)$/i.test(source.fileName)) throw new HttpError(400, 'Invalid sample name.', 'VALIDATION');
     const path = `samples/${source.fileName}`;
     bytes = await download(path);
-    doc = { path, fileName: source.fileName, mimeType: source.fileName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg', source: 'sample' };
+    const lower = source.fileName.toLowerCase();
+    doc = { path, fileName: source.fileName, mimeType: lower.endsWith('.png') ? 'image/png' : lower.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg', source: 'sample' };
   } else {
-    if (!MIME.has(source.mimeType)) throw new HttpError(415, 'Upload a PNG or JPEG image of the PAN document.', 'UNSUPPORTED_TYPE');
+    if (!MIME.has(source.mimeType)) throw new HttpError(415, 'Upload the PAN document as a PDF, PNG or JPEG file.', 'UNSUPPORTED_TYPE');
     bytes = Buffer.from(source.contentBase64, 'base64');
-    if (!bytes.length || bytes.length > MAX_UPLOAD) throw new HttpError(413, 'File must be between 1 byte and 5 MB.', 'FILE_SIZE');
+    if (!bytes.length || bytes.length > MAX_UPLOAD) throw new HttpError(413, 'File must be between 1 byte and 3 MB.', 'FILE_SIZE');
     const safe = source.fileName.replace(/[^\w.-]+/g, '_').slice(-80);
     const path = `uploads/${view.bid.id}/${Date.now()}-${safe}`;
     const { error } = await serviceClient.storage.from(BUCKET).upload(path, bytes, { contentType: source.mimeType, upsert: false });
