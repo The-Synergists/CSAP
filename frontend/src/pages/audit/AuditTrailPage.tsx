@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { isKeyAuditEvent } from '@shared/domain/selectors';
 import { Download, Fingerprint, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { AuditActorType } from '@shared/domain/types';
 import { useApp } from '../../state/appContext';
@@ -86,6 +87,7 @@ export const AuditTrailPage: React.FC = () => {
   const q = term.trim().toLowerCase();
   const events = db.auditEvents.filter(
     (e) =>
+      isKeyAuditEvent(e) &&
       (actor === 'ALL' || e.actorType === actor) &&
       (bidFilter === 'ALL' || e.bidId === bidFilter) &&
       (!q || [e.summary, e.details, e.actor, e.bidId ?? '', e.tenderId].some((s) => s.toLowerCase().includes(q))),

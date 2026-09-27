@@ -180,6 +180,14 @@ export const latestPortalRun = (rows: PortalVerification[], bidId: string): Port
     .sort((a, b) => REGISTRY_ORDER.indexOf(a.registry) - REGISTRY_ORDER.indexOf(b.registry));
 };
 
+/**
+ * Audit events that record a procurement decision or a step of the formal workflow (tender
+ * published, officer decisions, clarifications, re-evaluation, evaluation reports). The
+ * step-by-step verification events stay in each bid's activity.
+ */
+export const isKeyAuditEvent = (e: AuditEvent): boolean =>
+  /^(Tender published|Formal Officer Decision|Clarification requested|Evaluation report (generated|sent to GeM)|Bidder (responded to the clarification|requested re-evaluation)|Re-evaluation (opened|declined)|Clarification response (accepted|declined))/.test(e.summary);
+
 export const listBidViews = (db: Database, tenderId?: string): BidView[] =>
   db.bids
     .filter((b) => !tenderId || b.tenderId === tenderId)
@@ -253,36 +261,86 @@ export const getTenderStats = (db: Database, tenderId: string): TenderStats => {
   };
 };
 
+/** One reason a bid needs the officer's attention. */
+export interface AlertItem {
+  /** ACTION: the officer must act (bidder response waiting, verification did not finish).
+   *  DISQUALIFYING: a mandatory requirement is not met or missing, or a registry contradicts the bid. */
+  kind: 'ACTION' | 'DISQUALIFYING';
+  title: string;
+  detail: string;
+  tab: 'overview' | 'evidence' | 'portal' | 'emd';
+  findingId?: string;
+}
+
 export interface Alert {
   bidId: string;
   tenderId: string;
   companyName: string;
   severity: FindingSeverity;
   title: string;
-  findingId: string;
+  findingId?: string;
   openCount: number;
+  items: AlertItem[];
 }
 
+const REGISTRY_NAME: Record<string, string> = {
+  PAN: 'PAN', GSTN: 'GST', UDYAM: 'Udyam', MCA21: 'MCA21', EPFO: 'EPFO', ESIC: 'ESIC', STARTUP_INDIA: 'Startup India', NSIC: 'NSIC', DEBARMENT: 'Debarment list', DIGILOCKER: 'DigiLocker',
+};
+
+/** What in a bid needs the officer: derived from checks, findings, registry answers and requests. */
+export const bidAlertItems = (v: BidView): AlertItem[] => {
+  if (v.flags.closed && !v.flags.pendingRequest) return [];
+  const items: AlertItem[] = [];
+  for (const r of v.reevaluations.filter((x) => x.status === 'OPEN')) {
+    items.push({ kind: 'ACTION', title: r.kind === 'CLARIFICATION_RESPONSE' ? 'Bidder responded to the clarification' : 'Bidder requested re-evaluation', detail: r.reason, tab: 'overview' });
+  }
+  const lastRun = v.audit.find((e) => /^Automatic verification (completed|stopped)/.test(e.summary));
+  if (lastRun?.summary.startsWith('Automatic verification stopped')) {
+    items.push({ kind: 'ACTION', title: 'Automatic verification did not finish', detail: lastRun.details, tab: 'overview' });
+  }
+  if (v.flags.closed) return items;
+  for (const c of v.checks) {
+    if (!c.requirement.mandatory || (c.status !== 'NOT_MET' && c.status !== 'MISSING')) continue;
+    if (c.finding && c.finding.status !== 'OPEN') continue;
+    items.push({
+      kind: 'DISQUALIFYING',
+      title: c.finding?.title ?? `${c.requirement.title} ${c.status === 'MISSING' ? 'not submitted' : 'not met'}`,
+      detail: `${c.requirement.code} ${c.requirement.title}: requires ${c.requirement.benchmark}; found ${c.submitted}.`,
+      tab: c.requirement.code === 'REQ-06' ? 'emd' : 'evidence',
+      findingId: c.findingId,
+    });
+  }
+  for (const p of v.portal) {
+    if (p.status !== 'FAILED' && p.status !== 'NOT_FOUND') continue;
+    items.push({ kind: 'DISQUALIFYING', title: `${REGISTRY_NAME[p.registry] ?? p.registry} registry contradicts the bid`, detail: p.summary, tab: 'portal' });
+  }
+  return items;
+};
+
 /**
- * One alert per bid that still has open findings and no final decision. Derived from the
- * findings table, so the sidebar badge, header bell, dashboard and Alerts page always agree.
+ * One alert per bid that needs the officer: a bidder response waiting, a verification that did not
+ * finish, a mandatory requirement not met or missing, or a registry answer against the bid. Points
+ * that only need review before deciding are in My Reviews, not here. The sidebar badge, header bell
+ * and Alerts page all read this.
  */
 export const getAlerts = (db: Database): Alert[] =>
   listBidViews(db)
-    .filter((v) => !v.flags.closed && v.openFindings.length > 0)
-    .map((v) => {
-      const top = v.openFindings[0];
+    .map((v) => ({ v, items: bidAlertItems(v) }))
+    .filter(({ items }) => items.length > 0)
+    .map(({ v, items }) => {
+      const top = items.find((i) => i.kind === 'DISQUALIFYING') ?? items[0];
       return {
         bidId: v.bid.id,
         tenderId: v.tender.id,
         companyName: v.bidder.companyName,
-        severity: top.severity,
+        severity: (items.some((i) => i.kind === 'DISQUALIFYING') ? 'HIGH' : 'MEDIUM') as FindingSeverity,
         title: top.title,
-        findingId: top.id,
-        openCount: v.openFindings.length,
+        findingId: top.findingId,
+        openCount: items.length,
+        items,
       };
     })
-    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.openCount - a.openCount);
 
 export const getDashboardMetrics = (db: Database) => {
   const views = listBidViews(db);

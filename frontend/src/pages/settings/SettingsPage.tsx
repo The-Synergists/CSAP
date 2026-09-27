@@ -6,6 +6,15 @@ import { Badge } from '../../components/ui/Badge';
 import { Button, Card, DetailList, Modal, PageHeader } from '../../components/ui/primitives';
 import { useToast } from '../../components/ui/toast';
 
+const INTEGRATIONS = [
+  { name: 'CSAP AI', note: 'Reads every bid document (PDF or image), extracts its fields, checks them against the tender, writes cited explanations and answers the assistant.', state: 'Integrated' },
+  { name: 'GeM portal (simulated)', note: 'Bids submitted on GeM arrive in CSAP automatically with their documents and are verified straight away; evaluation outcomes and bidder re-evaluation requests flow both ways.', state: 'Connected' },
+  { name: 'Government Gateway', note: 'PAN, GSTN (incl. GSTR-3B filing), Udyam, MCA21, EPFO, ESIC, Startup India, NSIC, debarment lists and DigiLocker. Each registry answers from its own dataset; real APIs plug in behind the same adapters.', state: 'Simulated' },
+  { name: 'Live GSTIN provider (gstinapi.in)', note: 'Real GST registration and GSTR-3B filing data for real GSTINs. Answers are cached so repeat checks use no credits.', state: 'Live' },
+  { name: 'Bank / treasury (EMD)', note: 'EMD amounts compared with the submitted instrument; no bank confirmation.', state: 'Simulated' },
+  { name: 'Digital signature (DSC)', note: 'Decisions are recorded against the signed-in officer, not digitally signed.', state: 'Not connected' },
+];
+
 export const SettingsPage: React.FC = () => {
   const { currentUser, source, logout, resetDemoData } = useApp();
   const navigate = useNavigate();
@@ -34,13 +43,18 @@ export const SettingsPage: React.FC = () => {
         )}
       </Card>
 
-      <Card title="Integration">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xs text-slate-700">
-            <span className="font-medium text-slate-900">CSAP AI.</span> Reads every bid document, checks it against the tender, explains its findings and answers the assistant. The officer makes every decision.
-          </p>
-          <Badge tone="success">Integrated</Badge>
-        </div>
+      <Card title="Integrations" subtitle="What CSAP connects to" padded={false}>
+        <ul className="divide-y divide-slate-100">
+          {INTEGRATIONS.map((i) => (
+            <li key={i.name} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-900">{i.name}</p>
+                <p className="text-xs text-slate-500">{i.note}</p>
+              </div>
+              <Badge tone={i.state === 'Integrated' || i.state === 'Live' || i.state === 'Connected' ? 'success' : i.state === 'Simulated' ? 'warning' : 'neutral'}>{i.state}</Badge>
+            </li>
+          ))}
+        </ul>
       </Card>
 
       {source !== 'api' && (

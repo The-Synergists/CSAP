@@ -208,18 +208,6 @@ export const api = {
   documentSamples: () => call<string[]>('/api/document-samples'),
   portalChecks: (bidId: string) => call<PortalVerification[]>(`/api/bids/${bidId}/portal-checks`),
   startPortalChecks: (bidId: string) => call<{ runId: string; registries: number }>(`/api/bids/${bidId}/portal-checks`, { method: 'POST' }),
-  createTender: (b: {
-    title: string;
-    category: string;
-    division: string;
-    description: string;
-    estimatedValue: number;
-    emdAmount: number;
-    turnoverCr: number;
-    deadlineDate: string;
-    technicalOpeningDate: string;
-    exclude: string[];
-  }) => call<{ id: string; requirements: number }>('/api/tenders', { method: 'POST', body: JSON.stringify(b) }),
   reports: (bidId: string) => call<EvaluationReport[]>(`/api/bids/${bidId}/reports`),
   generateReport: (bidId: string) => call<EvaluationReport>(`/api/bids/${bidId}/reports`, { method: 'POST' }),
   report: (id: string) => call<EvaluationReport & { verified: boolean }>(`/api/reports/${id}`),

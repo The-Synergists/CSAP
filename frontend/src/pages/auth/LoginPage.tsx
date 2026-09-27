@@ -1,16 +1,17 @@
+// Officer sign-in, styled after the Atlassian Design System: neutral background, a white card with
+// a soft raised shadow, 14px text in neutral-1000 (#172B4D), labels in neutral-800, inputs with a
+// 2px border that turns brand blue (#0C66E4) on focus, and a full-width primary button.
+
 import React, { useState } from 'react';
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, Shield } from 'lucide-react';
-import { DEMO_PASSWORD, seedDatabase } from '@shared/demo/seed';
+import { Eye, EyeOff, Loader2, Lock, Shield, XCircle } from 'lucide-react';
 import { useApp } from '../../state/appContext';
 import { useToast } from '../../components/ui/toast';
 
-const DEMO_USER = seedDatabase().users[0];
-
-const fieldClass =
-  'w-full rounded border bg-slate-900/90 px-3 py-2 font-mono text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none';
+const input =
+  'block w-full rounded-[3px] border-2 bg-[#F7F8F9] px-2 py-[7px] text-sm text-[#172B4D] placeholder:text-[#626F86] transition-colors hover:bg-[#F1F2F4] focus:border-[#388BFF] focus:bg-white focus:outline-none';
 
 export const LoginPage: React.FC = () => {
-  const { login, source } = useApp();
+  const { login } = useApp();
   const toast = useToast();
 
   const [identifier, setIdentifier] = useState('');
@@ -39,129 +40,100 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#071524] px-4 py-8 text-slate-100">
-      <div aria-hidden className="absolute inset-0 bg-[linear-gradient(to_right,#10375c0a_1px,transparent_1px),linear-gradient(to_bottom,#10375c0a_1px,transparent_1px)] bg-[size:32px_32px]" />
-
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-md bg-blue-600 text-white shadow-md">
-            <Shield className="h-8 w-8" />
+    <div
+      className="flex min-h-screen flex-col items-center bg-[#F7F8F9] px-4 py-10 text-[#172B4D] sm:py-16"
+      style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Helvetica Neue", sans-serif' }}
+    >
+      <main className="w-full max-w-[400px] rounded-[3px] bg-white px-6 py-8 shadow-[0_0_1px_rgba(9,30,66,0.31),0_8px_12px_rgba(9,30,66,0.15)] sm:px-10">
+        <div className="flex flex-col items-center text-center">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[3px] bg-[#0C66E4] text-white">
+              <Shield aria-hidden className="h-5 w-5" />
+            </span>
+            <span className="text-[22px] font-bold tracking-tight text-[#172B4D]">CSAP</span>
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-wider text-white">CSAP</h1>
-          <p className="mt-1 text-xs font-medium tracking-wide text-blue-300">Central Statutory Authentication Platform</p>
+          <p className="mt-1 text-xs text-[#626F86]">Central Statutory Authentication Platform</p>
+          <h1 className="mt-6 text-base font-semibold text-[#172B4D]">Log in to continue</h1>
         </div>
 
-        <div className="rounded-lg border border-slate-700/80 bg-[#0A2540] p-6 shadow-xl">
-          <div className="mb-4 flex items-center justify-between border-b border-slate-700/60 pb-4 text-xs">
-            <span className="font-semibold uppercase tracking-wider text-slate-300">Procurement Officer Login</span>
-            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Prototype</span>
+        {errors.form && (
+          <div role="alert" className="mt-5 flex items-start gap-2 rounded-[3px] bg-[#FFECEB] px-3 py-2.5 text-sm text-[#AE2E24]">
+            <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{errors.form}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+          <div>
+            <label htmlFor="identifier" className="mb-1 block text-xs font-semibold text-[#44546F]">
+              Employee ID or official email <span className="text-[#AE2E24]" aria-hidden>*</span>
+            </label>
+            <input
+              id="identifier"
+              autoComplete="username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              aria-invalid={!!errors.identifier}
+              aria-describedby={errors.identifier ? 'identifier-error' : undefined}
+              placeholder="Enter your employee ID or email"
+              className={`${input} ${errors.identifier ? 'border-[#E2483D]' : 'border-[#DCDFE4]'}`}
+            />
+            {errors.identifier && <p id="identifier-error" className="mt-1 text-xs text-[#AE2E24]">{errors.identifier}</p>}
           </div>
 
-          {errors.form && (
-            <div role="alert" className="mb-4 flex items-start gap-2 rounded border border-rose-500/40 bg-rose-950/40 p-2.5 text-xs text-rose-200">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{errors.form}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <div>
-              <label htmlFor="identifier" className="mb-1 block text-xs font-medium text-slate-300">
-                Employee ID or Officer Email
-              </label>
+          <div>
+            <label htmlFor="password" className="mb-1 block text-xs font-semibold text-[#44546F]">
+              Password <span className="text-[#AE2E24]" aria-hidden>*</span>
+            </label>
+            <div className="relative">
               <input
-                id="identifier"
-                autoComplete="username"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                aria-invalid={!!errors.identifier}
-                aria-describedby={errors.identifier ? 'identifier-error' : undefined}
-                placeholder="Employee ID or official email"
-                className={`${fieldClass} ${errors.identifier ? 'border-rose-400' : 'border-slate-600'}`}
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                placeholder="Enter password"
+                className={`${input} pr-10 ${errors.password ? 'border-[#E2483D]' : 'border-[#DCDFE4]'}`}
               />
-              {errors.identifier && <p id="identifier-error" className="mt-1 text-xs text-rose-300">{errors.identifier}</p>}
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[3px] p-1 text-[#44546F] hover:bg-[#091E420F]"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-
-            <div>
-              <label htmlFor="password" className="mb-1 block text-xs font-medium text-slate-300">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
-                  placeholder="Enter password"
-                  className={`${fieldClass} pr-10 ${errors.password ? 'border-rose-400' : 'border-slate-600'}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-200"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p id="password-error" className="mt-1 text-xs text-rose-300">{errors.password}</p>}
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Signing In...
-                </>
-              ) : (
-                <>
-                  Sign In <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-4 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-            <p className="font-semibold">Demo account</p>
-            <p className="mt-1 font-mono text-[11px]">
-              {DEMO_USER.employeeId} or {DEMO_USER.email} · Password: {DEMO_PASSWORD}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setIdentifier(DEMO_USER.employeeId);
-                setPassword(DEMO_PASSWORD);
-                setErrors({});
-              }}
-              className="mt-2 font-semibold text-amber-100 underline hover:no-underline"
-            >
-              Fill demo credentials
-            </button>
+            {errors.password && <p id="password-error" className="mt-1 text-xs text-[#AE2E24]">{errors.password}</p>}
           </div>
 
-          <div className="mt-4 flex items-center justify-center gap-1.5 border-t border-slate-800 pt-3 text-center">
-            <Lock className="h-3 w-3 shrink-0 text-slate-500" />
-            <p className="text-[10px] leading-normal text-slate-400">
-              Prototype system — {source === 'api' ? 'connected to the CSAP test database' : 'running on built-in demo data'}. Not for use with real tender information.
-            </p>
-          </div>
-          {source === 'api' && (
-            <p className="mt-2 text-center text-[11px] text-slate-400">
-              Bidder?{' '}
-              <a href="/gem" className="font-medium text-blue-300 hover:underline">
-                Submit a bid on the simulated GeM portal
-              </a>
-            </p>
-          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-[3px] bg-[#0C66E4] text-sm font-medium text-white transition-colors hover:bg-[#0055CC] active:bg-[#09326C] disabled:cursor-not-allowed disabled:bg-[#091E4208] disabled:text-[#091E424F]"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
+              </>
+            ) : (
+              'Sign in'
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 border-t border-[#091E4224] pt-4 text-center">
+          <p className="flex items-center justify-center gap-1.5 text-xs text-[#626F86]">
+            <Lock aria-hidden className="h-3 w-3 shrink-0" /> Restricted to authorized procurement reviewers.
+          </p>
+          <p className="mt-1 text-xs text-[#626F86]">All access and actions are logged and subject to audit.</p>
         </div>
-      </div>
+      </main>
+
+      <p className="mt-6 text-xs text-[#626F86]">CSAP · Procurement bid verification</p>
     </div>
   );
 };

@@ -19,7 +19,6 @@ import { acceptRequest, declineRequest, receiveBidderResponse, type BidderRespon
 import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertOpenForVerification } from '../services/bidRules.service.js';
 import { generateReport, getReport, listAllReports, listReports, sendReportToGem } from '../services/report.service.js';
 import { askAssistant } from '../services/assistant.service.js';
-import { createTender } from '../services/tender.service.js';
 import { waitUntil } from '@vercel/functions';
 import { backupConfigured, isValidGstin, providerConfigured, providerUsage, ProviderUnavailable } from '../registries/gstinProvider.js';
 import { liveGstn } from '../registries/gstnLive.js';
@@ -172,15 +171,6 @@ router.get(
   '/tenders',
   asyncHandler(async (_req, res) => {
     res.json({ success: true, data: (await loadWorkspace(authOf(res).db)).tenders });
-  }),
-);
-
-router.post(
-  '/tenders',
-  asyncHandler(async (req, res) => {
-    const { db, userId } = authOf(res);
-    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
-    res.status(201).json({ success: true, data: await createTender(db, userId, profile?.full_name ?? 'Officer', req.body ?? {}) });
   }),
 );
 
