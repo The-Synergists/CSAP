@@ -11,7 +11,7 @@ import { config } from '../config/env.js';
 import { docClauseRef, parseClauseRef } from '../db/conventions.js';
 import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
-import { runIntakePipeline, sign } from './gemIntake.service.js';
+import { clearResults, runIntakePipeline, sign } from './gemIntake.service.js';
 import { GEM_STATUS } from './report.service.js';
 import { confirmPassword } from './auth.service.js';
 import { isFinal } from './bidRules.service.js';
@@ -156,6 +156,7 @@ export async function acceptRequest(db: SupabaseClient, userId: string, officerN
   if (req.gem_bid_no) {
     await notifyGem({ gemBidNo: req.gem_bid_no, status: 'UNDER_EVALUATION', remarks: 'The buyer received your response and is evaluating your bid again.' });
   }
+  await clearResults(bidId); // the old figures disappear at once
   waitUntil(runIntakePipeline(bidId, { reverify: true }).catch(() => {}));
   return { bidId, status: 'ACCEPTED' };
 }

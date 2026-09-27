@@ -317,6 +317,15 @@ async function viewOf(bidId: string) {
   return v;
 }
 
+/** Removes a bid's previous results (checks, findings, risk, score) so nothing old is shown while it is verified again. */
+export async function clearResults(bidId: string) {
+  const db = serviceClient;
+  await db.from('compliance_check_items').delete().eq('bid_id', bidId);
+  await db.from('risk_factors').delete().eq('bid_id', bidId);
+  await db.from('evidence_items').delete().eq('bid_id', bidId);
+  await db.from('bids').update({ overall_compliance_score: 0, risk_level: 'LOW', risk_score: 0, primary_concern: 'Re-verification in progress.' }).eq('id', bidId);
+}
+
 /** Reads the documents, runs the rules, saves the results and checks the registries. */
 export async function runIntakePipeline(bidId: string, opts: { reverify?: boolean; actor?: string } = {}) {
   const actor = opts.actor ?? 'Automatic verification (GeM intake)';
@@ -325,10 +334,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
   try {
     if (opts.reverify) {
       // Re-evaluation: the previous results are replaced by the new run (history stays in the audit trail).
-      await db.from('compliance_check_items').delete().eq('bid_id', bidId);
-      await db.from('risk_factors').delete().eq('bid_id', bidId);
-      await db.from('evidence_items').delete().eq('bid_id', bidId);
-      await db.from('bids').update({ overall_compliance_score: 0, risk_level: 'LOW', risk_score: 0, primary_concern: 'Re-verification in progress.' }).eq('id', bidId);
+      await clearResults(bidId);
       await audit(view, 'Re-verification started', 'The bid is being verified again with the documents now on record.');
     }
     // 1. NVIDIA reads every document; its fields become the text the rules engine checks.

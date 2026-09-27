@@ -12,7 +12,7 @@ import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
-import { receiveGemBid, runIntakePipeline, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
+import { clearResults, receiveGemBid, runIntakePipeline, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
 import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, submitResponse, uploadDocument } from '../services/gemPortal.service.js';
 import { acceptRequest, declineRequest, receiveBidderResponse, type BidderResponsePayload } from '../services/reevaluation.service.js';
 import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertNoVerificationRunning, assertOpenForVerification } from '../services/bidRules.service.js';
@@ -237,6 +237,7 @@ router.post(
       action_type: 'OFFICER_ACTION', summary: 'Re-verification requested', details: `${name} asked CSAP to read every document, check the tender rules and query the registries again.`,
     });
     // Full re-verification: every document read again, tender rules, document evidence, registries.
+    await clearResults(String(bidId)); // the old figures disappear at once
     waitUntil(runIntakePipeline(String(bidId), { reverify: true, actor: `Re-verification by ${name}` }).catch(() => {}));
     res.status(202).json({ success: true, data: { bidId, startedAt: new Date().toISOString() } });
   }),
