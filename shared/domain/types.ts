@@ -247,7 +247,7 @@ export interface ReevaluationRequest {
 
 // ---------------------------------------------------------------- government portal verification
 
-export type RegistryId = 'PAN' | 'GSTN' | 'UDYAM' | 'MCA21' | 'EPFO' | 'ESIC' | 'STARTUP_INDIA' | 'NSIC' | 'DEBARMENT' | 'DIGILOCKER';
+export type RegistryId = 'PAN' | 'INCOME_TAX' | 'GSTN' | 'UDYAM' | 'MCA21' | 'EPFO' | 'ESIC' | 'STARTUP_INDIA' | 'NSIC' | 'DEBARMENT' | 'DIGILOCKER';
 export type RegistryMode = 'SIMULATED' | 'LIVE_PROVIDER';
 export type PortalStatus = 'VERIFIED' | 'REVIEW' | 'FAILED' | 'NOT_FOUND' | 'NOT_APPLICABLE' | 'UNAVAILABLE';
 

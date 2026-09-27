@@ -155,6 +155,7 @@ export const PAN_VERDICT: Record<string, { label: string; tone: Tone }> = {
 
 export const REGISTRY: Record<string, { name: string; authority: string }> = {
   PAN: { name: 'PAN', authority: 'Income Tax Department' },
+  INCOME_TAX: { name: 'Income Tax compliance', authority: 'Income Tax Department (e-filing / TRACES)' },
   GSTN: { name: 'GST registration & returns', authority: 'GSTN' },
   UDYAM: { name: 'Udyam / MSME', authority: 'Ministry of MSME' },
   MCA21: { name: 'Company master data', authority: 'MCA21' },

@@ -1,0 +1,66 @@
+{
+  "dataset": "Income Tax Department — compliance check (simulated)",
+  "description": "Per PAN: PAN status (operative / inoperative), Section 206AB / 206CCA specified-person status (a non-filer of income-tax returns), and the income-tax returns filed per assessment year, as the e-filing and TRACES compliance check reports them. Fictitious data for the prototype.",
+  "version": "2026.09.28",
+  "updated_at": "2026-09-28",
+  "records": [
+    {
+      "pan": "AABCA1234F", "name": "ABC INDUSTRIAL SOLUTIONS PRIVATE LIMITED", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-6", "filed_on": "2023-10-27", "ack_no": "556214780271023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-6", "filed_on": "2024-10-24", "ack_no": "662140391241024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-6", "filed_on": "2025-10-29", "ack_no": "770318842291025"}
+      ]
+    },
+    {
+      "pan": "AABCB9876E", "name": "BHARAT ENGINEERING WORKS", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-5", "filed_on": "2023-10-30", "ack_no": "553901224301023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-5", "filed_on": "2024-10-28", "ack_no": "661207735281024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-5", "filed_on": "2025-10-30", "ack_no": "774410026301025"}
+      ]
+    },
+    {
+      "pan": "AABCN5544K", "name": "NATIONAL SAFETY SYSTEMS", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-5", "filed_on": "2023-10-31", "ack_no": "554418870311023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-5", "filed_on": "2024-10-31", "ack_no": "660992415311024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-5", "filed_on": "2025-11-14", "ack_no": "775583310141125"}
+      ]
+    },
+    {
+      "pan": "AAACP4419M", "name": "PRIME TECH SOLUTIONS", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-5", "filed_on": "2023-10-18", "ack_no": "552376610181023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-5", "filed_on": "2024-10-21", "ack_no": "663351907211024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-5", "filed_on": "2025-10-22", "ack_no": "771149262221025"}
+      ]
+    },
+    {
+      "pan": "AADCC2718R", "name": "COASTAL SAFETY EQUIPMENTS PRIVATE LIMITED", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-6", "filed_on": "2023-10-25", "ack_no": "557732009251023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-6", "filed_on": "2024-10-23", "ack_no": "664480132231024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-6", "filed_on": "2025-10-27", "ack_no": "772256718271025"}
+      ]
+    },
+    {
+      "pan": "AAECS7788K", "name": "SUNRISE SAFETY TRADERS", "pan_status": "Operative", "specified_person_206ab": "Yes",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-5", "filed_on": "2023-12-29", "ack_no": "558819302291223"}
+      ]
+    },
+    {
+      "pan": "AAFCR3322Q", "name": "RAJ FIRE SERVICES PRIVATE LIMITED", "pan_status": "Inoperative", "specified_person_206ab": "Yes",
+      "returns": []
+    },
+    {
+      "pan": "AAGCK5566L", "name": "KAVERI FIRE PROTECTION PRIVATE LIMITED", "pan_status": "Operative", "specified_person_206ab": "No",
+      "returns": [
+        {"assessment_year": "2023-24", "itr_form": "ITR-6", "filed_on": "2023-10-30", "ack_no": "559901173301023"},
+        {"assessment_year": "2024-25", "itr_form": "ITR-6", "filed_on": "2024-10-30", "ack_no": "665571204301024"},
+        {"assessment_year": "2025-26", "itr_form": "ITR-6", "filed_on": "2025-10-31", "ack_no": "773368820311025"}
+      ]
+    }
+  ]
+}

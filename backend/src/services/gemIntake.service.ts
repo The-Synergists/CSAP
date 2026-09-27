@@ -479,6 +479,12 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
           verification_result:
             emdCheck.status === 'EXEMPTED' ? 'EXEMPTION_CONFIRMED' : emdCheck.status === 'MET' ? 'EMD_VERIFIED' : changed.includes('REQ-06') ? 'INVALID_INSTRUMENT' : 'EMD_AMOUNT_MISMATCH',
           officer_note: emdCheck.note,
+          // Whether the remitter / applicant on the EMD document is the bidder, as CSAP AI read it.
+          bidder_match: (() => {
+            const emdRun = runs.find((r) => r.document.requirement === 'REQ-06');
+            const nameRow = emdRun?.comparison?.rows.find((x) => x.field === 'Name');
+            return nameRow ? nameRow.result === 'MATCH' : emdRun?.verdict === 'CONSISTENT';
+          })(),
         })
         .eq('bid_id', bidId);
     }

@@ -94,7 +94,7 @@ export const AiExplanation: React.FC<{ bidId: string; goTo: TabProps['goTo']; lo
             </details>
           )}
           <p className="text-[11px] text-slate-500">
-            {draft.model} · {draft.latencyMs != null ? `${(draft.latencyMs / 1000).toFixed(1)} s · ` : ''}written {formatDateTime(draft.createdAt)} from {draft.evidence.length} evidence items. The suggested action itself comes from CSAP's rules, not from the model.
+            Written by CSAP AI · {draft.latencyMs != null ? `${(draft.latencyMs / 1000).toFixed(1)} s · ` : ''}written {formatDateTime(draft.createdAt)} from {draft.evidence.length} evidence items. The suggested action itself comes from CSAP's rules, not from the model.
           </p>
         </div>
       )}

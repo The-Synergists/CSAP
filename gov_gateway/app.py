@@ -115,13 +115,14 @@ def name_similarity(a: str, b: str) -> float:
 def health():
     pan = load("pan.json")
     return {"status": "ok", "service": "csap-government-gateway", "records": len(pan["records"]),
-            "registries": ["pan", *LOOKUP_REGISTRIES.keys(), "debarment", "digilocker"]}
+            "registries": ["pan", "income_tax", *LOOKUP_REGISTRIES.keys(), "debarment", "digilocker"]}
 
 
 @app.get("/v1/registries")
 def registries(x_api_key: Optional[str] = Header(default=None)):
     _auth(x_api_key)
     out = [{"registry": "pan", "name": "PAN — Income Tax Department", "file": "pan.json"}]
+    out.append({"registry": "income_tax", "name": "Income Tax — return filing compliance", "file": "income_tax.json"})
     out += [{"registry": k, "name": v[2], "file": v[0]} for k, v in LOOKUP_REGISTRIES.items()]
     out += [{"registry": "debarment", "name": "Debarment list (CPPP / GeM / MoPNG / CPCL)", "file": "debarment.json"},
             {"registry": "digilocker", "name": "DigiLocker — issued documents", "file": "digilocker.json"}]
@@ -131,7 +132,7 @@ def registries(x_api_key: Optional[str] = Header(default=None)):
     return {"registries": out}
 
 
-DATASET_FILES = {"pan": "pan.json", **{k: v[0] for k, v in LOOKUP_REGISTRIES.items()}, "debarment": "debarment.json", "digilocker": "digilocker.json"}
+DATASET_FILES = {"pan": "pan.json", "income_tax": "income_tax.json", **{k: v[0] for k, v in LOOKUP_REGISTRIES.items()}, "debarment": "debarment.json", "digilocker": "digilocker.json"}
 
 
 @app.get("/v1/{registry}/records")
@@ -441,3 +442,35 @@ def gstn_returns(action: str = Query(...), gstin: str = Query(...), fy: str = Qu
             "status": "Filed",
         })
     return {"EFiledlist": filed}
+
+
+# ================================================================ Income Tax compliance check
+# Modelled on the Income Tax Department's compliance check (e-filing / TRACES "Compliance Check for
+# Section 206AB & 206CCA"): PAN status and whether the PAN is a specified person (a non-filer),
+# together with the returns filed per assessment year.
+
+class ItdRequest(BaseModel):
+    pan: str
+
+
+@app.post("/itd/v1/compliance-check")
+def itd_compliance(body: ItdRequest, x_api_key: Optional[str] = Header(default=None)):
+    _auth(x_api_key)
+    started = time.perf_counter()
+    pan = body.pan.strip().upper()
+    ds = load("income_tax.json")
+    meta = envelope("income_tax", ds, "income_tax.json", started)
+    if not PAN_RE.match(pan):
+        raise HTTPException(status_code=400, detail={**meta, "status": "INVALID_FORMAT", "pan": pan, "message": "PAN must be 5 letters, 4 digits, 1 letter."})
+    r = next((x for x in ds["records"] if x["pan"] == pan), None)
+    if r is None:
+        return {**meta, "status": "NOT_FOUND", "pan": pan, "message": "No compliance record for this PAN."}
+    return {
+        **meta,
+        "status": "FOUND",
+        "pan": pan,
+        "name": r["name"],
+        "panStatus": r["pan_status"],
+        "specifiedPerson206AB": r["specified_person_206ab"],
+        "returns": [{"assessmentYear": x["assessment_year"], "itrForm": x["itr_form"], "filingDate": x["filed_on"], "acknowledgementNo": x["ack_no"]} for x in r["returns"]],
+    }

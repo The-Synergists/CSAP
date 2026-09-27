@@ -263,7 +263,7 @@ export const ReportsPage: React.FC = () => {
                 </tbody>
               </table>
             )}
-            <p className="mt-3 text-xs text-slate-500">Prototype report generated from demo data. Not an official record.</p>
+            <p className="mt-3 text-xs text-slate-500">Generated from the current verified data of this tender. A working list, not a signed record.</p>
           </div>
         )}
       </Modal>

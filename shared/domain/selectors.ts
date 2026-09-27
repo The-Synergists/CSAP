@@ -207,7 +207,7 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
   };
 };
 
-const REGISTRY_ORDER = ['PAN', 'GSTN', 'UDYAM', 'MCA21', 'EPFO', 'ESIC', 'STARTUP_INDIA', 'NSIC', 'DEBARMENT', 'DIGILOCKER'];
+const REGISTRY_ORDER = ['PAN', 'INCOME_TAX', 'GSTN', 'UDYAM', 'MCA21', 'EPFO', 'ESIC', 'STARTUP_INDIA', 'NSIC', 'DEBARMENT', 'DIGILOCKER'];
 
 /** Rows of the newest portal-check run for a bid, in a fixed registry order. */
 export const latestPortalRun = (rows: PortalVerification[], bidId: string): PortalVerification[] => {
@@ -323,7 +323,7 @@ export interface Alert {
 }
 
 const REGISTRY_NAME: Record<string, string> = {
-  PAN: 'PAN', GSTN: 'GST', UDYAM: 'Udyam', MCA21: 'MCA21', EPFO: 'EPFO', ESIC: 'ESIC', STARTUP_INDIA: 'Startup India', NSIC: 'NSIC', DEBARMENT: 'Debarment list', DIGILOCKER: 'DigiLocker',
+  PAN: 'PAN', INCOME_TAX: 'Income Tax', GSTN: 'GST', UDYAM: 'Udyam', MCA21: 'MCA21', EPFO: 'EPFO', ESIC: 'ESIC', STARTUP_INDIA: 'Startup India', NSIC: 'NSIC', DEBARMENT: 'Debarment list', DIGILOCKER: 'DigiLocker',
 };
 
 /** What in a bid needs the officer: derived from checks, findings, registry answers and requests. */

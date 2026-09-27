@@ -41,7 +41,7 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; coun
 );
 
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { db } = useApp();
+  const { db, realtimeLive } = useApp();
   const alertCount = getAlerts(db).length;
 
   return (
@@ -76,9 +76,9 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
         <div className="border-t border-slate-800 bg-[#07192C]/80 p-3 text-xs">
           <div className="flex items-center justify-between text-slate-400">
             <span className="font-mono text-[11px]">v2.0 · prototype</span>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Online
+            <span className={`flex items-center gap-1 text-[11px] font-medium ${realtimeLive ? 'text-emerald-400' : 'text-amber-400'}`} title={realtimeLive ? 'Live updates connected' : 'Live updates reconnecting; data refreshes on each page'}>
+              <span className={`h-1.5 w-1.5 rounded-full ${realtimeLive ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              {realtimeLive ? 'Live' : 'Reconnecting'}
             </span>
           </div>
         </div>

@@ -137,6 +137,64 @@ const pan: RegistryAdapter = {
   },
 };
 
+/** Income-tax returns due before the bid opening: the last three assessment years whose due date (31 Oct) had passed. */
+function assessmentYears(openingIso: string) {
+  let y = Number(openingIso.slice(0, 4));
+  // AY y-(y+1) is due on 31 Oct of year y.
+  while (`${y}-10-31` >= openingIso) y -= 1;
+  return [y - 2, y - 1, y].map((s) => ({ ay: `${s}-${String(s + 1).slice(2)}`, due: `${s}-10-31` }));
+}
+
+const incomeTax: RegistryAdapter = {
+  registry: 'INCOME_TAX',
+  mode: 'SIMULATED',
+  identifier: (v) => v.bidder.pan,
+  async verify(v, id) {
+    const body = { pan: id };
+    const r = await gateway('/itd/v1/compliance-check', body);
+    const b = r.body;
+    const base = { registry: 'INCOME_TAX' as const, mode: 'SIMULATED' as const, identifier: id, request: { method: 'POST', url: r.url, body }, response: { httpStatus: r.httpStatus, body: b }, latencyMs: r.latencyMs };
+    if (b.status === 'NOT_FOUND') return { ...base, status: 'NOT_FOUND', summary: `No income-tax compliance record for PAN ${id}.`, facts: [], checks: [check('Record exists', false, 'Registered', 'Not found')] };
+    if (b.status === 'INVALID_FORMAT') return { ...base, status: 'FAILED', summary: `${id} is not a valid PAN.`, facts: [], checks: [check('Identifier format', false, 'Valid PAN', id)] };
+    const years = assessmentYears(v.tender.technicalOpeningDate);
+    const filed = (b.returns ?? []) as Json[];
+    const rows = years.map((y) => {
+      const f = filed.find((x) => x.assessmentYear === y.ay);
+      return { ...y, filedOn: (f?.filingDate as string) ?? null, late: !!f && String(f.filingDate) > y.due };
+    });
+    const missing = rows.filter((x) => !x.filedOn);
+    const late = rows.filter((x) => x.late);
+    const filedLabel = `ITR filed (${rows.length} assessment years due before bid opening)`;
+    const checks = [
+      check('PAN operative', b.panStatus === 'Operative', 'Operative', b.panStatus),
+      check('Not a specified person (Section 206AB)', b.specifiedPerson206AB === 'No', 'No', b.specifiedPerson206AB),
+      check(filedLabel, missing.length === 0, `${rows.length} of ${rows.length} filed`, `${rows.length - missing.length} of ${rows.length} filed`),
+      check('ITR filed by the due date', late.length === 0, 'On time', late.length ? `${late.length} late (AY ${late.map((x) => x.ay).join(', ')})` : 'On time'),
+      check('Name matches bid', nameMatches(b.name, v.bidder.companyName), v.bidder.companyName, b.name),
+    ];
+    const status = worst(checks, ['PAN operative', 'Not a specified person (Section 206AB)', filedLabel]);
+    return {
+      ...base,
+      status,
+      summary:
+        b.panStatus !== 'Operative'
+          ? `PAN is ${String(b.panStatus).toLowerCase()}.`
+          : missing.length
+            ? `Income-tax return not filed for AY ${missing.map((x) => x.ay).join(', ')}${b.specifiedPerson206AB === 'Yes' ? '; specified person under Section 206AB (non-filer)' : ''}.`
+            : late.length
+              ? `All ${rows.length} returns filed; AY ${late.map((x) => x.ay).join(', ')} filed after the due date.`
+              : `All ${rows.length} income-tax returns due before the bid opening filed on time; not a specified person.`,
+      facts: [
+        { label: 'Name', value: b.name },
+        { label: 'PAN status', value: b.panStatus },
+        { label: 'Specified person (206AB)', value: b.specifiedPerson206AB },
+        { label: 'Returns', value: rows.map((x) => `AY ${x.ay}: ${x.filedOn ? `filed ${x.filedOn}${x.late ? ' (late)' : ''}` : 'not filed'}`).join(' · ') },
+      ],
+      checks,
+    };
+  },
+};
+
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** The six monthly GSTR-3B periods already due (20th of the next month) before the bid opening. */
@@ -422,6 +480,7 @@ const digilocker: RegistryAdapter = {
 /** All registries, in display order. */
 export const ADAPTERS: RegistryAdapter[] = [
   pan,
+  incomeTax,
   gstn,
   udyam,
   mca21,

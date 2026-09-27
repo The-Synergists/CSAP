@@ -80,7 +80,7 @@ export const DocumentViewer: React.FC<{
           {preview && preview.path === path ? (
             <div className="rounded border border-slate-200 bg-slate-50 p-2">
               <DocPreview url={preview.url} mimeType={doc.mimeType} title={doc.name} />
-              <p className="mt-1.5 text-[11px] text-slate-500">Stored document (specimen in this prototype). Use “Read all documents” on the Documents tab to have CSAP AI read it.</p>
+              <p className="mt-1.5 text-[11px] text-slate-500">Stored document. CSAP AI reads it on every verification; Re-run verification reads it again.</p>
             </div>
           ) : (
             <p className="text-xs text-slate-500">{path ? 'Loading preview…' : 'No stored file for this document in the prototype.'}</p>

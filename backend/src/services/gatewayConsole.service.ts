@@ -9,12 +9,13 @@ import { providerConfigured } from '../registries/gstinProvider.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const REGISTRIES = ['pan', 'gstn', 'udyam', 'mca21', 'epfo', 'esic', 'startup_india', 'nsic', 'debarment', 'digilocker'] as const;
+const REGISTRIES = ['pan', 'income_tax', 'gstn', 'udyam', 'mca21', 'epfo', 'esic', 'startup_india', 'nsic', 'debarment', 'digilocker'] as const;
 type Registry = (typeof REGISTRIES)[number];
 
 /** The request CSAP's adapter sends for each registry (same shape as in registries/adapters.ts). */
 const REQUEST: Record<Registry, (id: string) => { path: string; body: Record<string, unknown> }> = {
   pan: (id) => ({ path: '/v1/pan/verify', body: { pan: id } }),
+  income_tax: (id) => ({ path: '/itd/v1/compliance-check', body: { pan: id } }),
   gstn: (id) => ({ path: '/v1/gstn/lookup', body: { identifier: id } }),
   udyam: (id) => ({ path: '/v1/udyam/lookup', body: { identifier: id } }),
   mca21: (id) => ({ path: '/v1/mca21/lookup', body: { identifier: id } }),

@@ -239,6 +239,17 @@ async function main() {
   // 10. Verify every demo bid for real: documents read by CSAP AI, tender rules, document evidence,
   //     registries. Uses the deployed CSAP (CSAP_API_URL) exactly as an officer's Re-run would.
   const api = (process.env.CSAP_API_URL ?? 'https://csap-kappa.vercel.app').replace(/\/+$/, '');
+  // Network calls from a laptop occasionally reset; retry each one.
+  const fetch = async (url: string, init?: RequestInit): Promise<Response> => {
+    for (let i = 1; ; i++) {
+      try {
+        return await globalThis.fetch(url, init);
+      } catch (err) {
+        if (i >= 5) throw err;
+        await new Promise((res) => setTimeout(res, 2000 * i));
+      }
+    }
+  };
   const login = await fetch(`${api}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: demoUser.employeeId, password: DEMO_PASSWORD }) });
   const token = ((await login.json()) as any)?.data?.accessToken;
   if (!token) throw new Error(`could not sign in to ${api} to run verification`);
