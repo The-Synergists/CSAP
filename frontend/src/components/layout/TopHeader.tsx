@@ -94,12 +94,7 @@ export const TopHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleS
           <span className="font-medium text-slate-400">Active Case:</span>
           <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono font-semibold text-blue-800">{activeTender.id}</span>
         </button>
-      ) : (
-        <button type="button" onClick={() => navigate('/tenders')} className="hidden shrink-0 items-center gap-2 text-xs xl:flex">
-          <span className="font-medium text-slate-400">No tender case selected</span>
-          <span className="font-semibold text-blue-700 hover:underline">Select a Case</span>
-        </button>
-      )}
+      ) : null}
 
       <div ref={searchRef} className="relative mx-auto w-full max-w-md">
         <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

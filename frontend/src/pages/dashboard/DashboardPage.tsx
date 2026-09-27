@@ -11,7 +11,7 @@ import { BidStatusBadge, RiskBadge, SeverityBadge, TenderStageBadge } from '../.
 import { EmptyState, PageHeader } from '../../components/ui/primitives';
 import { buttonClass } from '../../components/ui/styles';
 import { EMD_RESULT, RISK_LEVEL } from '../../domain/labels';
-import { bidPath, formatDate, formatDateTime, formatINR, tenderPath } from '../../lib/format';
+import { bidPath, formatDateTime, formatINR, tenderPath } from '../../lib/format';
 
 const TONE_BORDER = { neutral: 'border-l-slate-400', danger: 'border-l-rose-600', warning: 'border-l-amber-500', info: 'border-l-blue-600', success: 'border-l-emerald-600' } as const;
 
@@ -72,7 +72,6 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Procurement Verification Dashboard"
-        subtitle={`Commercial & Contracts Division · ${formatDate(new Date().toISOString())}`}
         actions={
           <Link to="/tenders" className={buttonClass('secondary')}>
             View all tenders <ArrowRight className="h-3.5 w-3.5" />
