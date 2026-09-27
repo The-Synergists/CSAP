@@ -13,7 +13,7 @@ import { engine } from './documentPipeline.service.js';
 
 const PAGES = `
 /dashboard — work summary, alerts, time saved
-/tenders — all tenders; /tenders/<TENDER_ID> — one tender (URL-encode the slashes, e.g. /tenders/GEM%2F2026%2FCPCL%2F001)
+/tenders — all tenders; /tenders/new — publish a new tender; /tenders/<TENDER_SLUG> — one tender, where the slug replaces slashes with dashes (GEM/2026/CPCL/001 -> /tenders/GEM-2026-CPCL-001)
 /bids/<BID_ID>/<tab> — one bid; tabs: overview, documents (read all documents with CSAP AI), portal (government registry checks), pan (PAN document verification), emd, compliance (score and why), risk, evidence (findings), decision (recommendation, officer decision, evaluation report), activity
 /bids/<BID_ID>/evidence?finding=<EVD_ID> — open one finding
 /bids/<BID_ID>/decision?decision=<APPROVE|REJECT|REQUEST_CLARIFICATION|COMMITTEE_REVIEW>&finding=<EVD_ID> — decision form pre-filled (the officer still reviews, writes remarks and confirms)
@@ -29,7 +29,7 @@ Respond with JSON only: {"answer": "...", "actions": [{"label": "short button te
 
 const ALLOWED = [
   /^\/(dashboard|tenders|reviews|alerts|reports|audit|gateway|gem|settings)$/,
-  /^\/tenders\/GEM%2F\d{4}%2FCPCL%2F\d{3}$/,
+  /^\/tenders\/(new|GEM-\d{4}-CPCL-\d{3})$/,
   /^\/bids\/BID-\d{3}(\/(overview|documents|portal|pan|emd|compliance|risk|evidence|decision|activity))?$/,
   /^\/bids\/BID-\d{3}\/evidence\?finding=EVD-\d{3,4}$/,
   /^\/bids\/BID-\d{3}\/decision\?decision=(APPROVE|REJECT|REQUEST_CLARIFICATION|COMMITTEE_REVIEW)(&finding=EVD-\d{3,4})?$/,
