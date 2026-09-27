@@ -25,7 +25,7 @@ SYSTEM_PROMPT = (
     'Respond with JSON only: {"sentences": [{"text": "...", "citations": ["EVD-003"]}]}'
 )
 
-ID_RE = re.compile(r"\b(?:EVD|REQ)-\d{2,3}\b")
+ID_RE = re.compile(r"\b(?:EVD|REQ)-\d{2,4}\b")
 NUM_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
@@ -54,7 +54,7 @@ def validate(sentences: List[Dict[str, Any]], evidence: Dict[str, str]) -> Dict[
         text = s["text"].strip()
         cited = {c.strip().upper() for c in (s.get("citations") or []) if isinstance(c, str)}
         cited |= set(ID_RE.findall(text))  # IDs written inline in the text also count
-        text = re.sub(r"\s*\[(?:\s*(?:EVD|REQ)-\d{2,3}\s*,?)+\]", "", text).strip()
+        text = re.sub(r"\s*\[(?:\s*(?:EVD|REQ)-\d{2,4}\s*,?)+\]", "", text).strip()
         unknown = sorted(c for c in cited if c not in evidence)
         if not cited:
             dropped.append({"text": text, "reason": "cites no evidence"})
