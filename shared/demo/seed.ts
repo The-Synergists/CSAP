@@ -70,7 +70,7 @@ const tenders: Tender[] = [
     publishDate: '2026-08-02',
     deadlineDate: '2026-09-10',
     technicalOpeningDate: '2026-09-11',
-    status: 'TECHNICAL_SCRUTINY',
+    status: 'UNDER_EVALUATION',
     description:
       'Hyper-converged infrastructure, enterprise storage and core network switches with 5-year AMC.',
     officerInCharge: 'S. Narayanan',
@@ -85,7 +85,7 @@ const tenders: Tender[] = [
     publishDate: '2026-07-15',
     deadlineDate: '2026-08-20',
     technicalOpeningDate: '2026-08-21',
-    status: 'AWARDED',
+    status: 'UNDER_EVALUATION',
     description: 'Dual-channel gas chromatograph with auto-sampler for hydrocarbon fraction analysis.',
     officerInCharge: 'K. Meenakshi',
   },

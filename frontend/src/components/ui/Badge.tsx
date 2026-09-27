@@ -7,10 +7,12 @@ import {
   FINDING_STATUS,
   RISK_LEVEL,
   SEVERITY,
+  TENDER_STAGE,
   TENDER_STATUS,
   type Tone,
 } from '../../domain/labels';
 import type { BidStatus, CheckStatus, EmdResult, FindingSeverity, FindingStatus, RiskLevel, TenderStatus } from '@shared/domain/types';
+import type { TenderStage } from '@shared/domain/selectors';
 
 const TONE_CLASS: Record<Tone, string> = {
   neutral: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -53,6 +55,11 @@ export const BidStatusBadge: React.FC<{ status: BidStatus }> = ({ status }) => (
 
 export const TenderStatusBadge: React.FC<{ status: TenderStatus }> = ({ status }) => (
   <Badge tone={TENDER_STATUS[status].tone} dot>{TENDER_STATUS[status].label}</Badge>
+);
+
+/** A tender's stage derived from its bids (use this, not the stored status). */
+export const TenderStageBadge: React.FC<{ stage: TenderStage }> = ({ stage }) => (
+  <Badge tone={TENDER_STAGE[stage].tone} dot>{TENDER_STAGE[stage].label}</Badge>
 );
 
 export const CheckBadge: React.FC<{ status: CheckStatus }> = ({ status }) => (

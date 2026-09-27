@@ -207,23 +207,48 @@ export const matchesBidSearch = (v: BidView, term: string): boolean => {
   );
 };
 
+/**
+ * Where a tender actually is, derived from its bids and decisions (never from a stored label):
+ * open for bids until the closing date; after that, no bids received, under evaluation while any
+ * bid has no final decision, or evaluation complete once every bid is approved or rejected.
+ */
+export type TenderStage = 'OPEN_FOR_BIDS' | 'NO_BIDS' | 'UNDER_EVALUATION' | 'EVALUATION_COMPLETE' | 'CANCELLED';
+
 export interface TenderStats {
+  stage: TenderStage;
   bidCount: number;
+  /** Average of the bids' computed scores; null when there are no bids. */
   averageCompliance: number | null;
   highRiskCount: number;
+  /** Highest risk among the bids; null when there are no bids. */
+  riskLevel: Bid['riskLevel'] | null;
   awaitingDecision: number;
+  decided: number;
   openFindings: number;
 }
 
+const RISK_RANK: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+
+export const tenderStage = (tender: Tender, views: BidView[], today = new Date().toISOString().slice(0, 10)): TenderStage => {
+  if (tender.status === 'CANCELLED') return 'CANCELLED';
+  if (tender.status === 'OPEN_FOR_BIDS' && tender.deadlineDate >= today) return 'OPEN_FOR_BIDS';
+  if (views.length === 0) return 'NO_BIDS';
+  return views.every((v) => v.flags.closed) ? 'EVALUATION_COMPLETE' : 'UNDER_EVALUATION';
+};
+
 export const getTenderStats = (db: Database, tenderId: string): TenderStats => {
   const views = listBidViews(db, tenderId);
+  const tender = db.tenders.find((t) => t.id === tenderId)!;
   return {
+    stage: tenderStage(tender, views),
     bidCount: views.length,
     averageCompliance: views.length
       ? Math.round(views.reduce((s, v) => s + v.bid.complianceScore, 0) / views.length)
       : null,
     highRiskCount: views.filter((v) => v.flags.highRisk).length,
+    riskLevel: views.length ? views.map((v) => v.bid.riskLevel).reduce((a, b) => (RISK_RANK[b] > RISK_RANK[a] ? b : a)) : null,
     awaitingDecision: views.filter((v) => v.flags.awaitingDecision).length,
+    decided: views.filter((v) => v.flags.closed).length,
     openFindings: views.reduce((s, v) => s + v.openFindings.length, 0),
   };
 };
@@ -261,8 +286,15 @@ export const getAlerts = (db: Database): Alert[] =>
 
 export const getDashboardMetrics = (db: Database) => {
   const views = listBidViews(db);
+  const open = views.filter((v) => !v.flags.closed);
+  const scored = open.filter((v) => v.checks.length > 0);
   return {
-    activeTenders: db.tenders.filter((t) => t.status === 'UNDER_EVALUATION' || t.status === 'TECHNICAL_SCRUTINY').length,
+    /** Tenders whose bids are being evaluated now (derived, see tenderStage). */
+    activeTenders: db.tenders.filter((t) => getTenderStats(db, t.id).stage === 'UNDER_EVALUATION').length,
+    openForBids: db.tenders.filter((t) => getTenderStats(db, t.id).stage === 'OPEN_FOR_BIDS').length,
+    bidsUnderVerification: open.length,
+    fullyCompliant: open.filter((v) => v.checks.length > 0 && v.flags.noExceptions).length,
+    averageCompliance: scored.length ? Math.round(scored.reduce((s, v) => s + v.bid.complianceScore, 0) / scored.length) : null,
     bidsInReview: views.filter((v) => !v.flags.closed).length,
     awaitingDecision: views.filter((v) => v.flags.awaitingDecision).length,
     awaitingClarification: views.filter((v) => v.flags.clarification || v.bid.status === 'COMMITTEE_REVIEW').length,

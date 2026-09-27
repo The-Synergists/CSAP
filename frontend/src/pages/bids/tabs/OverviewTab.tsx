@@ -1,6 +1,12 @@
 import React from 'react';
 import { RegistryLink } from '../../../components/RegistryLink';
 import { CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ActivityTimeline } from '../../../components/ActivityTimeline';
+import { RiskBadge } from '../../../components/ui/Badge';
+import { Stat } from '../../../components/ui/primitives';
+import { EMD_RESULT } from '../../../domain/labels';
+import { formatDateTime } from '../../../lib/format';
 import { AdvisoryTag, CheckBadge } from '../../../components/ui/Badge';
 import { Button, Card, DetailList } from '../../../components/ui/primitives';
 import { DECISION } from '../../../domain/labels';
@@ -11,7 +17,25 @@ import { GemIntakeCard } from '../GemIntakeCard';
 export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
   const exceptions = view.checks.filter((c) => c.status === 'REVIEW' || c.status === 'NOT_MET' || c.status === 'MISSING');
   const rec = view.recommendation;
+  const { bid, counts } = view;
   return (
+    <div className="space-y-5">
+    <Card>
+      <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <Stat label="Compliance score" value={`${bid.complianceScore} / 100`} />
+        <Stat label="Risk" value={<RiskBadge level={bid.riskLevel} score={bid.riskScore} />} />
+        <Stat label="Requirements met" value={`${counts.met} of ${counts.total}`} />
+        <Stat label="Exceptions" value={<span className={counts.exceptions ? 'text-amber-700' : 'text-emerald-700'}>{counts.exceptions || 'None'}</span>} />
+        <Stat
+          label="Documents"
+          value={<span className={view.documents.length < view.documentsRequired ? 'text-rose-700' : ''}>{view.documents.length} of {view.documentsRequired}</span>}
+        />
+        <Stat label="EMD" value={view.emd ? EMD_RESULT[view.emd.result].label : 'Not submitted'} />
+      </dl>
+      <p className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
+        Submitted {formatDateTime(bid.submittedAt)} · last verified {formatDateTime(bid.lastVerifiedAt)}
+      </p>
+    </Card>
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
         <GemIntakeCard view={view} />
@@ -67,10 +91,12 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
         )}
       </div>
 
+      <div className="space-y-5">
       <Card title="Bidder">
         <DetailList
           rows={[
-            { label: 'Vendor code', value: <span className="font-mono text-xs">{view.bidder.id}</span> },
+            { label: 'GSTIN', value: <RegistryLink registry="gstn" id={view.bidder.gstin} /> },
+            { label: 'PAN', value: <RegistryLink registry="pan" id={view.bidder.pan} /> },
             { label: 'Incorporated', value: formatDate(view.bidder.incorporationDate) },
             { label: 'Address', value: view.bidder.registeredAddress },
             {
@@ -101,6 +127,16 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
           ]}
         />
       </Card>
+      <Card
+        title="Activity"
+        subtitle="Submission, verification and officer actions on this bid"
+        actions={<Link to={`/audit?bidId=${view.bid.id}`} className="text-xs font-medium text-blue-700 hover:underline">Audit trail</Link>}
+      >
+        <ActivityTimeline events={view.audit.slice(0, 8)} />
+        {view.audit.length > 8 && <p className="mt-2 text-xs text-slate-500">{view.audit.length - 8} earlier events in the audit trail.</p>}
+      </Card>
+      </div>
+    </div>
     </div>
   );
 };

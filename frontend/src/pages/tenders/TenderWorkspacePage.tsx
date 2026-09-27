@@ -5,7 +5,7 @@ import { BID_FILTERS, findTender, getTenderStats, listBidViews, matchesBidSearch
 import { useApp } from '../../state/appContext';
 import { ActivityTimeline } from '../../components/ActivityTimeline';
 import { BidTable } from '../../components/bids/BidTable';
-import { Badge, TenderStatusBadge } from '../../components/ui/Badge';
+import { Badge, TenderStageBadge } from '../../components/ui/Badge';
 import { Button, Card, CountPill, DetailList, EmptyState, FilterChips, PageHeader, SearchInput, Stat, Tabs } from '../../components/ui/primitives';
 import { buttonClass } from '../../components/ui/styles';
 import { REQUIREMENT_CATEGORY } from '../../domain/labels';
@@ -48,14 +48,14 @@ export const TenderWorkspacePage: React.FC = () => {
         meta={
           <>
             <span className="font-mono text-xs text-slate-600">{tender.id}</span>
-            <TenderStatusBadge status={tender.status} />
+            <TenderStageBadge stage={stats.stage} />
           </>
         }
         title={tender.title}
         subtitle={tender.division}
         actions={
           <>
-            {tender.status === 'OPEN_FOR_BIDS' && (
+            {stats.stage === 'OPEN_FOR_BIDS' && (
               <a href={`/gem/tenders/${encodeURIComponent(tender.id)}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'md')}>
                 Open on GeM (simulated) ↗
               </a>

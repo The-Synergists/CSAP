@@ -9,6 +9,7 @@ import type {
   RiskLevel,
   TenderStatus,
 } from '@shared/domain/types';
+import type { TenderStage } from '@shared/domain/selectors';
 
 /** Visual tone for badges. Kept to a small palette so colour stays meaningful. */
 export type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'purple';
@@ -27,6 +28,14 @@ export const TENDER_STATUS: Record<TenderStatus, { label: string; tone: Tone }> 
   UNDER_EVALUATION: { label: 'Under Evaluation', tone: 'warning' },
   TECHNICAL_SCRUTINY: { label: 'Technical Scrutiny', tone: 'warning' },
   AWARDED: { label: 'Awarded', tone: 'success' },
+  CANCELLED: { label: 'Cancelled', tone: 'neutral' },
+};
+
+export const TENDER_STAGE: Record<TenderStage, { label: string; tone: Tone }> = {
+  OPEN_FOR_BIDS: { label: 'Open for bids', tone: 'info' },
+  NO_BIDS: { label: 'No bids received', tone: 'neutral' },
+  UNDER_EVALUATION: { label: 'Under evaluation', tone: 'warning' },
+  EVALUATION_COMPLETE: { label: 'Evaluation complete', tone: 'success' },
   CANCELLED: { label: 'Cancelled', tone: 'neutral' },
 };
 

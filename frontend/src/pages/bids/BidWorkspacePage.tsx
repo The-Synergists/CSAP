@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { RegistryLink } from '../../components/RegistryLink';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Gavel, RefreshCw } from 'lucide-react';
 import { getBidView } from '@shared/domain/selectors';
 import type { BidDocument } from '@shared/domain/types';
 import { useApp } from '../../state/appContext';
-import { BidStatusBadge, RiskBadge } from '../../components/ui/Badge';
-import { Button, Card, CountPill, PageHeader, Stat, Tabs } from '../../components/ui/primitives';
-import { EMD_RESULT } from '../../domain/labels';
-import { bidPath, formatDateTime, tenderPath } from '../../lib/format';
+import { BidStatusBadge } from '../../components/ui/Badge';
+import { Button, CountPill, PageHeader, Tabs } from '../../components/ui/primitives';
+import { bidPath, tenderPath } from '../../lib/format';
 import { NotFoundPage } from '../common/NotFoundPage';
 import { NextStep } from './NextStep';
 import { BidStatePanel, LOCKED_HINT } from './ReevaluationPanel';
@@ -21,7 +19,6 @@ import { ComplianceTab } from './tabs/ComplianceTab';
 import { RiskTab } from './tabs/RiskTab';
 import { EvidenceTab } from './tabs/EvidenceTab';
 import { DecisionTab } from './tabs/DecisionTab';
-import { ActivityTab } from './tabs/ActivityTab';
 import { PanVerificationTab } from './tabs/PanVerificationTab';
 import { PortalVerificationTab } from './tabs/PortalVerificationTab';
 import { BID_TAB_ALIASES as ALIASES, BID_TABS, type BidTab, type TabProps } from './bidTabs';
@@ -31,7 +28,7 @@ export const BidWorkspacePage: React.FC = () => {
   const { bidId, tab } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { db, source, verificationRuns, startVerification, setActiveTenderId } = useApp();
+  const { db, verificationRuns, startVerification, setActiveTenderId } = useApp();
   const view = bidId ? getBidView(db, bidId) : undefined;
   const [viewingDoc, setViewingDoc] = useState<BidDocument | null>(null);
 
@@ -68,21 +65,16 @@ export const BidWorkspacePage: React.FC = () => {
           </>
         }
         title={bidder.companyName}
-        subtitle={
-          <span className="font-mono text-xs">
-            {bidder.id} · GSTIN {source === 'api' ? <RegistryLink registry="gstn" id={bidder.gstin} /> : bidder.gstin} · PAN{' '}
-            {source === 'api' ? <RegistryLink registry="pan" id={bidder.pan} /> : bidder.pan}
-          </span>
-        }
+        subtitle={`${tender.id} · ${tender.title}`}
         actions={
           <>
             <Button
               onClick={() => void startVerification(bid.id)}
               disabled={running || view.flags.closed}
-              title={view.flags.closed ? LOCKED_HINT : 'Re-checks the submission against every tender requirement using the verification engine'}
+              title={view.flags.closed ? LOCKED_HINT : 'CSAP verified this bid automatically when it arrived. Re-run the checks against every tender requirement.'}
             >
               <RefreshCw className={`h-4 w-4 ${running ? 'animate-spin' : ''}`} />
-              {running ? 'Verifying…' : 'Run verification'}
+              {running ? 'Verifying…' : 'Re-run verification'}
             </Button>
             {!view.flags.closed && (
               <Button variant="primary" onClick={() => goTo('decision')}>
@@ -92,26 +84,6 @@ export const BidWorkspacePage: React.FC = () => {
           </>
         }
       />
-
-      <Card>
-        <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <Stat label="Compliance score" value={`${bid.complianceScore} / 100`} />
-          <Stat label="Risk" value={<RiskBadge level={bid.riskLevel} score={bid.riskScore} />} />
-          <Stat label="Requirements met" value={`${counts.met} of ${counts.total}`} />
-          <Stat
-            label="Exceptions"
-            value={<span className={counts.exceptions ? 'text-amber-700' : 'text-emerald-700'}>{counts.exceptions || 'None'}</span>}
-          />
-          <Stat
-            label="Documents"
-            value={<span className={view.documents.length < view.documentsRequired ? 'text-rose-700' : ''}>{view.documents.length} of {view.documentsRequired}</span>}
-          />
-          <Stat label="EMD" value={view.emd ? EMD_RESULT[view.emd.result].label : 'Not submitted'} />
-        </dl>
-        <p className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
-          Tender {tender.id} · {tender.title} · submitted {formatDateTime(bid.submittedAt)} · last verified {formatDateTime(bid.lastVerifiedAt)}
-        </p>
-      </Card>
 
       <BidStatePanel view={view} />
 
@@ -141,7 +113,6 @@ export const BidWorkspacePage: React.FC = () => {
           { id: 'risk', label: 'Risk' },
           { id: 'evidence', label: 'Findings', badge: view.findings.length ? <CountPill n={view.findings.length} tone={view.openFindings.length ? 'danger' : 'neutral'} /> : undefined },
           { id: 'decision', label: 'Recommendation & decision' },
-          { id: 'activity', label: 'Activity' },
         ]}
       />
 
@@ -157,7 +128,6 @@ export const BidWorkspacePage: React.FC = () => {
         {activeTab === 'decision' && (
           <DecisionTab {...tabProps} preset={{ decision: params.get('decision') ?? undefined, finding: params.get('finding') ?? undefined }} />
         )}
-        {activeTab === 'activity' && <ActivityTab {...tabProps} />}
       </div>
 
       <DocumentViewer view={view} doc={viewingDoc} onClose={() => setViewingDoc(null)} onViewFinding={(id) => { setViewingDoc(null); goTo('evidence', { finding: id }); }} />

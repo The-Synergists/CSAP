@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getTenderStats } from '@shared/domain/selectors';
-import type { TenderStatus } from '@shared/domain/types';
+import { getTenderStats, type TenderStage } from '@shared/domain/selectors';
 import { useApp } from '../../state/appContext';
-import { TenderStatusBadge } from '../../components/ui/Badge';
+import { TenderStageBadge } from '../../components/ui/Badge';
 import { Button, Card, EmptyState, FilterChips, PageHeader, SearchInput } from '../../components/ui/primitives';
 import { buttonClass } from '../../components/ui/styles';
-import { TENDER_STATUS } from '../../domain/labels';
+import { TENDER_STAGE } from '../../domain/labels';
 import { formatCrore, formatDate, formatINR, tenderPath } from '../../lib/format';
 
-type StatusFilter = 'ALL' | TenderStatus;
+type StatusFilter = 'ALL' | TenderStage;
 const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
   { id: 'ALL', label: 'All' },
-  { id: 'UNDER_EVALUATION', label: TENDER_STATUS.UNDER_EVALUATION.label },
-  { id: 'TECHNICAL_SCRUTINY', label: TENDER_STATUS.TECHNICAL_SCRUTINY.label },
-  { id: 'AWARDED', label: TENDER_STATUS.AWARDED.label },
+  ...(['OPEN_FOR_BIDS', 'UNDER_EVALUATION', 'EVALUATION_COMPLETE', 'NO_BIDS'] as const).map((id) => ({ id, label: TENDER_STAGE[id].label })),
 ];
 
 export const TenderListPage: React.FC = () => {
@@ -25,10 +22,11 @@ export const TenderListPage: React.FC = () => {
   const [status, setStatus] = useState<StatusFilter>('ALL');
 
   const q = term.trim().toLowerCase();
+  const stageOf = (id: string) => getTenderStats(db, id).stage;
   const rows = db.tenders.filter(
-    (t) => (status === 'ALL' || t.status === status) && (!q || [t.id, t.title, t.division, t.category].some((s) => s.toLowerCase().includes(q))),
+    (t) => (status === 'ALL' || stageOf(t.id) === status) && (!q || [t.id, t.title, t.division, t.category].some((s) => s.toLowerCase().includes(q))),
   );
-  const counts = Object.fromEntries(STATUS_OPTIONS.map((o) => [o.id, db.tenders.filter((t) => o.id === 'ALL' || t.status === o.id).length]));
+  const counts = Object.fromEntries(STATUS_OPTIONS.map((o) => [o.id, db.tenders.filter((t) => o.id === 'ALL' || stageOf(t.id) === o.id).length]));
 
   return (
     <div className="space-y-5">
@@ -87,7 +85,7 @@ export const TenderListPage: React.FC = () => {
                       <td className="px-4 py-3 text-right font-mono" title={s.bidCount === 0 ? 'No bid records for this tender in the dataset' : undefined}>
                         {s.bidCount}
                       </td>
-                      <td className="px-4 py-3"><TenderStatusBadge status={t.status} /></td>
+                      <td className="px-4 py-3"><TenderStageBadge stage={s.stage} /></td>
                       <td className="px-4 py-3 text-right">
                         <Link to={tenderPath(t.id)} onClick={(e) => e.stopPropagation()} className={buttonClass('secondary', 'sm')}>
                           Open workspace
