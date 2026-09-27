@@ -17,9 +17,9 @@ const PAGES = `
 /bids/<BID_ID>/<tab> — one bid; tabs: overview, documents (read all documents with CSAP AI), portal (government registry checks), pan (PAN document verification), emd, compliance (score and why), risk, evidence (findings), decision (recommendation, officer decision, evaluation report), activity
 /bids/<BID_ID>/evidence?finding=<EVD_ID> — open one finding
 /bids/<BID_ID>/decision?decision=<APPROVE|REJECT|REQUEST_CLARIFICATION|COMMITTEE_REVIEW>&finding=<EVD_ID> — decision form pre-filled (the officer still reviews, writes remarks and confirms)
-/reviews — bids awaiting the officer's decision; /alerts — open findings; /reports — reports and time saved
+/reviews — reviews the officer started and bids the officer decided; /alerts — bids with disqualifying issues or requests waiting; /reports — each bid's evaluation report and compiled reports
 /audit — tamper-evident audit trail (verify integrity); /gateway — government registries; /gateway/<pan|gstn|udyam|mca21|epfo|esic|startup_india|nsic|debarment|digilocker>?q=<NUMBER> — check a number
-/gem — simulated GeM portal (bidder side); /settings — profile and system status`;
+/gem — simulated GeM portal (bidder side); /settings — profile and integrations (links to the Government Gateway)`;
 
 const SYSTEM = `You are the CSAP assistant for a procurement officer. CSAP verifies GeM bids; the officer makes every decision. Do not name the buyer organisation.
 Answer ONLY from the DATA given. If the data does not contain the answer, say so. Never invent bids, numbers, findings or pages.
@@ -32,7 +32,7 @@ const ALLOWED = [
   /^\/tenders\/GEM-\d{4}-CPCL-\d{3}$/,
   /^\/bids\/BID-\d{3}(\/(overview|documents|portal|pan|emd|compliance|risk|evidence|decision|activity))?$/,
   /^\/bids\/BID-\d{3}\/evidence\?finding=EVD-\d{3,4}$/,
-  /^\/bids\/BID-\d{3}\/decision\?decision=(APPROVE|REJECT|REQUEST_CLARIFICATION|COMMITTEE_REVIEW)(&finding=EVD-\d{3,4})?$/,
+  /^\/bids\/BID-\d{3}\/decision\?decision=(APPROVE|REJECT|REQUEST_CLARIFICATION)(&finding=EVD-\d{3,4})?$/,
   /^\/gateway\/(pan|gstn|udyam|mca21|epfo|esic|startup_india|nsic|debarment|digilocker)(\?q=[A-Za-z0-9%/-]{3,40})?$/,
 ];
 
@@ -89,6 +89,8 @@ export async function askAssistant(db: SupabaseClient, input: { message: string;
   let result: { content: string; model: string; latencyMs: number };
   try {
     result = await engine('/api/v1/llm/chat', { system: SYSTEM, user, maxTokens: 500 });
+    // The hosted model occasionally returns an empty stream; ask once more before giving up.
+    if (!parse(result.content).answer) result = await engine('/api/v1/llm/chat', { system: SYSTEM, user, maxTokens: 500 });
   } catch (err) {
     throw new HttpError(502, err instanceof Error ? err.message : String(err), 'NVIDIA_ERROR');
   }
