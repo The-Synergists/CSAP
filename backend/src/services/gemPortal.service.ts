@@ -6,7 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { GEM_DEMO_KIT } from '../../../shared/demo/gemDemoKit.js';
 import { config } from '../config/env.js';
-import { HttpError, must } from '../lib/http.js';
+import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 import { sign, type GemBidPayload } from './gemIntake.service.js';
 
@@ -98,16 +98,20 @@ export async function submitBid(input: { tenderId: string; company: GemBidPayloa
   let delivery: any;
   let status = 'DELIVERY_FAILED';
   let csapBidId: string | null = null;
-  try {
-    const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(45_000) });
-    const json = (await res.json().catch(() => ({}))) as any;
-    delivery = { request: { url, headers: { ...headers, 'X-GeM-Signature': `${headers['X-GeM-Signature'].slice(0, 19)}…` } }, response: { httpStatus: res.status, body: json } };
-    if (res.ok && json?.data?.csapBidId) {
-      status = 'DELIVERED';
-      csapBidId = json.data.csapBidId;
+  // Deliver to the buyer's system; retry once on a network error or server error (delivery is idempotent).
+  for (let attempt = 1; attempt <= 2 && status !== 'DELIVERED'; attempt++) {
+    if (attempt > 1) await new Promise((r) => setTimeout(r, 1500));
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(45_000) });
+      const json = (await res.json().catch(() => ({}))) as any;
+      delivery = { attempts: attempt, request: { url, headers: { ...headers, 'X-GeM-Signature': `${headers['X-GeM-Signature'].slice(0, 19)}…` } }, response: { httpStatus: res.status, body: json } };
+      if (res.ok && json?.data?.csapBidId) {
+        status = 'DELIVERED';
+        csapBidId = json.data.csapBidId;
+      } else if (res.status < 500) break; // a rejection will not change on retry
+    } catch (err) {
+      delivery = { attempts: attempt, request: { url }, error: err instanceof Error ? err.message : String(err) };
     }
-  } catch (err) {
-    delivery = { request: { url }, error: err instanceof Error ? err.message : String(err) };
   }
   const updated = must<any>(
     await serviceClient
@@ -138,7 +142,7 @@ const mapSubmissionWithEvaluation = (r: any) => ({
 
 export async function getSubmissionWithEvaluation(id: string) {
   if (!/^[0-9a-f-]{36}$/.test(id)) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
-  const r = must<any>(await serviceClient.from('gem_bid_submissions').select('*').eq('id', id).maybeSingle(), 'submission');
+  const r = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('*').eq('id', id).maybeSingle(), 'submission');
   if (!r) throw new HttpError(404, 'Submission not found.', 'NOT_FOUND');
   return mapSubmissionWithEvaluation(r);
 }
@@ -146,7 +150,7 @@ export async function getSubmissionWithEvaluation(id: string) {
 /** CSAP -> GeM: the buyer's evaluation outcome and report summary for one bid (signed by CSAP). */
 export async function receiveEvaluation(payload: any) {
   if (!payload?.gemBidNo || !payload?.status) throw new HttpError(400, 'gemBidNo and status are required.', 'VALIDATION');
-  const row = must<any>(await serviceClient.from('gem_bid_submissions').select('id').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
+  const row = mustOne<any>(await serviceClient.from('gem_bid_submissions').select('id').eq('gem_bid_no', payload.gemBidNo).maybeSingle(), 'submission');
   if (!row) throw new HttpError(404, `GeM bid ${payload.gemBidNo} not found.`, 'NOT_FOUND');
   must(
     await serviceClient

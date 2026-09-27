@@ -222,7 +222,7 @@ export const GemSubmitPage: React.FC = () => {
             ? `Still needed: ${problems.join(', ')}.`
             : missing.length
               ? `Ready. ${missing.length} mandatory document(s) not attached; the buyer will see them as missing.`
-              : 'Ready to submit. The buyer receives your bid immediately and verifies it automatically.'}
+              : 'Ready to submit your bid.'}
         </p>
         <button type="submit" disabled={!!problems.length || submitting} className={`${gemPrimary} px-5`}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Submit bid

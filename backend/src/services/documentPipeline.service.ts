@@ -22,7 +22,7 @@ import type {
 } from '../../../shared/domain/types.js';
 import { config } from '../config/env.js';
 import { loadWorkspace } from '../db/workspace.repository.js';
-import { HttpError, must } from '../lib/http.js';
+import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 
 export const BUCKET = 'bid-documents';
@@ -326,7 +326,7 @@ async function processRun(db: SupabaseClient, view: BidView, runId: string, byte
 
 /** Deletes an officer-uploaded file from storage (e.g. a personal PAN card used for a test); the run keeps its results. */
 export async function deleteUpload(db: SupabaseClient, userId: string, runId: string, officerName: string) {
-  const run = must<any>(await db.from('document_verification_runs').select('id, bid_id, document').eq('id', runId).maybeSingle(), 'document verification run');
+  const run = mustOne<any>(await db.from('document_verification_runs').select('id, bid_id, document').eq('id', runId).maybeSingle(), 'document verification run');
   if (!run) throw new HttpError(404, 'Verification run not found.', 'NOT_FOUND');
   const doc = run.document as PipelineDocument;
   if (doc.source !== 'officer_upload') throw new HttpError(400, 'Only files uploaded by an officer can be deleted.', 'VALIDATION');

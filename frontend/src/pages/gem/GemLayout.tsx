@@ -14,7 +14,7 @@ export const GemLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="bg-amber-100 px-4 py-1.5 text-center text-[11px] font-medium text-amber-900">
-        Simulation for the CSAP prototype. This is not the Government e-Marketplace (GeM); no real bids are placed here.
+        Simulation for a prototype demonstration. This is not the Government e-Marketplace (GeM); no real bids are placed here.
       </div>
       <header className="bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
@@ -37,7 +37,6 @@ export const GemLayout: React.FC = () => {
                 Seller login
               </Link>
             )}
-            <Link to="/login" className="hidden text-slate-500 hover:underline sm:inline">Buyer (CPCL) login · CSAP</Link>
           </div>
         </div>
         <nav aria-label="Marketplace" className="bg-[#1b3a6b]">
@@ -51,7 +50,7 @@ export const GemLayout: React.FC = () => {
         <Outlet />
       </main>
       <footer className="mx-auto max-w-6xl px-4 pb-6 text-[11px] text-slate-500">
-        Simulated marketplace for demonstrating CPCL's CSAP. Buyer: Chennai Petroleum Corporation Limited, Ministry of Petroleum and Natural Gas.
+        Simulated marketplace for a prototype demonstration. Buyer: Chennai Petroleum Corporation Limited, Ministry of Petroleum and Natural Gas.
       </footer>
     </div>
   );

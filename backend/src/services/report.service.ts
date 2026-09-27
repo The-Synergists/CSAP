@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getBidView } from '../../../shared/domain/selectors.js';
 import { config } from '../config/env.js';
 import { loadWorkspace } from '../db/workspace.repository.js';
-import { HttpError, must } from '../lib/http.js';
+import { HttpError, must, mustOne } from '../lib/http.js';
 import { listBatches, listBatchRuns } from './documentBatch.service.js';
 import { sign } from './gemIntake.service.js';
 import { latestDraft } from './recommendation.service.js';
@@ -52,7 +52,7 @@ export async function listReports(db: SupabaseClient, bidId: string) {
 }
 
 export async function getReport(db: SupabaseClient, id: string) {
-  const r = must<any>(await db.from('evaluation_reports').select('*').eq('id', id).maybeSingle(), 'report');
+  const r = mustOne<any>(await db.from('evaluation_reports').select('*').eq('id', id).maybeSingle(), 'report');
   if (!r) throw new HttpError(404, 'Report not found.', 'NOT_FOUND');
   const report = mapReport(r);
   return { ...report, verified: fingerprint(report.content) === report.sha256 };

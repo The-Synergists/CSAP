@@ -53,7 +53,7 @@ export const GemBidPage: React.FC = () => {
             <Row k="Office" v={t.division} />
             <Row k="Item category" v={`${t.title} (${t.category})`} />
             <Row k="Estimated bid value" v={crore(t.estimatedValue)} />
-            <Row k="Evaluation method" v="Total value wise; technical evaluation by the buyer's CSAP system and procurement officer" />
+            <Row k="Evaluation method" v="Total value wise; technical evaluation by the buyer" />
           </tbody>
         </table>
       </GemCard>
@@ -81,7 +81,7 @@ export const GemBidPage: React.FC = () => {
       </GemCard>
 
       <p className="text-xs text-slate-600">
-        After the end date the buyer's system (CPCL CSAP) receives each bid, reads the documents and checks registrations automatically. The evaluation result and report appear under My Bids.
+        The buyer evaluates every bid against these requirements. The result, and any clarification the buyer needs, appears under My Bids.
       </p>
     </div>
   );

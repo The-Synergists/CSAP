@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { formatDateTime } from '../../lib/format';
 import { GemCard, gemPrimary, gemSecondary } from './GemLayout';
 import { EVALUATION_STATUS, gemApi, inr, type GemSubmission } from './gemApi';
 
-/** The buyer's (CPCL via CSAP) evaluation of one bid, as the seller sees it. */
+/** The buyer's evaluation of one bid, as the seller sees it. */
 export const EvaluationPanel: React.FC<{ sub: GemSubmission }> = ({ sub }) => {
   const st = EVALUATION_STATUS[sub.evaluationStatus ?? 'UNDER_EVALUATION'] ?? EVALUATION_STATUS.UNDER_EVALUATION;
   const ev = sub.evaluation;
   return (
     <GemCard title="Buyer's evaluation" actions={<span className={`rounded px-2 py-0.5 text-xs font-semibold ${st.className}`}>{st.label}</span>}>
       {!ev ? (
-        <p className="text-sm text-slate-600">The buyer is evaluating your bid. The result and the evaluation report appear here when the procurement officer decides.</p>
+        <p className="text-sm text-slate-600">The buyer is evaluating your bid. The result appears here once the buyer has decided.</p>
       ) : (
         <div className="space-y-3 text-sm">
           {ev.remarks && (
@@ -50,37 +50,43 @@ export const GemReceiptPage: React.FC = () => {
   const [sub, setSub] = useState<GemSubmission | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    gemApi.submission(id).then(setSub).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    gemApi
+      .submission(id)
+      .then((s) => (s?.gemBidNo ? setSub(s) : setError('This bid could not be found. It may have been removed when the demo was reset.')))
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, [id]);
 
-  if (error) return <p role="alert" className="text-sm text-rose-700">{error}</p>;
+  if (error)
+    return (
+      <GemCard>
+        <p role="alert" className="text-sm text-rose-700">{error}</p>
+        <div className="mt-3 flex gap-2">
+          <Link to="/gem/my-bids" className={gemSecondary}>My Bids</Link>
+          <Link to="/gem" className={gemPrimary}>Bids</Link>
+        </div>
+      </GemCard>
+    );
   if (!sub) return <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>;
-  const delivered = sub.status === 'DELIVERED';
   const emd = sub.declared.emd;
 
   return (
     <div className="space-y-5">
       <GemCard>
         <div className="flex items-start gap-3">
-          {delivered ? <CheckCircle2 aria-hidden className="h-8 w-8 shrink-0 text-emerald-600" /> : <XCircle aria-hidden className="h-8 w-8 shrink-0 text-rose-700" />}
+          <CheckCircle2 aria-hidden className="h-8 w-8 shrink-0 text-emerald-600" />
           <div>
-            <h1 className="text-lg font-semibold">{delivered ? 'Bid submitted' : 'Bid saved, but not yet delivered to the buyer'}</h1>
+            <h1 className="text-lg font-semibold">Thank you. Your bid has been submitted.</h1>
             <p className="mt-0.5 text-sm text-slate-700">
               GeM bid number <span className="font-mono font-semibold">{sub.gemBidNo}</span> · bid <span className="font-mono">{sub.tenderId}</span> · {formatDateTime(sub.submittedAt)}
             </p>
-            {delivered ? (
-              <p className="mt-2 text-sm text-slate-700">
-                Delivered to the buyer's verification system (CPCL CSAP) at {sub.deliveredAt ? formatDateTime(sub.deliveredAt) : '—'}. Buyer reference{' '}
-                <span className="font-mono font-semibold">{sub.csapBidId}</span>.
-              </p>
-            ) : (
-              <p className="mt-2 text-sm text-rose-800">{sub.delivery?.error ?? `The buyer's system answered HTTP ${sub.delivery?.response?.httpStatus ?? '—'}.`}</p>
-            )}
+            <p className="mt-2 text-sm text-slate-700">
+              The buyer, Chennai Petroleum Corporation Limited, will review your bid. You will see the result, and any clarification the buyer needs, under My Bids.
+            </p>
           </div>
         </div>
       </GemCard>
 
-      {delivered && <EvaluationPanel sub={sub} />}
+      <EvaluationPanel sub={sub} />
 
       <GemCard title="What you submitted">
         <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
@@ -92,12 +98,8 @@ export const GemReceiptPage: React.FC = () => {
       </GemCard>
 
       <div className="flex flex-wrap gap-2">
-        <Link to="/gem/my-bids" className={gemSecondary}>My Bids</Link>
-        {delivered && (
-          <Link to={`/bids/${sub.csapBidId}`} className={gemPrimary}>
-            Demo: open this bid in CSAP (officer view)
-          </Link>
-        )}
+        <Link to="/gem/my-bids" className={gemPrimary}>My Bids</Link>
+        <Link to="/gem" className={gemSecondary}>Back to bids</Link>
       </div>
     </div>
   );
