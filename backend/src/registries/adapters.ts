@@ -148,7 +148,7 @@ function returnWindow(openingIso: string) {
   const out: { period: string; label: string; due: string; fy: string }[] = [];
   for (let i = 0; i < 6; i++) {
     const fyStart = m >= 4 ? y : y - 1;
-    out.unshift({ period: `${String(m).padStart(2, '0')}${y}`, label: `${MONTH_NAMES.at(m - 1)} ${y}`, due: due(y, m), fy: `${fyStart}-${String(fyStart + 1).slice(2)}` });
+    out.unshift({ period: `${String(m).padStart(2, '0')}${y}`, label: `${MONTH_NAMES[m - 1]} ${y}`, due: due(y, m), fy: `${fyStart}-${String(fyStart + 1).slice(2)}` });
     [y, m] = m === 1 ? [y - 1, 12] : [y, m - 1];
   }
   return out;
