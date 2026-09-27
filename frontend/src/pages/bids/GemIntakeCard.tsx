@@ -20,7 +20,10 @@ export const GemIntakeCard: React.FC<{ view: BidView }> = ({ view }) => {
   const events = view.audit; // newest first
   const find = (summary: string) => {
     const also = STAGES.find((s) => s.summary === summary)?.also;
-    return [...events].reverse().find((e) => e.summary === summary || (!!also && e.summary === also));
+    const ev = [...events].reverse().find((e) => e.summary === summary || (!!also && e.summary === also));
+    // A bid that exists in CSAP was received: that step is always done (its time is the submission).
+    if (!ev && summary === 'Bid received from GeM') return { summary, timestamp: view.bid.submittedAt, details: '' };
+    return ev;
   };
   const stopped = events.find((e) => e.summary === 'Automatic verification stopped');
   const firstOpen = STAGES.findIndex((s) => !find(s.summary));
