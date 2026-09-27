@@ -61,6 +61,8 @@ export async function getReport(db: SupabaseClient, id: string) {
 export async function generateReport(db: SupabaseClient, userId: string | null, officerName: string, bidId: string) {
   const view = getBidView(await loadWorkspace(db), bidId);
   if (!view) throw new HttpError(404, `Bid ${bidId} was not found.`, 'NOT_FOUND');
+  // The report records an evaluation outcome, so it exists only once the officer has decided.
+  if (!view.latestDecision) throw new HttpError(409, 'Record your decision first; the evaluation report is generated from it.', 'NO_DECISION');
 
   const batch = (await listBatches(db, bidId).catch(() => []))[0];
   const reads = batch ? await listBatchRuns(db, batch.id).catch(() => []) : [];

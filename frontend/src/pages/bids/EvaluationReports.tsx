@@ -18,6 +18,7 @@ export const EvaluationReports: React.FC<{ view: BidView }> = ({ view }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const bidId = view.bid.id;
   const fromGem = view.bid.source === 'GEM';
+  const decided = !!view.latestDecision;
 
   const load = useCallback(() => api.reports(bidId).then(setReports).catch(() => setReports([])), [bidId]);
   // Reload when the decision or audit trail changes (a GeM report is sent right after a decision).
@@ -53,9 +54,9 @@ export const EvaluationReports: React.FC<{ view: BidView }> = ({ view }) => {
   return (
     <Card
       title="Evaluation report"
-      subtitle={`A signed snapshot of the whole verification: score, requirements, findings, document readings, registries, recommendation, decision and audit history.${fromGem ? ' For GeM bids it is sent to GeM automatically after your decision.' : ''}`}
+      subtitle={`A signed record of your evaluation: the decision with its score, requirements, findings, document readings, registries and audit history.${fromGem ? ' For GeM bids it is generated and sent to GeM automatically when you decide.' : ''}`}
       actions={
-        <Button size="sm" variant="primary" onClick={() => void generate()} disabled={!!busy}>
+        <Button size="sm" variant="primary" onClick={() => void generate()} disabled={!!busy || !decided} title={decided ? undefined : 'Available after you record a decision'}>
           {busy === 'generate' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />} Generate report
         </Button>
       }
@@ -63,7 +64,9 @@ export const EvaluationReports: React.FC<{ view: BidView }> = ({ view }) => {
       {reports === null ? (
         <p className="text-xs text-slate-500">Loading…</p>
       ) : reports.length === 0 ? (
-        <p className="text-xs text-slate-600">No report yet. Generate one after reviewing the bid; generate again after a decision so the report includes it.</p>
+        <p className="text-xs text-slate-600">
+          {decided ? 'No report yet. Generate it to create the signed record of your decision.' : 'Available after you record a decision. The report is the signed record of that decision.'}
+        </p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {reports.map((r) => (
@@ -74,7 +77,7 @@ export const EvaluationReports: React.FC<{ view: BidView }> = ({ view }) => {
                   {formatDateTime(r.generatedAt)} · {r.generatedBy} · <span className="font-mono">SHA-256 {r.sha256.slice(0, 12)}…</span>
                 </p>
                 <p className="mt-0.5 flex flex-wrap gap-1.5">
-                  {r.content?.decision ? <Badge tone="info">Includes decision</Badge> : <Badge tone="neutral">Before decision</Badge>}
+                  {r.content?.decision && <Badge tone="info">Decision: {String(r.content.decision.decision).replace(/_/g, ' ').toLowerCase()}</Badge>}
                   {r.sentToGemAt && <Badge tone="success">Sent to GeM {formatDateTime(r.sentToGemAt)}</Badge>}
                 </p>
               </div>
