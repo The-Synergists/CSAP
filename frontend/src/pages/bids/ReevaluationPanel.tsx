@@ -9,12 +9,106 @@ import { FileText, Loader2, Lock, MessageSquareReply } from 'lucide-react';
 import type { BidView } from '@shared/domain/selectors';
 import type { ReevaluationRequest } from '@shared/domain/types';
 import { Badge } from '../../components/ui/Badge';
-import { Button, Card } from '../../components/ui/primitives';
+import { Button, Card, Modal } from '../../components/ui/primitives';
 import { inputClass } from '../../components/ui/styles';
 import { useToast } from '../../components/ui/toast';
 import { DECISION } from '../../domain/labels';
 import { formatDateTime } from '../../lib/format';
 import { api } from '../../state/api';
+import { useApp } from '../../state/appContext';
+
+
+/**
+ * The lock on a decided bid. Only the officer who recorded the final decision can reopen it, only
+ * when the bidder has asked for re-evaluation, and only after typing their password again.
+ */
+export const LockControl: React.FC<{ view: BidView; label?: string }> = ({ view, label }) => {
+  const { currentUser } = useApp();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const d = view.latestDecision;
+  const request = view.reevaluations.find((r) => r.status === 'OPEN' && r.kind === 'REEVALUATION');
+  const owner = !!d && d.officerId === currentUser?.id;
+  if (!view.flags.closed || !d) return null;
+
+  const close = () => {
+    setOpen(false);
+    setPassword('');
+    setError(null);
+  };
+  const reopen = async () => {
+    if (!request) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.acceptReevaluation(request.id, note.trim() || undefined, password);
+      toast({ kind: 'success', title: 'Bid reopened for re-evaluation', message: 'The new documents were applied and the bid is being verified again. Recorded in the audit trail.' });
+      close();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)} title="Final decision recorded: the bid is locked">
+        <Lock className="h-4 w-4" /> {label ?? 'Locked'}
+      </Button>
+      <Modal
+        open={open}
+        onClose={close}
+        title="Locked bid"
+        description={`Final decision: ${DECISION[d.decision].label}, by ${d.officerName} on ${formatDateTime(d.decidedAt)}.`}
+        footer={
+          request && owner ? (
+            <>
+              <Button onClick={close} disabled={busy}>Cancel</Button>
+              <Button variant="primary" onClick={() => void reopen()} disabled={busy || !password}>
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />} Reopen for re-evaluation
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" onClick={close}>Close</Button>
+          )
+        }
+      >
+        {!request ? (
+          <p className="text-xs text-slate-700">
+            The decision is final, so verification and decisions are closed. The bid can be reopened only when the bidder asks for re-evaluation on GeM, and only by {d.officerName}.
+          </p>
+        ) : !owner ? (
+          <p className="text-xs text-slate-700">
+            The bidder has asked for re-evaluation, but only {d.officerName}, who recorded the final decision, can reopen this bid.
+          </p>
+        ) : (
+          <div className="space-y-3 text-xs">
+            <div className="rounded border border-amber-300 bg-amber-50 p-2.5">
+              <p className="font-semibold text-slate-900">Re-evaluation requested by the bidder · {formatDateTime(request.requestedAt)}</p>
+              <p className="mt-1 text-slate-800">“{request.reason}”</p>
+              {request.documents.length > 0 && <p className="mt-1 text-slate-700">New documents: {request.documents.map((x) => `${x.requirementCode} ${x.name}`).join(' · ')}</p>}
+            </div>
+            <label className="block text-slate-700">
+              Note for the record (optional)
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={`${inputClass} mt-0.5`} />
+            </label>
+            <label className="block text-slate-700">
+              Confirm with your password
+              <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} mt-0.5`} aria-label="Your password" />
+            </label>
+            {error && <p role="alert" className="text-rose-700">{error}</p>}
+            <p className="text-slate-500">Reopening applies the bidder's new documents, verifies the bid again and records who reopened it in the audit trail.</p>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+};
 
 export const LOCKED_HINT = 'Final decision recorded: verification is closed. It reopens only if you accept a re-evaluation request from the bidder.';
 
@@ -60,10 +154,13 @@ const RequestCard: React.FC<{ r: ReevaluationRequest; view: BidView }> = ({ r, v
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={`${inputClass} mt-0.5`} />
       </label>
       <div className="mt-2 flex flex-wrap gap-2">
-        <Button size="sm" variant="primary" disabled={!!busy} onClick={() => void act('accept')}>
-          {busy === 'accept' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {view.flags.closed ? 'Accept and reopen the bid' : 'Accept and verify again'}
-        </Button>
+        {view.flags.closed ? (
+          <LockControl view={view} label="Reopen with password" />
+        ) : (
+          <Button size="sm" variant="primary" disabled={!!busy} onClick={() => void act('accept')}>
+            {busy === 'accept' && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Accept and verify again
+          </Button>
+        )}
         <Button size="sm" disabled={!!busy || note.trim().length < 10} onClick={() => void act('decline')} title={note.trim().length < 10 ? 'Write a reason for the bidder (at least 10 characters)' : undefined}>
           {busy === 'decline' && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Decline
         </Button>

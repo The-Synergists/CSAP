@@ -225,7 +225,7 @@ export const latestPortalRun = (rows: PortalVerification[], bidId: string): Port
  * step-by-step verification events stay in each bid's activity.
  */
 export const isKeyAuditEvent = (e: AuditEvent): boolean =>
-  /^(Tender published|Formal Officer Decision|Clarification requested|Evaluation report (generated|sent to GeM)|Bidder (responded to the clarification|requested re-evaluation)|Re-evaluation (opened|declined)|Clarification response (accepted|declined))/.test(e.summary);
+  /^(Tender published|Formal Officer Decision|Clarification requested|Evaluation report (generated|sent to GeM)|Bidder (responded to the clarification|requested re-evaluation)|Re-evaluation (opened|declined)|Reopening refused|Clarification response (accepted|declined))/.test(e.summary);
 
 export const listBidViews = (db: Database, tenderId?: string): BidView[] =>
   db.bids

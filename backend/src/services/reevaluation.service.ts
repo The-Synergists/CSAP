@@ -13,6 +13,8 @@ import { HttpError, must, mustOne } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 import { runIntakePipeline, sign } from './gemIntake.service.js';
 import { GEM_STATUS } from './report.service.js';
+import { confirmPassword } from './auth.service.js';
+import { isFinal } from './bidRules.service.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -70,10 +72,42 @@ async function openRequest(db: SupabaseClient, requestId: string) {
 }
 
 /** Officer accepts: replacement documents are applied and the bid is verified again. */
-export async function acceptRequest(db: SupabaseClient, userId: string, officerName: string, requestId: string, note?: string) {
+export async function acceptRequest(db: SupabaseClient, userId: string, officerName: string, requestId: string, note?: string, password?: string) {
   const req = await openRequest(db, requestId);
   const bidId: string = req.bid_id;
   const { data: bid } = await serviceClient.from('bids').select('id, tender_id').eq('id', bidId).single();
+
+  // A locked bid (final decision) is reopened only by the officer who decided it, after typing
+  // their password again. A failed attempt is recorded in the audit trail.
+  if (await isFinal(db, bidId)) {
+    const { data: last } = await serviceClient
+      .from('officer_decisions')
+      .select('officer_profile_id, decision, created_at')
+      .eq('bid_id', bidId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const owner = last?.[0]?.officer_profile_id;
+    if (owner && owner !== userId) {
+      const { data: p } = await serviceClient.from('profiles').select('full_name').eq('id', owner).maybeSingle();
+      throw new HttpError(403, `Only ${p?.full_name ?? 'the officer who recorded the final decision'} can reopen this bid.`, 'NOT_DECISION_OWNER');
+    }
+    try {
+      await confirmPassword(userId, password ?? '');
+    } catch (err) {
+      await serviceClient.from('audit_events').insert({
+        bid_id: bidId,
+        tender_id: bid!.tender_id,
+        actor_profile_id: userId,
+        actor_display_name: officerName,
+        actor_role: 'Procurement officer',
+        action_type: 'OFFICER_ACTION',
+        summary: 'Reopening refused: password not confirmed',
+        details: 'An attempt to reopen the locked bid for re-evaluation was refused because the password was not confirmed.',
+      });
+      throw err;
+    }
+  }
+
   must(await db.from('reevaluation_requests').update({ status: 'ACCEPTED', decided_at: new Date().toISOString(), decided_by: userId, decision_note: note ?? null }).eq('id', requestId), 'request');
 
   // Apply replacement documents: CSAP keeps its own copy, under a new name so previews refresh.
@@ -117,7 +151,7 @@ export async function acceptRequest(db: SupabaseClient, userId: string, officerN
     actor_role: 'Procurement officer',
     action_type: 'OFFICER_ACTION',
     summary: req.kind === 'CLARIFICATION_RESPONSE' ? 'Clarification response accepted' : 'Re-evaluation opened',
-    details: `${req.documents.length} replacement document(s) applied; the bid is being verified again.${note ? ` Note: ${note}` : ''}`,
+    details: `${req.kind === 'REEVALUATION' ? 'Locked bid reopened by the officer who decided it (identity re-confirmed with password). ' : ''}${req.documents.length} replacement document(s) applied; the bid is being verified again.${note ? ` Note: ${note}` : ''}`,
   });
   if (req.gem_bid_no) {
     await notifyGem({ gemBidNo: req.gem_bid_no, status: 'UNDER_EVALUATION', remarks: 'The buyer received your response and is evaluating your bid again.' });

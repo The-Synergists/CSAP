@@ -35,3 +35,15 @@ export async function refresh(refreshToken: string) {
   if (error || !data.session) throw new HttpError(401, 'Your session has expired. Please sign in again.', 'UNAUTHENTICATED');
   return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, expiresAt: data.session.expires_at };
 }
+
+/**
+ * Step-up check before a sensitive action (reopening a decided bid): the signed-in officer types
+ * their password again. A session left open on an unattended screen is therefore not enough.
+ */
+export async function confirmPassword(userId: string, password: string) {
+  if (!password) throw new HttpError(400, 'Enter your password to confirm.', 'PASSWORD_REQUIRED');
+  const { data } = await serviceClient.from('profiles').select('email').eq('id', userId).maybeSingle();
+  if (!data?.email) throw new HttpError(401, 'Your account could not be confirmed.', 'PASSWORD_INCORRECT');
+  const { error } = await anonClient().auth.signInWithPassword({ email: data.email, password });
+  if (error) throw new HttpError(401, 'The password is incorrect.', 'PASSWORD_INCORRECT');
+}

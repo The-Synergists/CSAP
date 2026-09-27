@@ -8,7 +8,7 @@ import { BidStatusBadge } from '../../components/ui/Badge';
 import { Button, CountPill, PageHeader, Tabs } from '../../components/ui/primitives';
 import { bidPath, tenderPath } from '../../lib/format';
 import { NotFoundPage } from '../common/NotFoundPage';
-import { BidStatePanel, LOCKED_HINT } from './ReevaluationPanel';
+import { BidStatePanel, LOCKED_HINT, LockControl } from './ReevaluationPanel';
 import { markBidOpened } from '../../lib/openedBids';
 import { VerificationPanel } from './VerificationPanel';
 import { DocumentViewer } from './DocumentViewer';
@@ -80,6 +80,7 @@ export const BidWorkspacePage: React.FC = () => {
               <RefreshCw className={`h-4 w-4 ${running ? 'animate-spin' : ''}`} />
               {running ? 'Verifying…' : 'Re-run verification'}
             </Button>
+            <LockControl view={view} />
             {!view.flags.closed && (
               <Button variant="primary" onClick={() => goTo('decision')}>
                 <Gavel className="h-4 w-4" /> Record decision

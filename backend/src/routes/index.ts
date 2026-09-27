@@ -334,7 +334,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { db, userId } = authOf(res);
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
-    res.json({ success: true, data: await acceptRequest(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), req.body?.note) });
+    res.json({ success: true, data: await acceptRequest(db, userId, profile?.full_name ?? 'Officer', String(req.params.id), req.body?.note, req.body?.password) });
   }),
 );
 
@@ -349,12 +349,12 @@ router.post(
 
 // ---------------------------------------------------------------- tamper-evident audit trail
 
-/** Recomputes the audit hash chain. ?simulate=<seq> pretends that event was altered (in memory only). */
+/** Recomputes the whole audit hash chain in the database and reports whether every event still matches. */
 router.get(
   '/audit/verify',
-  asyncHandler(async (req, res) => {
-    const simulate = req.query.simulate ? Number(req.query.simulate) : null;
-    const { data, error } = await authOf(res).db.rpc('verify_audit_chain', simulate ? { p_simulate_seq: simulate } : {});
+  asyncHandler(async (_req, res) => {
+    const simulate = null;
+    const { data, error } = await authOf(res).db.rpc('verify_audit_chain', {});
     if (error) throw new HttpError(502, `Could not verify the audit chain: ${error.message}`, 'DB_ERROR');
     const r = (data as { intact: boolean; checked: number; broken_at: number | null; reason: string | null; last_hash: string }[])[0];
     res.json({ success: true, data: { intact: r.intact, checked: Number(r.checked), brokenAt: r.broken_at, reason: r.reason, lastHash: r.last_hash, simulated: simulate } });
