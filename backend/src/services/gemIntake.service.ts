@@ -328,6 +328,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
       await db.from('compliance_check_items').delete().eq('bid_id', bidId);
       await db.from('risk_factors').delete().eq('bid_id', bidId);
       await db.from('evidence_items').delete().eq('bid_id', bidId);
+      await db.from('bids').update({ overall_compliance_score: 0, risk_level: 'LOW', risk_score: 0, primary_concern: 'Re-verification in progress.' }).eq('id', bidId);
       await audit(view, 'Re-verification started', 'The bid is being verified again with the documents now on record.');
     }
     // 1. NVIDIA reads every document; its fields become the text the rules engine checks.

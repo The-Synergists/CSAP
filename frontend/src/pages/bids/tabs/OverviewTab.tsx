@@ -1,6 +1,6 @@
 import React from 'react';
 import { RegistryLink } from '../../../components/RegistryLink';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ActivityTimeline } from '../../../components/ActivityTimeline';
 import { RiskBadge } from '../../../components/ui/Badge';
@@ -21,6 +21,11 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
   return (
     <div className="space-y-5">
     <Card>
+      {view.checks.length === 0 ? (
+        <p className="flex items-center gap-2 py-2 text-sm text-slate-600">
+          <Loader2 className="h-4 w-4 animate-spin" /> CSAP is verifying this bid: reading its documents, checking the tender rules and the registries. The score and results appear here as soon as it finishes.
+        </p>
+      ) : (
       <dl className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Stat label="Compliance score" value={`${bid.complianceScore} / 100`} />
         <Stat label="Risk" value={<RiskBadge level={bid.riskLevel} score={bid.riskScore} />} />
@@ -32,6 +37,7 @@ export const OverviewTab: React.FC<TabProps> = ({ view, goTo }) => {
         />
         <Stat label="EMD" value={view.emd ? EMD_RESULT[view.emd.result].label : 'Not submitted'} />
       </dl>
+      )}
       <p className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
         Submitted {formatDateTime(bid.submittedAt)} · last verified {formatDateTime(bid.lastVerifiedAt)}
       </p>

@@ -224,6 +224,39 @@ async function main() {
     console.log(`Stored bid package ${bidId}`);
   }
 
+  // 7b. The demo bids arrived through GeM: each has its GeM submission (bid number, the seller's
+  //     declaration and documents), linked to the CSAP bid, so the bidder can follow the evaluation on
+  //     GeM (My Bids, sign in with the PAN) and request re-evaluation, and CSAP's outcomes reach GeM.
+  for (const [i, bid] of demo.bids.entries()) {
+    const b = demo.bidders.find((x) => x.id === bid.bidderId)!;
+    const view = getBidView(demo, bid.id)!;
+    const gemBidNo = `GEM/2026/B/${String(5000101 + i)}`;
+    const docs = ok(await sb.from('bid_documents').select('name, file_name, storage_path, mime_type, tender_clause_reference').eq('bid_id', bid.id), `documents ${bid.id}`);
+    const e = view.emd;
+    ok(await sb.from('gem_bid_submissions').insert({
+      gem_bid_no: gemBidNo,
+      tender_id: bid.tenderId,
+      company: {
+        name: b.companyName, pan: b.pan, gstin: b.gstin, udyamNumber: b.udyamNumber || undefined, msmeCategory: b.msmeCategory || undefined,
+        cin: b.cin || undefined, epfoCode: b.epfoCode || undefined, esicCode: b.esicCode || undefined, incorporationDate: b.incorporationDate, address: b.registeredAddress,
+      },
+      declared: {
+        turnover: b.turnover,
+        makeInIndiaPercentage: bid.makeInIndiaPercentage,
+        emd: e ? { instrument: e.instrument, amount: e.submittedAmount, reference: e.reference, bankName: e.bankName, paymentDate: e.paymentDate } : null,
+      },
+      documents: docs.map((d: any) => ({ requirementCode: String(d.tender_clause_reference ?? '').slice(0, 6), name: d.name, path: d.storage_path, fileName: d.file_name, mimeType: d.mime_type ?? 'image/png', sizeBytes: 0 })),
+      status: 'DELIVERED',
+      csap_bid_id: bid.id,
+      submitted_at: bid.submittedAt,
+      delivered_at: bid.submittedAt,
+      delivery: { note: 'Delivered to the buyer system by the signed GeM webhook.' },
+      evaluation_status: 'UNDER_EVALUATION',
+    }), `GeM submission ${bid.id}`);
+    ok(await sb.from('bids').update({ source: 'GEM', gem_bid_no: gemBidNo }).eq('id', bid.id), `link ${bid.id} to GeM`);
+    console.log(`GeM submission ${gemBidNo} → ${bid.id}`);
+  }
+
   // 8. GeM demo kit: specimen documents a bidder can attach on the simulated GeM portal.
   const kitDir = new URL('../sample_documents/gem_demo_kit/', import.meta.url);
   for (const file of readdirSync(kitDir).filter((f) => f.endsWith('.png'))) {

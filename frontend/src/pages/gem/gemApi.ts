@@ -73,7 +73,7 @@ export interface GemSubmission {
 export const EVALUATION_STATUS: Record<string, { label: string; className: string }> = {
   UNDER_EVALUATION: { label: 'Under technical evaluation', className: 'bg-blue-100 text-blue-800' },
   CLARIFICATION_SOUGHT: { label: 'Clarification sought by buyer', className: 'bg-amber-100 text-amber-900' },
-  TECHNICALLY_QUALIFIED: { label: 'Technically qualified', className: 'bg-emerald-100 text-emerald-800' },
+  TECHNICALLY_QUALIFIED: { label: 'Technically qualified · moved to financial evaluation', className: 'bg-emerald-100 text-emerald-800' },
   DISQUALIFIED: { label: 'Technically disqualified', className: 'bg-rose-100 text-rose-800' },
   UNDER_COMMITTEE_REVIEW: { label: 'Referred to evaluation committee', className: 'bg-violet-100 text-violet-800' },
 };
