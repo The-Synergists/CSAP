@@ -38,8 +38,8 @@ const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) =
 /** Once signed in, the login page forwards to the page the officer originally asked for. */
 const RedirectIfAuthenticated: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { signedIn } = useApp();
-  const from = (useLocation().state as { from?: string } | null)?.from;
-  return signedIn ? <Navigate to={from && from !== '/login' ? from : '/dashboard'} replace /> : children;
+  // After signing in the officer always lands on the dashboard.
+  return signedIn ? <Navigate to="/dashboard" replace /> : children;
 };
 
 /** /bidders/:bidderId opens that bidder's bid (one bid per bidder in the demo dataset). */

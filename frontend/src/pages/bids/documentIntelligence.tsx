@@ -4,15 +4,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { DocPreview } from '../../components/DocPreview';
-import { CheckCircle2, Loader2, MinusCircle, ScanText, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, MinusCircle, XCircle } from 'lucide-react';
 import type { ComparisonRow, DocumentVerificationRun } from '@shared/domain/types';
 import { Badge } from '../../components/ui/Badge';
 import { Button, Card, Modal } from '../../components/ui/primitives';
-import { useToast } from '../../components/ui/toast';
 import { formatDateTime } from '../../lib/format';
 import { api } from '../../state/api';
 import type { DocumentIntelligence } from './useDocumentIntelligence';
-import { LOCKED_HINT } from './ReevaluationPanel';
 
 const done = (r: DocumentVerificationRun) => r.status === 'COMPLETED' || r.status === 'FAILED';
 
@@ -49,40 +47,29 @@ const fieldLabel = (k: string) =>
     .replace(/^./, (c) => c.toUpperCase())
     .replace(/\b(Pan|Gstin|Udin|Epfo|Esic|Oem)\b/g, (w) => w.toUpperCase());
 
-/** Top card: start the reading, see progress, the summary and the cross-document check. */
-export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: number; locked?: boolean }> = ({ state, stored, locked }) => {
-  const toast = useToast();
-  const [starting, setStarting] = useState(false);
+/** Top card: reading progress, the summary and the cross-document check. */
+export const IntelligenceCard: React.FC<{ state: DocumentIntelligence }> = ({ state }) => {
   const { batch, runs, running, live } = state;
   const finished = runs.filter(done).length;
-  const go = async () => {
-    setStarting(true);
-    try {
-      await state.start();
-    } catch (err) {
-      toast({ kind: 'error', title: 'Document reading not started', message: err instanceof Error ? err.message : String(err) });
-    } finally {
-      setStarting(false);
-    }
-  };
   const mismatches = batch?.consistency?.filter((c) => c.result === 'MISMATCH') ?? [];
 
   return (
     <Card
-      title="Read documents with CSAP AI"
-      subtitle="CSAP AI reads each document (image or PDF) and extracts its fields. CSAP compares every field with the bid record, and names and identifiers across all documents."
+      title="Documents read by CSAP AI"
+      subtitle="Every document is read automatically when the bid arrives and again whenever you re-run verification. CSAP compares every field with the bid record, and names and identifiers across all documents."
       actions={
         <>
           <Badge tone={live ? 'success' : 'neutral'} dot>{live ? 'Live' : 'Polling'}</Badge>
-          <Button variant="primary" size="sm" disabled={running || starting || stored === 0 || locked} title={locked ? LOCKED_HINT : undefined} onClick={() => void go()}>
-            {running || starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScanText className="h-3.5 w-3.5" />}
-            {running ? `Reading ${finished} of ${batch?.total ?? runs.length}…` : batch ? 'Read all documents again' : `Read all ${stored} documents`}
-          </Button>
+          {running && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading {finished} of {batch?.total ?? runs.length}…
+            </span>
+          )}
         </>
       }
     >
       {!batch ? (
-        <p className="text-xs text-slate-600">Not read yet. Reading takes about 20 seconds for a full bid package; each document's result appears in the table below as soon as it is ready.</p>
+        <p className="text-xs text-slate-600">Not read yet. Use Re-run verification at the top of the bid to read every document.</p>
       ) : (
         <div className="space-y-3">
           {running && (
@@ -135,7 +122,7 @@ export const IntelligenceCard: React.FC<{ state: DocumentIntelligence; stored: n
   );
 };
 
-const ComparisonTable: React.FC<{ rows: ComparisonRow[]; registry: boolean }> = ({ rows, registry }) => (
+export const ComparisonTable: React.FC<{ rows: ComparisonRow[]; registry: boolean }> = ({ rows, registry }) => (
   <div className="relative overflow-x-auto rounded border border-slate-200">
     <table className="w-full min-w-[480px] text-left text-xs">
       <thead className="border-b border-slate-200 bg-slate-100 text-[11px] font-semibold uppercase tracking-wider text-slate-600">

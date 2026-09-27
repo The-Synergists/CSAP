@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, FileText, LogOut, Menu, Search, Settings, Users } from 'lucide-react';
 import { useApp } from '../../state/appContext';
 import { getAlerts } from '@shared/domain/selectors';
+import { alertSignature, markAlertsSeen, seenAlerts } from '../../lib/seenAlerts';
 import { bidPath, tenderPath } from '../../lib/format';
 import { useToast } from '../ui/toast';
 
@@ -41,6 +42,23 @@ export const TopHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleS
   useDismiss(profileRef, profileOpen, () => setProfileOpen(false));
 
   const alerts = getAlerts(db);
+  const [seen, setSeen] = useState(() => seenAlerts(currentUser?.id));
+  useEffect(() => {
+    const refresh = () => setSeen(seenAlerts(currentUser?.id));
+    refresh();
+    window.addEventListener('csap:alerts-seen', refresh);
+    return () => window.removeEventListener('csap:alerts-seen', refresh);
+  }, [currentUser?.id]);
+  const unseen = alerts.filter((a) => !seen.has(alertSignature(a)));
+  // Items that were new when the bell was opened keep their "New" mark while it stays open.
+  const [newWhenOpened, setNewWhenOpened] = useState<Set<string>>(new Set());
+  const toggleBell = () => {
+    if (!bellOpen) {
+      setNewWhenOpened(new Set(unseen.map(alertSignature)));
+      markAlertsSeen(currentUser?.id, alerts);
+    }
+    setBellOpen((o) => !o);
+  };
 
   const results = useMemo(() => {
     const q = term.trim().toLowerCase();
@@ -148,23 +166,23 @@ export const TopHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleS
         <div ref={bellRef} className="relative">
           <button
             type="button"
-            onClick={() => setBellOpen((o) => !o)}
-            aria-label={`Alerts (${alerts.length} open)`}
+            onClick={toggleBell}
+            aria-label={`Notifications (${unseen.length} new)`}
             aria-expanded={bellOpen}
             className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
             <Bell className="h-4 w-4" />
-            {alerts.length > 0 && (
+            {unseen.length > 0 && (
               <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-rose-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">
-                {alerts.length}
+                {unseen.length}
               </span>
             )}
           </button>
           {bellOpen && (
             <div className="absolute right-0 top-full z-40 mt-1 w-80 overflow-hidden rounded-md border border-slate-200 bg-white text-sm shadow-lg">
-              <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Open alerts</div>
+              <div className="border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">Notifications</div>
               {alerts.length === 0 ? (
-                <p className="px-3 py-3 text-slate-500">No open alerts.</p>
+                <p className="px-3 py-3 text-slate-500">No alerts.</p>
               ) : (
                 <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto">
                   {alerts.map((a) => (
@@ -173,11 +191,14 @@ export const TopHeader: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleS
                         type="button"
                         onClick={() => {
                           setBellOpen(false);
-                          navigate(`${bidPath(a.bidId, 'evidence')}?finding=${a.findingId}`);
+                          navigate(a.findingId ? `${bidPath(a.bidId, 'evidence')}?finding=${a.findingId}` : bidPath(a.bidId));
                         }}
                         className="w-full px-3 py-2 text-left hover:bg-slate-50"
                       >
-                        <span className={`block font-medium ${a.severity === 'HIGH' ? 'text-rose-800' : 'text-slate-900'}`}>{a.title}</span>
+                        <span className={`flex items-center gap-1.5 font-medium ${a.severity === 'HIGH' ? 'text-rose-800' : 'text-slate-900'}`}>
+                          {newWhenOpened.has(alertSignature(a)) && <span className="rounded bg-blue-600 px-1 text-[10px] font-semibold text-white">New</span>}
+                          {a.title}
+                        </span>
                         <span className="block text-xs text-slate-500">
                           {a.companyName} · {a.bidId}
                           {a.openCount > 1 && ` · +${a.openCount - 1} more`}

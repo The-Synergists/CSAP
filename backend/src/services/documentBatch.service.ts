@@ -327,10 +327,15 @@ async function readOne(db: SupabaseClient, view: BidView, run: ReturnType<typeof
     } else {
       rows = compareWithBid(view, run.documentType, extraction.fields);
       const off = rows.filter((r) => r.result === 'MISMATCH');
-      verdict = off.length ? 'DISCREPANCY' : 'CONSISTENT';
+      const matched = rows.filter((r) => r.result === 'MATCH').length;
+      // A document that shows none of the details it should (wrong or unrelated file) cannot agree with the bid.
+      const blank = rows.length > 0 && matched === 0 && off.length === 0;
+      verdict = off.length || blank ? 'DISCREPANCY' : 'CONSISTENT';
       summary = off.length
         ? off.map((r) => `${r.field}: document says "${r.document}", bid record says "${r.bidderRecord}".`).join(' ')
-        : `Agrees with the bid record (${rows.filter((r) => r.result === 'MATCH').length} ${rows.filter((r) => r.result === 'MATCH').length === 1 ? 'field' : 'fields'} compared).`;
+        : blank
+          ? `The document does not show the expected details (${rows.map((r) => r.field.toLowerCase()).join(', ')}); it may be the wrong document.`
+          : `Agrees with the bid record (${matched} ${matched === 1 ? 'field' : 'fields'} compared).`;
       if (extraction.warnings.length) summary += ` Note: ${extraction.warnings.join('; ')}.`;
     }
     await update({ comparison: { rows, summary }, verdict, status: 'COMPLETED', completed_at: new Date().toISOString() });

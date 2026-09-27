@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { markAlertsSeen } from '../../lib/seenAlerts';
 import { Link } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
 import { getAlerts, type AlertItem } from '@shared/domain/selectors';
@@ -22,8 +23,13 @@ const itemLink = (bidId: string, i: AlertItem) =>
  * government registry that contradicts the bid. Points that only need review are in My Reviews.
  */
 export const AlertsPage: React.FC = () => {
-  const { db } = useApp();
+  const { db, currentUser } = useApp();
   const alerts = getAlerts(db);
+  // Opening the Alerts page counts as seeing them: the bell stops counting these.
+  const signature = alerts.map((a) => a.bidId + a.items.length).join();
+  useEffect(() => {
+    markAlertsSeen(currentUser?.id, alerts);
+  }, [signature, currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5">

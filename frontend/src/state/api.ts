@@ -2,7 +2,6 @@
 // through /api/auth/login and refreshes them transparently on a 401.
 
 import type { Database, DecisionType, DocumentBatch, DocumentVerificationRun, PortalVerification } from '@shared/domain/types';
-import type { VerificationRun } from '@shared/domain/verification';
 
 /** A registry answer not tied to a bid run (e.g. the officer's live GSTIN lookup). */
 export type RegistryAnswer = Omit<PortalVerification, 'id' | 'runId' | 'bidId' | 'checkedAt'>;
@@ -199,7 +198,7 @@ export const api = {
   workspace: () => call<Database>('/api/workspace'),
   submitDecision: (body: { bidId: string; decision: DecisionType; reason: string; remarks: string }) =>
     call<{ id: string }>('/api/decisions', { method: 'POST', body: JSON.stringify(body) }),
-  runVerification: (bidId: string) => call<VerificationRun>('/api/verification/run', { method: 'POST', body: JSON.stringify({ bidId }) }),
+  runVerification: (bidId: string) => call<{ bidId: string; startedAt: string }>('/api/verification/run', { method: 'POST', body: JSON.stringify({ bidId }) }),
   documentRuns: (bidId: string) => call<DocumentVerificationRun[]>(`/api/bids/${bidId}/document-verifications`),
   startDocumentRun: (
     bidId: string,

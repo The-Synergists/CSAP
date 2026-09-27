@@ -235,7 +235,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ]),
           );
         } else {
-          final = await api.runVerification(bidId);
+          // Full re-verification runs on the server (documents read again, tender rules, registries);
+          // follow it until its completion is recorded in the audit trail.
+          const started = await api.runVerification(bidId);
+          const before = new Map(view.checks.map((c) => [c.requirement.code, c.status]));
+          const deadline = Date.now() + 5 * 60_000;
+          let done: { v: NonNullable<ReturnType<typeof getBidView>>; ok: boolean; details: string } | null = null;
+          while (!done && Date.now() < deadline) {
+            await sleep(4000);
+            const ws = await api.workspace();
+            setDb(ws);
+            const v = getBidView(ws, bidId);
+            const ev = v?.audit.find((e) => /^Automatic verification (completed|stopped)/.test(e.summary) && e.timestamp >= started.startedAt);
+            if (v && ev) done = { v, ok: ev.summary.includes('completed'), details: ev.details };
+          }
+          if (!done) throw new Error('Re-verification is taking longer than expected; the results will appear when it finishes.');
+          if (!done.ok) throw new Error(done.details);
+          const v = done.v;
+          final = {
+            bidId,
+            startedAt,
+            finishedAt: new Date().toISOString(),
+            done: true,
+            steps: buildSteps(v),
+            outcome: {
+              engineVersion: 'documents read again · tender rules · registries',
+              met: v.counts.met,
+              exceptions: v.counts.exceptions,
+              total: v.counts.total,
+              riskLevel: v.bid.riskLevel,
+              suggestedDecision: v.recommendation?.suggestedDecision ?? 'REQUEST_CLARIFICATION',
+              differences: v.checks
+                .filter((c) => before.get(c.requirement.code) && before.get(c.requirement.code) !== c.status)
+                .map((c) => ({ requirementCode: c.requirement.code, recorded: before.get(c.requirement.code)!, now: c.status })),
+              simulatedRegistryChecks: v.portal.length,
+            },
+          };
         }
         await revealSteps(bidId, final);
         if (!isDemo) await reload();

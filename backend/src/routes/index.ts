@@ -7,13 +7,12 @@ import { authOf, requireAuth } from '../middlewares/auth.js';
 import { login, refresh } from '../services/auth.service.js';
 import { submitDecision, validateDecision } from '../services/decision.service.js';
 import { engineHealth } from '../services/engine.client.js';
-import { runVerification } from '../services/verification.service.js';
 import { deleteUpload, listRuns, listSamples, signedUrl, startPanVerification, type DocumentSource } from '../services/documentPipeline.service.js';
 import { config } from '../config/env.js';
 import { listPortalChecks, startPortalChecks } from '../services/portal.service.js';
 import { listBatches, listBatchRuns, startDocumentBatch } from '../services/documentBatch.service.js';
 import { draftExplanation, latestDraft } from '../services/recommendation.service.js';
-import { receiveGemBid, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
+import { receiveGemBid, runIntakePipeline, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
 import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, submitResponse, uploadDocument } from '../services/gemPortal.service.js';
 import { acceptRequest, declineRequest, receiveBidderResponse, type BidderResponsePayload } from '../services/reevaluation.service.js';
 import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertOpenForVerification } from '../services/bidRules.service.js';
@@ -229,9 +228,18 @@ router.post(
     const bidId = req.body?.bidId;
     if (!bidId) throw new HttpError(400, 'bidId is required.', 'VALIDATION');
     await assertOpenForVerification(db, String(bidId));
+    await assertNoDocumentReadingRunning(db, String(bidId));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
-    const run = await runVerification(db, userId, profile?.full_name ?? 'Officer', String(bidId));
-    res.json({ success: true, data: run });
+    const name = profile?.full_name ?? 'Officer';
+    const { data: bid } = await db.from('bids').select('tender_id').eq('id', String(bidId)).single();
+    if (!bid) throw new HttpError(404, `Bid ${bidId} was not found.`, 'NOT_FOUND');
+    await db.from('audit_events').insert({
+      bid_id: String(bidId), tender_id: bid.tender_id, actor_profile_id: userId, actor_display_name: name, actor_role: 'Procurement officer',
+      action_type: 'OFFICER_ACTION', summary: 'Re-verification requested', details: `${name} asked CSAP to read every document, check the tender rules and query the registries again.`,
+    });
+    // Full re-verification: every document read again, tender rules, document evidence, registries.
+    waitUntil(runIntakePipeline(String(bidId), { reverify: true, actor: `Re-verification by ${name}` }).catch(() => {}));
+    res.status(202).json({ success: true, data: { bidId, startedAt: new Date().toISOString() } });
   }),
 );
 

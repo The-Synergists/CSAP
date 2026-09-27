@@ -12,6 +12,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildEnginePayload } from '../../../shared/domain/enginePayload.js';
+import { applyDocumentEvidence } from '../../../shared/domain/documentEvidence.js';
 import { getBidView, type BidView } from '../../../shared/domain/selectors.js';
 import type { CheckStatus, DocumentType, DocumentVerificationRun } from '../../../shared/domain/types.js';
 import { buildSteps } from '../../../shared/domain/verification.js';
@@ -285,7 +286,8 @@ async function viewOf(bidId: string) {
 }
 
 /** Reads the documents, runs the rules, saves the results and checks the registries. */
-export async function runIntakePipeline(bidId: string, opts: { reverify?: boolean } = {}) {
+export async function runIntakePipeline(bidId: string, opts: { reverify?: boolean; actor?: string } = {}) {
+  const actor = opts.actor ?? 'Automatic verification (GeM intake)';
   const db = serviceClient;
   let view = await viewOf(bidId);
   try {
@@ -297,7 +299,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
       await audit(view, 'Re-verification started', 'The bid is being verified again with the documents now on record.');
     }
     // 1. NVIDIA reads every document; its fields become the text the rules engine checks.
-    const runs: DocumentVerificationRun[] = await readAllDocumentsNow(db, 'Automatic verification (GeM intake)', bidId);
+    const runs: DocumentVerificationRun[] = await readAllDocumentsNow(db, actor, bidId);
     for (const r of runs) {
       const code = r.document.code;
       if (!code) continue;
@@ -314,7 +316,15 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
     // 2. Rules engine on the extracted values; persist checks, findings, risk and recommendation.
     view = await viewOf(bidId);
     const startedAt = new Date().toISOString();
-    const result = await verifyWithEngine(buildEnginePayload(view));
+    // Tender rules on the declared values, then reconciled with what each document actually shows.
+    const { result, changed } = applyDocumentEvidence(
+      await verifyWithEngine(buildEnginePayload(view)),
+      runs,
+      view.requirements.map((r) => ({ code: r.code, title: r.title, benchmark: r.benchmark, mandatory: r.mandatory })),
+    );
+    if (changed.length) {
+      await audit(view, 'Documents contradict the bid', `${changed.join(', ')}: the document does not support what the bid declares, so ${changed.length === 1 ? 'this requirement is' : 'these requirements are'} not counted as met.`);
+    }
     const statusByCode: Record<string, CheckStatus> = Object.fromEntries(result.checks.map((c) => [c.requirementCode, c.status]));
     const req = new Map(view.requirements.map((r) => [r.code, r]));
     const docFor = (code: string) => view.documents.find((d) => req.get(code)?.id === d.requirementId);
@@ -432,7 +442,11 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
     if (emdCheck) {
       await db
         .from('bid_emd')
-        .update({ verification_result: emdCheck.status === 'EXEMPTED' ? 'EXEMPTION_CONFIRMED' : emdCheck.status === 'MET' ? 'EMD_VERIFIED' : 'EMD_AMOUNT_MISMATCH', officer_note: emdCheck.note })
+        .update({
+          verification_result:
+            emdCheck.status === 'EXEMPTED' ? 'EXEMPTION_CONFIRMED' : emdCheck.status === 'MET' ? 'EMD_VERIFIED' : changed.includes('REQ-06') ? 'INVALID_INSTRUMENT' : 'EMD_AMOUNT_MISMATCH',
+          officer_note: emdCheck.note,
+        })
         .eq('bid_id', bidId);
     }
 
@@ -454,7 +468,7 @@ export async function runIntakePipeline(bidId: string, opts: { reverify?: boolea
     );
 
     // 3. Government registries.
-    await runPortalChecksNow(db, null, 'Automatic verification (GeM intake)', bidId);
+    await runPortalChecksNow(db, null, actor, bidId);
     await audit(view, 'Automatic verification completed', 'Documents read, tender rules checked and registries queried. The bid is ready for the officer.');
   } catch (err) {
     await audit(view, 'Automatic verification stopped', `${err instanceof Error ? err.message : String(err)}. The officer can re-run each step from the bid.`);
