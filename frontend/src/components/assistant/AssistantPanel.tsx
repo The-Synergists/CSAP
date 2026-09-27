@@ -186,6 +186,35 @@ export const AssistantPanel: React.FC = () => {
   const { db, source, assistantOpen, setAssistantOpen } = useApp();
   const location = useLocation();
   const [corner, setCorner] = useState<Corner>(readCorner);
+  // The open panel moves too: drag its header anywhere; on release it settles in the nearest corner.
+  const [panelDrag, setPanelDrag] = useState<{ x: number; y: number } | null>(null);
+  const panelStart = useRef<{ px: number; py: number; ox: number; oy: number; moved: boolean } | null>(null);
+  const onHeaderDown = (e: React.PointerEvent<HTMLElement>) => {
+    if ((e.target as HTMLElement).closest('button, a, input, textarea')) return;
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panelStart.current = { px: e.clientX, py: e.clientY, ox: e.clientX - rect.left, oy: e.clientY - rect.top, moved: false };
+  };
+  const onHeaderMove = (e: React.PointerEvent) => {
+    const s0 = panelStart.current;
+    if (!s0) return;
+    if (!s0.moved && Math.hypot(e.clientX - s0.px, e.clientY - s0.py) < 6) return;
+    s0.moved = true;
+    setPanelDrag({ x: e.clientX - s0.ox, y: e.clientY - s0.oy });
+  };
+  const onHeaderUp = (e: React.PointerEvent) => {
+    const s0 = panelStart.current;
+    panelStart.current = null;
+    if (!s0?.moved) return;
+    const next: Corner = `${e.clientY < window.innerHeight / 2 ? 'top' : 'bottom'}-${e.clientX < window.innerWidth / 2 ? 'left' : 'right'}`;
+    setCorner(next);
+    try {
+      localStorage.setItem(CORNER_KEY, next);
+    } catch {
+      /* not remembered */
+    }
+    setPanelDrag(null);
+  };
   const [thinking, setThinking] = useState(false);
   const match = useMatch('/bids/:bidId/*');
   const context = match?.params.bidId ? getBidView(db, match.params.bidId) : undefined;
@@ -236,9 +265,16 @@ export const AssistantPanel: React.FC = () => {
       aria-label="AI assistant"
       className={`fixed inset-x-2 z-40 flex h-[70vh] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:h-[560px] sm:w-[380px] ${
         corner.startsWith('top') ? 'top-20 sm:top-20' : 'bottom-2 sm:bottom-5'
-      } ${corner.endsWith('left') ? 'sm:left-5 lg:left-[272px]' : 'sm:right-5'}`}
+      } ${corner.endsWith('left') ? 'sm:left-5 lg:left-[272px]' : 'sm:right-5'} ${panelDrag ? '' : 'transition-[top,left,right,bottom] duration-300'}`}
+      style={panelDrag ? { left: panelDrag.x, top: panelDrag.y, right: 'auto', bottom: 'auto' } : undefined}
     >
-      <header className="flex items-center justify-between gap-2 bg-indigo-700 px-4 py-3 text-white">
+      <header
+        onPointerDown={onHeaderDown}
+        onPointerMove={onHeaderMove}
+        onPointerUp={onHeaderUp}
+        title="Drag to move the assistant to another corner"
+        className={`flex touch-none select-none items-center justify-between gap-2 bg-indigo-700 px-4 py-3 text-white ${panelDrag ? 'cursor-grabbing' : 'cursor-grab'}`}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <div className="shrink-0 rounded bg-white/15 p-1.5">
             <Bot className="h-4 w-4" />
