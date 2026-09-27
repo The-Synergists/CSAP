@@ -95,6 +95,31 @@ const row = (field: string, document: string | null | undefined, bidderRecord: s
 
 const requirementCode = (view: BidView, d: BidDocument) => view.requirements.find((r) => r.id === d.requirementId)?.code ?? '';
 
+/** Fields that only name the bidder; they cannot on their own show that a document is the right one. */
+const NAME_FIELDS = new Set(['Name', 'Legal name', 'Enterprise name']);
+
+/**
+ * Verdict for a non-PAN document: any field that contradicts the bid is a discrepancy, and so is a
+ * document where none of its key fields (amount, reference, GSTIN, turnover…) could be matched,
+ * because a matching name alone does not show it is the right document.
+ */
+function judgeDocument(view: BidView, type: DocumentType, extraction: ExtractionResult): { rows: ComparisonRow[]; verdict: DocumentVerdict; summary: string } {
+  const rows = compareWithBid(view, type, extraction.fields);
+  const off = rows.filter((r) => r.result === 'MISMATCH');
+  const key = rows.filter((r) => !NAME_FIELDS.has(r.field));
+  const keyMatched = (key.length ? key : rows).filter((r) => r.result === 'MATCH').length;
+  const matched = rows.filter((r) => r.result === 'MATCH').length;
+  const blank = rows.length > 0 && keyMatched === 0 && off.length === 0;
+  const verdict: DocumentVerdict = off.length || blank ? 'DISCREPANCY' : 'CONSISTENT';
+  let summary = off.length
+    ? off.map((r) => `${r.field}: document says "${r.document}", bid record says "${r.bidderRecord}".`).join(' ')
+    : blank
+      ? `The document does not show the details it should (${(key.length ? key : rows).map((r) => r.field.toLowerCase()).join(', ')}); it may be the wrong document.`
+      : `Agrees with the bid record (${matched} ${matched === 1 ? 'field' : 'fields'} compared).`;
+  if (extraction.warnings.length) summary += ` Note: ${extraction.warnings.join('; ')}.`;
+  return { rows, verdict, summary };
+}
+
 /** What a (non-PAN) document says, compared with the bid record. */
 export function compareWithBid(view: BidView, type: DocumentType, f: Record<string, string | null>): ComparisonRow[] {
   const b = view.bidder;
@@ -298,45 +323,53 @@ async function readOne(db: SupabaseClient, view: BidView, run: ReturnType<typeof
     const bytes = await retry(() => download(meta.path));
     const doc = { ...meta, sizeBytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
     await update({ status: 'OCR_RUNNING', document: doc });
-    const ocr = await retry(() => engine<OcrResult>('/api/v1/documents/ocr', { fileName: doc.fileName, mimeType: doc.mimeType, contentBase64: bytes.toString('base64') }));
-    await update({ ocr_result: ocr, status: 'EXTRACTING' });
-    const extraction = await retry(() => engine<ExtractionResult>('/api/v1/documents/extract', { documentType: run.documentType, ocrText: ocr.text }));
-    await update({ extraction_result: extraction });
+    const read = async () => {
+      const o = await retry(() => engine<OcrResult>('/api/v1/documents/ocr', { fileName: doc.fileName, mimeType: doc.mimeType, contentBase64: bytes.toString('base64') }));
+      await update({ ocr_result: o, status: 'EXTRACTING' });
+      const x = await retry(() => engine<ExtractionResult>('/api/v1/documents/extract', { documentType: run.documentType, ocrText: o.text }));
+      await update({ extraction_result: x });
+      return { ocr: o, extraction: x };
+    };
+    let { ocr, extraction } = await read();
 
     let rows: ComparisonRow[];
     let verdict: DocumentVerdict;
     let summary: string;
     if (run.documentType === 'PAN') {
-      if (!extraction.fields.pan) throw new Error('The extraction model did not find a PAN in the document.');
-      await update({ status: 'CALLING_API' });
-      const pan = extraction.fields.pan;
-      const { request, response } = await retry(() => callPanApi(pan, extraction.fields.name));
-      await db.from('external_api_calls').insert({
-        run_id: run.id,
-        bid_id: view.bid.id,
-        api_name: request.apiName,
-        method: request.method,
-        url: request.url,
-        request_body: request.body,
-        response_status: response.httpStatus,
-        response_body: response.body,
-        latency_ms: response.latencyMs,
-      });
-      await update({ api_request: request, api_response: response });
-      ({ rows, verdict, summary } = comparePan(view, extraction, response));
+      // A document with no PAN in it is not a PAN card: read once more, then treat it as the wrong document.
+      if (!extraction.fields.pan) ({ ocr, extraction } = await read());
+      if (!extraction.fields.pan) {
+        if (!ocr.text?.trim()) throw new Error('The document has no readable text.');
+        rows = [row('PAN', null, view.bidder.pan, null)];
+        verdict = 'DISCREPANCY';
+        summary = 'No PAN number was found in this document; it is not a PAN card or it is the wrong document.';
+      } else {
+        await update({ status: 'CALLING_API' });
+        const pan = extraction.fields.pan;
+        const { request, response } = await retry(() => callPanApi(pan, extraction.fields.name));
+        await db.from('external_api_calls').insert({
+          run_id: run.id,
+          bid_id: view.bid.id,
+          api_name: request.apiName,
+          method: request.method,
+          url: request.url,
+          request_body: request.body,
+          response_status: response.httpStatus,
+          response_body: response.body,
+          latency_ms: response.latencyMs,
+        });
+        await update({ api_request: request, api_response: response });
+        ({ rows, verdict, summary } = comparePan(view, extraction, response));
+      }
     } else {
-      rows = compareWithBid(view, run.documentType, extraction.fields);
-      const off = rows.filter((r) => r.result === 'MISMATCH');
-      const matched = rows.filter((r) => r.result === 'MATCH').length;
-      // A document that shows none of the details it should (wrong or unrelated file) cannot agree with the bid.
-      const blank = rows.length > 0 && matched === 0 && off.length === 0;
-      verdict = off.length || blank ? 'DISCREPANCY' : 'CONSISTENT';
-      summary = off.length
-        ? off.map((r) => `${r.field}: document says "${r.document}", bid record says "${r.bidderRecord}".`).join(' ')
-        : blank
-          ? `The document does not show the expected details (${rows.map((r) => r.field.toLowerCase()).join(', ')}); it may be the wrong document.`
-          : `Agrees with the bid record (${matched} ${matched === 1 ? 'field' : 'fields'} compared).`;
-      if (extraction.warnings.length) summary += ` Note: ${extraction.warnings.join('; ')}.`;
+      let judged = judgeDocument(view, run.documentType, extraction);
+      // OCR occasionally garbles a figure: read the page once more before reporting a disagreement.
+      if (judged.verdict === 'DISCREPANCY') {
+        const second = await read();
+        const again = judgeDocument(view, run.documentType, second.extraction);
+        if (again.verdict === 'CONSISTENT') ({ ocr, extraction } = second), (judged = again);
+      }
+      ({ rows, verdict, summary } = judged);
     }
     await update({ comparison: { rows, summary }, verdict, status: 'COMPLETED', completed_at: new Date().toISOString() });
     return { type: run.documentType, code: meta.code ?? '', title: meta.title ?? meta.fileName, fields: extraction.fields, verdict };

@@ -37,3 +37,23 @@ export async function assertNoPortalRunRunning(db: SupabaseClient, bidId: string
   for (const r of data ?? []) counts.set(r.run_id, (counts.get(r.run_id) ?? 0) + 1);
   if ([...counts.values()].some((n) => n < registries)) throw new HttpError(409, 'Registry checks for this bid are already running. Wait for them to finish.', 'ALREADY_RUNNING');
 }
+
+/**
+ * Refuses a new re-verification while one for the same bid is in progress: the latest
+ * start marker (request, GeM arrival, re-verification) has no completion after it yet.
+ */
+export async function assertNoVerificationRunning(db: SupabaseClient, bidId: string) {
+  const since = new Date(Date.now() - 10 * 60_000).toISOString();
+  const { data } = await db
+    .from('audit_events')
+    .select('summary, created_at')
+    .eq('bid_id', bidId)
+    .gte('created_at', since)
+    .in('summary', ['Re-verification requested', 'Bid received from GeM', 'Re-verification started', 'Automatic verification completed', 'Automatic verification stopped'])
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const last = data?.[0]?.summary;
+  if (last && !last.startsWith('Automatic verification')) {
+    throw new HttpError(409, 'CSAP is already verifying this bid. Wait for it to finish.', 'ALREADY_RUNNING');
+  }
+}

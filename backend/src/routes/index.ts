@@ -15,7 +15,7 @@ import { draftExplanation, latestDraft } from '../services/recommendation.servic
 import { receiveGemBid, runIntakePipeline, verifySignature, type GemBidPayload } from '../services/gemIntake.service.js';
 import { demoKit, getSubmissionWithEvaluation, myBids, openTenders, receiveEvaluation, submitBid, submitResponse, uploadDocument } from '../services/gemPortal.service.js';
 import { acceptRequest, declineRequest, receiveBidderResponse, type BidderResponsePayload } from '../services/reevaluation.service.js';
-import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertOpenForVerification } from '../services/bidRules.service.js';
+import { assertNoDocumentReadingRunning, assertNoPortalRunRunning, assertNoVerificationRunning, assertOpenForVerification } from '../services/bidRules.service.js';
 import { generateReport, getReport, listAllReports, listReports, sendReportToGem } from '../services/report.service.js';
 import { askAssistant } from '../services/assistant.service.js';
 import { waitUntil } from '@vercel/functions';
@@ -228,6 +228,7 @@ router.post(
     const bidId = req.body?.bidId;
     if (!bidId) throw new HttpError(400, 'bidId is required.', 'VALIDATION');
     await assertOpenForVerification(db, String(bidId));
+    await assertNoVerificationRunning(db, String(bidId));
     await assertNoDocumentReadingRunning(db, String(bidId));
     const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
     const name = profile?.full_name ?? 'Officer';
