@@ -46,7 +46,7 @@ export function applyDocumentEvidence(result: EngineResult, runs: DocumentVerifi
     const unreadable = run.status === 'FAILED' || run.verdict === 'ERROR';
     const contradicts = !unreadable && CONTRADICTS.has(run.verdict ?? '');
     if (!unreadable && !contradicts) return c;
-    if (unreadable && c.status === 'REVIEW') return c;
+    // An unread document always says so, even where the rule on its (empty) text already asked for review.
 
     const status = contradicts && req.mandatory ? 'NOT_MET' : 'REVIEW';
     const detail = unreadable

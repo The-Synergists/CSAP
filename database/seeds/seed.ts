@@ -254,23 +254,23 @@ async function main() {
   const token = ((await login.json()) as any)?.data?.accessToken;
   if (!token) throw new Error(`could not sign in to ${api} to run verification`);
   const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const started = new Date(Date.now() - 5000).toISOString();
+  // One bid at a time, so the hosted AI models are not flooded with parallel requests.
+  const pending = new Set<string>();
   for (const bid of demo.bids) {
+    const started = new Date(Date.now() - 5000).toISOString();
     const r = await fetch(`${api}/api/verification/run`, { method: 'POST', headers: auth, body: JSON.stringify({ bidId: bid.id }) });
     if (r.status !== 202) throw new Error(`verification of ${bid.id} not started (HTTP ${r.status})`);
-  }
-  console.log(`Verification started for ${demo.bids.length} bids on ${api}; waiting…`);
-  const pending = new Set(demo.bids.map((b) => b.id));
-  for (let i = 0; i < 120 && pending.size; i++) {
-    await new Promise((res) => setTimeout(res, 4000));
-    for (const id of [...pending]) {
-      const v = ((await (await fetch(`${api}/api/bids/${id}`, { headers: auth }).catch(() => null))?.json().catch(() => null)) as any)?.data;
+    let done = false;
+    for (let i = 0; i < 90 && !done; i++) {
+      await new Promise((res) => setTimeout(res, 4000));
+      const v = ((await (await fetch(`${api}/api/bids/${bid.id}`, { headers: auth })).json().catch(() => null)) as any)?.data;
       const ev = v?.audit?.find((e: any) => /^Automatic verification (completed|stopped)/.test(e.summary) && e.timestamp >= started);
       if (ev) {
-        pending.delete(id);
-        console.log(`  ${id}: ${ev.summary} · score ${v.bid.complianceScore} · ${v.counts.met} of ${v.counts.total} met`);
+        done = true;
+        console.log(`  ${bid.id}: ${ev.summary} · score ${v.bid.complianceScore} · ${v.counts.met} of ${v.counts.total} met`);
       }
     }
+    if (!done) pending.add(bid.id);
   }
   if (pending.size) throw new Error(`verification did not finish for ${[...pending].join(', ')}`);
 

@@ -17,6 +17,8 @@ from typing import Any, Dict
 
 import requests
 
+from src.nvidia import backoff
+
 from src.core.config import settings
 from src.nvidia.errors import NvidiaError, NvidiaNotConfigured
 
@@ -161,7 +163,7 @@ def _stream_chat_once(system: str, user: str, max_tokens: int) -> tuple:
     started = time.perf_counter()
     content = ""
     try:
-        with requests.post(
+        with backoff.post(
             f"{settings.nvidia_extraction_base_url}/chat/completions",
             json=body,
             headers={"Authorization": f"Bearer {settings.nvidia_extraction_api_key}", "Accept": "text/event-stream"},

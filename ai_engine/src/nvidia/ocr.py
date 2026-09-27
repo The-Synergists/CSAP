@@ -14,6 +14,8 @@ from typing import Any, Dict, List
 
 import requests
 
+from src.nvidia import backoff
+
 from src.core.config import settings
 from src.nvidia.errors import NvidiaError, NvidiaNotConfigured
 
@@ -73,7 +75,7 @@ def _run_ocr_image(image_bytes: bytes, mime_type: str) -> Dict[str, Any]:
     }
     started = time.perf_counter()
     try:
-        res = requests.post(
+        res = backoff.post(
             settings.nemotron_ocr_endpoint,
             json=payload,
             headers={"Authorization": f"Bearer {settings.nvidia_ocr_api_key}", "Accept": "application/json"},
