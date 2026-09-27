@@ -94,80 +94,75 @@ const REPORTS: ReportDef[] = [
   },
 ];
 
-/** One row per bid: its evaluation report (the signed record of the officer's decision) or why there is none yet. */
-const BidReportList: React.FC = () => {
+/** The evaluation reports generated for the selected tender (one per decision), newest first. */
+const BidReportList: React.FC<{ tenderId: string }> = ({ tenderId }) => {
   const { db } = useApp();
   const [rows, setRows] = useState<ReportSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const decisions = db.decisions.length;
   useEffect(() => {
-    api.allReports().then(setRows).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    // The report is generated right after a decision; fetch again shortly after one is recorded.
+    const load = () => api.allReports().then(setRows).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    void load();
+    const t = window.setTimeout(load, 4000);
+    return () => window.clearTimeout(t);
   }, [decisions]);
-  const views = listBidViews(db);
+  const latestDecisionId = (bidId: string) =>
+    db.decisions.filter((d) => d.bidId === bidId).sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0]?.id;
+  const shown = (rows ?? []).filter((r) => r.tenderId === tenderId);
 
   return (
     <Card
-      title="Bid evaluation reports"
-      subtitle="The signed evaluation report of each bid (SHA-256 fingerprint), generated from the officer's decision. One report per decision; earlier ones stay as superseded history."
+      title={`Bid evaluation reports (${shown.length})`}
+      subtitle="The signed report of each decision on this tender, with its SHA-256 fingerprint. A report is created automatically when the officer records a decision."
       padded={false}
     >
       {error ? (
         <p role="alert" className="px-4 py-3 text-xs text-rose-700">{error}</p>
       ) : rows === null ? (
         <p className="px-4 py-3 text-xs text-slate-500">Loading…</p>
+      ) : shown.length === 0 ? (
+        <p className="px-4 py-4 text-xs text-slate-600">No evaluation reports for this tender yet. A report appears here as soon as a decision is recorded on one of its bids.</p>
       ) : (
         <div className="relative overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-xs">
+          <table className="w-full min-w-[900px] text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
               <tr>
-                {['Bid', 'Bidder', 'Tender', 'Status', 'Final decision', 'Evaluation report', ''].map((h) => (
+                {['Report', 'Bid', 'Decision', 'Score', 'Requirements met', 'Risk', 'Fingerprint (SHA-256)', 'Status', ''].map((h) => (
                   <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 align-top">
-              {views.map((v) => {
-                const mine = rows.filter((r) => r.bidId === v.bid.id);
-                const d = v.latestDecision;
-                const current = d ? mine.find((r) => r.decisionId === d.id) ?? (mine[0]?.decisionId ? undefined : mine[0]) : undefined;
-                const older = mine.filter((r) => r !== current).length;
+              {shown.map((r) => {
+                const d = r.decision?.decision;
+                const current = !r.decisionId || r.decisionId === latestDecisionId(r.bidId);
                 return (
-                  <tr key={v.bid.id}>
-                    <td className="px-3 py-2"><Link to={bidPath(v.bid.id)} className="font-mono text-blue-700 hover:underline">{v.bid.id}</Link></td>
-                    <td className="px-3 py-2">{v.bidder.companyName}</td>
-                    <td className="px-3 py-2 font-mono text-slate-600">{v.tender.id}</td>
-                    <td className="px-3 py-2"><Badge tone={BID_STATUS[v.bid.status].tone}>{BID_STATUS[v.bid.status].label}</Badge></td>
+                  <tr key={r.id}>
                     <td className="px-3 py-2">
-                      {d ? (
-                        <>
-                          <Badge tone={DECISION[d.decision].tone}>{DECISION[d.decision].label}</Badge>
-                          <p className="mt-0.5 text-slate-500">{d.officerName}, {formatDateTime(d.decidedAt)}</p>
-                        </>
-                      ) : (
-                        <span className="text-slate-400">Not decided</span>
-                      )}
+                      <span className="font-mono font-semibold text-slate-900">{r.reportNo}</span>
+                      <p className="text-slate-500">{formatDateTime(r.generatedAt)}</p>
                     </td>
                     <td className="px-3 py-2">
-                      {current ? (
-                        <>
-                          <span className="font-mono">{current.reportNo}</span>
-                          <p className="mt-0.5 flex flex-wrap gap-1">
-                            {current.sentToGemAt && <Badge tone="info">Sent to GeM</Badge>}
-                            {older > 0 && <Badge tone="neutral">{older} superseded</Badge>}
-                          </p>
-                        </>
-                      ) : d ? (
-                        <span className="text-slate-500">Not generated yet</span>
-                      ) : (
-                        <span className="text-slate-400">Generated after the decision</span>
-                      )}
+                      <Link to={bidPath(r.bidId)} className="font-mono text-blue-700 hover:underline">{r.bidId}</Link>
+                      <p className="text-slate-700">{r.bidder ?? ''}</p>
+                    </td>
+                    <td className="px-3 py-2">
+                      {d ? <Badge tone={DECISION[d].tone}>{DECISION[d].label}</Badge> : '—'}
+                      {r.decision && <p className="mt-0.5 text-slate-500">{r.decision.officer}, {formatDateTime(r.decision.decidedAt)}</p>}
+                    </td>
+                    <td className="px-3 py-2 font-mono">{r.complianceScore ?? '—'}</td>
+                    <td className="px-3 py-2">{r.requirementsMet ?? '—'}</td>
+                    <td className="px-3 py-2">{r.riskLevel ? r.riskLevel.charAt(0) + r.riskLevel.slice(1).toLowerCase() : '—'}</td>
+                    <td className="px-3 py-2 font-mono text-slate-500" title={r.sha256}>{r.sha256.slice(0, 16)}…</td>
+                    <td className="px-3 py-2">
+                      <span className="flex flex-wrap gap-1">
+                        {current ? <Badge tone="success">Current</Badge> : <Badge tone="neutral">Superseded</Badge>}
+                        {r.sentToGemAt && <Badge tone="info">Sent to GeM</Badge>}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {current ? (
-                        <Link to={`/reports/evaluation/${current.id}`} className={buttonClass('secondary', 'sm')}><FileText className="h-3.5 w-3.5" /> Open</Link>
-                      ) : d ? (
-                        <Link to={bidPath(v.bid.id, 'decision')} className={buttonClass('secondary', 'sm')}>Generate</Link>
-                      ) : null}
+                      <Link to={`/reports/evaluation/${r.id}`} className={buttonClass('secondary', 'sm')}><FileText className="h-3.5 w-3.5" /> Open</Link>
                     </td>
                   </tr>
                 );
@@ -218,7 +213,7 @@ export const ReportsPage: React.FC = () => {
         }
       />
 
-      {source === 'api' && <BidReportList />}
+      {source === 'api' && tender && <BidReportList tenderId={tender.id} />}
 
       <h2 className="pt-1 text-sm font-semibold text-slate-900">Compiled reports</h2>
       <p className="-mt-3 text-xs text-slate-500">Lists across all bids of the selected tender, generated in your browser from the current data.</p>

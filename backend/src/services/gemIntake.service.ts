@@ -22,6 +22,7 @@ import { loadWorkspace } from '../db/workspace.repository.js';
 import { HttpError, must } from '../lib/http.js';
 import { serviceClient } from '../lib/supabase.js';
 import { DOCUMENT_TYPE_BY_REQUIREMENT, readAllDocumentsNow } from './documentBatch.service.js';
+import { engine } from './documentPipeline.service.js';
 import { verifyWithEngine } from './engine.client.js';
 import { runPortalChecksNow } from './portal.service.js';
 
@@ -200,9 +201,40 @@ export async function receiveGemBid(payload: GemBidPayload) {
 
   const docs: Record<string, unknown>[] = [];
   const e = payload.declared.emd;
+  let packageNote = '';
   try {
+    // A combined PDF (every document in one file) is first split into one PDF per requirement.
+    // Documents uploaded separately for a requirement take precedence over pages of the combined file.
+    const documents = payload.documents.filter((d) => d.requirementCode !== 'PACKAGE');
+    const pkg = payload.documents.find((d) => d.requirementCode === 'PACKAGE');
+    if (pkg) {
+      const { data: blob, error: dl } = await db.storage.from('bid-documents').download(pkg.path);
+      if (dl || !blob) throw new HttpError(502, `Could not read the combined PDF ${pkg.fileName}.`, 'STORAGE_ERROR');
+      const split = await engine<{ pages: number; documents: { requirementCode: string; pages: number[]; contentBase64: string }[]; unassigned: number[] }>(
+        '/api/v1/documents/split',
+        { contentBase64: Buffer.from(await blob.arrayBuffer()).toString('base64'), requirements: requirements.map((r) => ({ code: r.code, title: r.title })) },
+      );
+      const folder = pkg.path.slice(0, pkg.path.lastIndexOf('/'));
+      for (const part of split.documents) {
+        if (documents.some((d) => d.requirementCode === part.requirementCode)) continue;
+        const bytes = Buffer.from(part.contentBase64, 'base64');
+        const path = `${folder}/${part.requirementCode}-from-package.pdf`;
+        const { error: up } = await db.storage.from('bid-documents').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+        if (up) throw new HttpError(502, `Could not store part of the combined PDF: ${up.message}`, 'STORAGE_ERROR');
+        documents.push({
+          requirementCode: part.requirementCode,
+          name: requirements.find((r) => r.code === part.requirementCode)?.title ?? part.requirementCode,
+          path,
+          fileName: `${pkg.fileName.replace(/\.pdf$/i, '')} (page${part.pages.length > 1 ? 's' : ''} ${part.pages.join(', ')}).pdf`,
+          mimeType: 'application/pdf',
+          sizeBytes: bytes.length,
+        });
+      }
+      packageNote = ` Combined PDF ${pkg.fileName}: ${split.pages} pages split into ${split.documents.length} documents${split.unassigned.length ? `; page${split.unassigned.length > 1 ? 's' : ''} ${split.unassigned.join(', ')} not matched to any requirement` : ''}.`;
+    }
+
     // Documents: CSAP keeps its own copy of every file, separate from GeM's storage.
-    for (const [i, d] of payload.documents.entries()) {
+    for (const [i, d] of documents.entries()) {
       const req = requirements.find((r) => r.code === d.requirementCode);
       if (!req) continue;
       const code = `DOC-${n}${String(i + 1).padStart(2, '0')}`;
@@ -260,7 +292,7 @@ export async function receiveGemBid(payload: GemBidPayload) {
     actor_role: 'Bidder (via GeM)',
     action_type: 'BIDDER_SUBMISSION',
     summary: 'Bid received from GeM',
-    details: `GeM bid ${payload.gemBidNo}: ${docs.length} documents, EMD ${e.instrument === 'MSME_EXEMPTION' ? 'MSE exemption' : `₹${e.amount.toLocaleString('en-IN')}`}. Delivered by the GeM webhook (signature verified). Automatic verification started.`,
+    details: `GeM bid ${payload.gemBidNo}: ${docs.length} documents, EMD ${e.instrument === 'MSME_EXEMPTION' ? 'MSE exemption' : `₹${e.amount.toLocaleString('en-IN')}`}. Delivered by the GeM webhook (signature verified).${packageNote} Automatic verification started.`,
   });
 
   waitUntil(runIntakePipeline(bidId).catch(() => {}));

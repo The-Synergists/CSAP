@@ -46,7 +46,8 @@ export function demoKit() {
 /** Stores one uploaded document in GeM's own storage area. */
 export async function uploadDocument(input: { draftId: string; requirementCode: string; fileName: string; mimeType: string; contentBase64: string }) {
   if (!/^[0-9a-f-]{36}$/.test(input.draftId)) throw new HttpError(400, 'Invalid draft.', 'VALIDATION');
-  if (!/^REQ-\d{2}$/.test(input.requirementCode)) throw new HttpError(400, 'Invalid requirement.', 'VALIDATION');
+  if (!/^(REQ-\d{2}|PACKAGE)$/.test(input.requirementCode)) throw new HttpError(400, 'Invalid requirement.', 'VALIDATION');
+  if (input.requirementCode === 'PACKAGE' && input.mimeType !== 'application/pdf') throw new HttpError(415, 'The combined bid document must be one PDF.', 'UNSUPPORTED_TYPE');
   if (!MIME.has(input.mimeType)) throw new HttpError(415, 'Upload the document as a PDF, or a scan or photo (PNG or JPEG).', 'UNSUPPORTED_TYPE');
   const bytes = Buffer.from(input.contentBase64 ?? '', 'base64');
   if (!bytes.length || bytes.length > MAX_FILE) throw new HttpError(413, 'Each document must be under 3 MB.', 'FILE_SIZE');
@@ -75,7 +76,7 @@ export async function submitBid(input: { tenderId: string; company: GemBidPayloa
   const tenders = await openTenders();
   const tender = tenders.find((t) => t.id === input.tenderId);
   if (!tender) throw new HttpError(409, 'This tender is not open for bids.', 'TENDER_CLOSED');
-  const allowed = (p: string) => /^gem\/(submissions\/[0-9a-f-]{36}|demo-kit)\/REQ-\d{2}\.(png|jpg|pdf)$/.test(p);
+  const allowed = (p: string) => /^gem\/(submissions\/[0-9a-f-]{36}|demo-kit)\/(REQ-\d{2}|PACKAGE)\.(png|jpg|pdf)$/.test(p);
   if (!input.documents?.length || input.documents.some((d) => !allowed(d.path))) throw new HttpError(400, 'Attach the documents before submitting.', 'VALIDATION');
 
   const company = { ...input.company, pan: input.company.pan?.trim().toUpperCase(), gstin: input.company.gstin?.trim().toUpperCase(), udyamNumber: input.company.udyamNumber?.trim().toUpperCase() || undefined };

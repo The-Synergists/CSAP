@@ -78,7 +78,8 @@ export const GemSubmitPage: React.FC = () => {
     }
   };
 
-  const missing = tender?.requirements.filter((r) => r.mandatory && !docs[r.code]) ?? [];
+  // With a combined PDF, the buyer's system sorts its pages into the requirements.
+  const missing = docs.PACKAGE ? [] : tender?.requirements.filter((r) => r.mandatory && !docs[r.code]) ?? [];
   const problems = [
     !company.name.trim() && 'company name',
     !/^[A-Z]{5}\d{4}[A-Z]$/.test(company.pan) && 'a valid PAN',
@@ -176,7 +177,7 @@ export const GemSubmitPage: React.FC = () => {
         </div>
       </GemCard>
 
-      <GemCard title="3. Documents" actions={<span className="text-xs text-slate-500">{Object.keys(docs).length} of {tender.requirements.length} attached · PDF, PNG or JPEG, under 3 MB</span>}>
+      <GemCard title="3. Documents" actions={<span className="text-xs text-slate-500">{docs.PACKAGE ? 'Combined PDF attached' : `${Object.keys(docs).length} of ${tender.requirements.length} attached`} · PDF, PNG or JPEG, under 3 MB</span>}>
         <ul className="divide-y divide-slate-100">
           {tender.requirements.map((r) => {
             const d = docs[r.code];
@@ -205,6 +206,28 @@ export const GemSubmitPage: React.FC = () => {
             );
           })}
         </ul>
+        <div className="mt-3 rounded border border-dashed border-slate-300 bg-slate-50 p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-slate-900">Or upload all documents as one PDF</p>
+              <p className="text-[11px] text-slate-500">
+                One combined PDF (up to 40 pages, under 3 MB). The buyer's system reads every page and files it under the right requirement. Documents uploaded above take precedence.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {docs.PACKAGE && (
+                <span className="flex items-center gap-1 text-xs text-emerald-700">
+                  <CheckCircle2 aria-hidden className="h-4 w-4" /> {docs.PACKAGE.fileName}
+                </span>
+              )}
+              <label className={`${gemButton} cursor-pointer border border-slate-300 bg-white text-slate-800 hover:bg-slate-50`}>
+                {uploading === 'PACKAGE' ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp aria-hidden className="h-4 w-4" />}
+                {docs.PACKAGE ? 'Replace' : 'Upload combined PDF'}
+                <input type="file" accept="application/pdf" className="sr-only" aria-label="Upload all documents as one PDF" onChange={(e) => void upload('PACKAGE', 'Combined bid documents', e.target.files?.[0])} />
+              </label>
+            </div>
+          </div>
+        </div>
       </GemCard>
 
       {error && <p role="alert" className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>}

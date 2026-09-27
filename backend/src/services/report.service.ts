@@ -71,6 +71,8 @@ export async function listAllReports(db: SupabaseClient) {
     bidder: r.bidder?.name ?? null,
     tenderId: r.tender?.id ?? null,
     complianceScore: r.summary?.complianceScore ?? null,
+    requirementsMet: r.summary ? `${r.summary.met} of ${r.summary.total}` : null,
+    riskLevel: r.summary?.riskLevel ?? null,
   }));
 }
 

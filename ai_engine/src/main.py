@@ -15,6 +15,7 @@ from src.nvidia.errors import NvidiaError
 from src.nvidia.extraction import run_extraction
 from src.nvidia.ocr import run_ocr
 from src.nvidia.recommendation import draft_recommendation
+from src.nvidia.split import split_package
 from src.nvidia.extraction import stream_chat
 from src.schemas import OcrRequest, VerifyRequest
 
@@ -82,6 +83,21 @@ def document_ocr(payload: DocumentOcrRequest):
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail={"code": "BAD_FILE", "message": "contentBase64 is not valid base64."})
     return {"fileName": payload.fileName, **_nvidia_call(run_ocr, data, payload.mimeType)}
+
+
+class SplitRequest(BaseModel):
+    contentBase64: str
+    requirements: list
+
+
+@app.post("/api/v1/documents/split")
+def document_split(payload: SplitRequest):
+    """A combined bid PDF: every page read and assigned to a requirement, one PDF per requirement."""
+    try:
+        data = base64.b64decode(payload.contentBase64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail={"code": "BAD_FILE", "message": "contentBase64 is not valid base64."})
+    return _nvidia_call(split_package, data, payload.requirements)
 
 
 @app.post("/api/v1/documents/extract")

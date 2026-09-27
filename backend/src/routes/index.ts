@@ -206,17 +206,15 @@ router.post(
     const input = validateDecision(req.body);
     const { db, userId } = authOf(res);
     const result = await submitDecision(db, input);
-    // Bids from GeM: the evaluation report goes back to GeM automatically after the decision.
+    // Every decision gets its evaluation report straight away; for GeM bids it also goes back to GeM.
     const { data: bid } = await db.from('bids').select('source').eq('id', input.bidId).single();
-    if (bid?.source === 'GEM') {
-      const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
-      const name = profile?.full_name ?? 'Officer';
-      waitUntil(
-        generateReport(db, userId, name, input.bidId)
-          .then((r) => sendReportToGem(db, userId, name, r.id))
-          .catch(() => {}),
-      );
-    }
+    const { data: profile } = await db.from('profiles').select('full_name').eq('id', userId).single();
+    const name = profile?.full_name ?? 'Officer';
+    waitUntil(
+      generateReport(db, userId, name, input.bidId)
+        .then((r) => (bid?.source === 'GEM' ? sendReportToGem(db, userId, name, r.id) : r))
+        .catch(() => {}),
+    );
     res.status(201).json({ success: true, data: result });
   }),
 );

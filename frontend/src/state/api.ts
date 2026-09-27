@@ -34,6 +34,8 @@ export interface ReportSummary {
   bidder: string | null;
   tenderId: string | null;
   complianceScore: number | null;
+  requirementsMet: string | null;
+  riskLevel: string | null;
 }
 
 export interface RecommendationDraft {
