@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../state/appContext';
 import { getAlerts } from '@shared/domain/selectors';
+import { alertSignature, seenAlerts } from '../../lib/seenAlerts';
 import { BrandMark } from './BrandMark';
 
 const itemBase = 'flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm font-medium transition-colors';
@@ -41,8 +42,16 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; coun
 );
 
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { db, realtimeLive } = useApp();
-  const alertCount = getAlerts(db).length;
+  const { db, realtimeLive, currentUser } = useApp();
+  const alerts = getAlerts(db);
+  const [seen, setSeen] = useState(() => seenAlerts(currentUser?.id));
+  useEffect(() => {
+    const refresh = () => setSeen(seenAlerts(currentUser?.id));
+    refresh();
+    window.addEventListener('csap:alerts-seen', refresh);
+    return () => window.removeEventListener('csap:alerts-seen', refresh);
+  }, [currentUser?.id]);
+  const alertCount = alerts.filter((a) => !seen.has(alertSignature(a))).length;
 
   return (
     <>

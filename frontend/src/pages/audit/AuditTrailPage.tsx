@@ -2,22 +2,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { isKeyAuditEvent } from '@shared/domain/selectors';
 import { Download, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
-import type { AuditActorType, AuditEvent } from '@shared/domain/types';
+import type { AuditEvent } from '@shared/domain/types';
 import { useApp } from '../../state/appContext';
 import { ActivityTimeline } from '../../components/ActivityTimeline';
-import { Button, Card, EmptyState, FilterChips, PageHeader, SearchInput } from '../../components/ui/primitives';
+import { Button, Card, EmptyState, PageHeader, SearchInput } from '../../components/ui/primitives';
 import { inputClass } from '../../components/ui/styles';
 import { useToast } from '../../components/ui/toast';
 import { downloadCsv } from '../../lib/csv';
 import { formatDateTime } from '../../lib/format';
 import { api } from '../../state/api';
 
-type ActorFilter = 'ALL' | AuditActorType;
-const ACTOR_OPTIONS: { id: ActorFilter; label: string }[] = [
-  { id: 'ALL', label: 'All' },
-  { id: 'OFFICER', label: 'Officer actions' },
-  { id: 'BIDDER', label: 'Bidder submissions' },
-];
 
 type ChainResult = Awaited<ReturnType<typeof api.verifyAudit>>;
 
@@ -101,13 +95,11 @@ export const AuditTrailPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const bidFilter = params.get('bidId') ?? 'ALL';
   const [term, setTerm] = useState('');
-  const [actor, setActor] = useState<ActorFilter>('ALL');
 
   const q = term.trim().toLowerCase();
   const events = db.auditEvents.filter(
     (e) =>
       isKeyAuditEvent(e) &&
-      (actor === 'ALL' || e.actorType === actor) &&
       (bidFilter === 'ALL' || e.bidId === bidFilter) &&
       (!q || [e.summary, e.details, e.actor, e.bidId ?? '', e.tenderId].some((s) => s.toLowerCase().includes(q))),
   );
@@ -156,7 +148,6 @@ export const AuditTrailPage: React.FC = () => {
         <div className="flex flex-col gap-3 border-b border-slate-200 p-3 lg:flex-row lg:items-center lg:justify-between">
           <SearchInput value={term} onChange={setTerm} label="Search audit events" placeholder="Search events, officers, bid IDs" className="lg:w-80" />
           <div className="flex flex-wrap items-center gap-3">
-            <FilterChips label="Filter by actor" options={ACTOR_OPTIONS} value={actor} onChange={setActor} />
             <label className="flex items-center gap-2 text-xs text-slate-700">
               Bid
               <select value={bidFilter} onChange={(e) => setBid(e.target.value)} className={`${inputClass} w-auto py-1.5`}>
@@ -173,7 +164,7 @@ export const AuditTrailPage: React.FC = () => {
         <div className="p-4">
           <p className="mb-3 text-xs text-slate-500">{sorted.length} key events</p>
           {sorted.length === 0 ? (
-            <EmptyState title="No events match" action={<Button onClick={() => { setTerm(''); setActor('ALL'); setBid('ALL'); }}>Clear filters</Button>} />
+            <EmptyState title="No events match" action={<Button onClick={() => { setTerm(''); setBid('ALL'); }}>Clear filters</Button>} />
           ) : (
             <ul className="divide-y divide-slate-100">
               {sorted.map((e) => (
