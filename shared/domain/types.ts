@@ -92,6 +92,8 @@ export interface Bid {
   id: string; // BID-001
   tenderId: string;
   bidderId: string;
+  /** What the bidder declared in this bid (GeM bids); overrides the company record for this bid. */
+  declared?: { name: string; address: string; turnover: { financialYear: string; amountCr: number }[] };
   submittedAt: string; // ISO datetime
   makeInIndiaPercentage: number;
   /** Outputs of the most recent verification run. */

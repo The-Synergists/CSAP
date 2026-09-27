@@ -243,6 +243,13 @@ export async function loadWorkspace(db: SupabaseClient): Promise<Database> {
       id: b.id,
       tenderId: b.tender_id,
       bidderId: companyById.get(b.company_id)?.vendor_code ?? '',
+      declared: b.declared_profile
+        ? {
+            name: String(b.declared_profile.name ?? ''),
+            address: String(b.declared_profile.address ?? ''),
+            turnover: (b.declared_profile.turnover ?? []).map((t: any) => ({ financialYear: String(t.financialYear), amountCr: Number(t.amountCr) })),
+          }
+        : undefined,
       submittedAt: b.submission_timestamp,
       makeInIndiaPercentage: Number(b.make_in_india_percentage),
       complianceScore: b.overall_compliance_score,

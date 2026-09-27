@@ -119,8 +119,17 @@ export const getBidView = (db: Database, bidId: string): BidView | undefined => 
   const bid = findBid(db, bidId);
   if (!bid) return undefined;
   const tender = db.tenders.find((t) => t.id === bid.tenderId);
-  const bidder = db.bidders.find((b) => b.id === bid.bidderId);
-  if (!tender || !bidder) return undefined;
+  const company = db.bidders.find((b) => b.id === bid.bidderId);
+  if (!tender || !company) return undefined;
+  // Each bid is shown and verified against what was declared in that bid.
+  const bidder = bid.declared
+    ? {
+        ...company,
+        companyName: bid.declared.name || company.companyName,
+        registeredAddress: bid.declared.address || company.registeredAddress,
+        turnover: bid.declared.turnover.length ? bid.declared.turnover : company.turnover,
+      }
+    : company;
 
   const requirements = db.requirements.filter((r) => r.tenderId === tender.id);
   const documents = db.documents.filter((d) => d.bidId === bid.id);

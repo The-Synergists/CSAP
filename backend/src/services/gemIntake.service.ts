@@ -133,6 +133,25 @@ export async function receiveGemBid(payload: GemBidPayload) {
   // Bidder: reuse the company when CSAP already knows this PAN.
   const known = must<any[]>(await db.from('companies').select('id').eq('pan', c.pan), 'companies')[0];
   let companyId: string = known?.id;
+  if (companyId) {
+    // Same PAN, same legal entity: the company row takes the latest declaration. Each bid keeps its
+    // own declaration (declared_profile below), so earlier bids still show what was submitted then.
+    must(
+      await db
+        .from('companies')
+        .update({ company_name: c.name.trim(), registered_address: c.address?.trim() || 'Not provided', udyam_number: c.udyamNumber || null })
+        .eq('id', companyId),
+      'company',
+    );
+    for (const t of payload.declared.turnover) {
+      must(
+        await db
+          .from('company_turnover')
+          .upsert({ company_id: companyId, financial_year: t.financialYear, turnover_amount: Math.round(t.amountCr * 1e7) }, { onConflict: 'company_id,financial_year' }),
+        'turnover',
+      );
+    }
+  }
   if (!companyId) {
     companyId = must<any>(
       await db
@@ -173,6 +192,7 @@ export async function receiveGemBid(payload: GemBidPayload) {
       submission_timestamp: payload.submittedAt,
       source: 'GEM',
       gem_bid_no: payload.gemBidNo,
+      declared_profile: { name: c.name.trim(), address: c.address?.trim() || 'Not provided', turnover: payload.declared.turnover },
     }),
     'bid',
   );

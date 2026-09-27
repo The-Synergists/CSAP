@@ -40,8 +40,15 @@ export const BidTable: React.FC<{ views: BidView[]; showTender?: boolean; action
                 <div className="font-mono text-xs text-slate-500">{v.bid.id} · {v.bidder.gstin}</div>
               </td>
               {showTender && <td className="px-4 py-3 font-mono text-xs text-slate-600">{v.tender.id}</td>}
-              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">{v.bid.complianceScore}</td>
-              <td className="px-4 py-3"><RiskBadge level={v.bid.riskLevel} score={v.bid.riskScore} /></td>
+              {v.checks.length === 0 ? (
+                // Automatic verification still running: no score or risk yet.
+                <td colSpan={2} className="px-4 py-3 text-right text-xs italic text-slate-500">Verifying…</td>
+              ) : (
+                <>
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">{v.bid.complianceScore}</td>
+                  <td className="px-4 py-3"><RiskBadge level={v.bid.riskLevel} score={v.bid.riskScore} /></td>
+                </>
+              )}
               <td className="px-4 py-3"><EmdBadge result={v.emd?.result} /></td>
               <td className={`px-4 py-3 text-center font-mono ${v.documents.length < v.documentsRequired ? 'font-semibold text-rose-700' : 'text-slate-700'}`}>
                 {v.documents.length}/{v.documentsRequired}
