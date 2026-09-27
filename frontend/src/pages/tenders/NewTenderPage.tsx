@@ -27,7 +27,7 @@ export const NewTenderPage: React.FC = () => {
   const [f, setF] = useState({
     title: '',
     category: 'Safety & Fire',
-    division: 'Chennai Refinery — Fire & Safety Department',
+    division: 'Refinery — Fire & Safety Department',
     description: '',
     estimatedValueCr: '1.00',
     emdAmount: '100000',
@@ -76,7 +76,7 @@ export const NewTenderPage: React.FC = () => {
     <form onSubmit={(e) => void publish(e)} className="space-y-5">
       <PageHeader
         title="New tender"
-        subtitle="Start from CPCL's safety-equipment requirement template, set this tender's values, and publish. Bidders can participate on GeM straight away; CSAP verifies every bid against these requirements."
+        subtitle="Start from the safety-equipment requirement template, set this tender's values, and publish. Bidders can participate on GeM straight away; CSAP verifies every bid against these requirements."
         breadcrumbs={[{ label: 'Tenders', to: '/tenders' }, { label: 'New tender' }]}
       />
       <Card title="Tender details">

@@ -35,7 +35,7 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Procurement Verification Dashboard"
-        subtitle={`Chennai Petroleum Corporation Limited — Commercial & Contracts Division · ${formatDate(new Date().toISOString())}`}
+        subtitle={`Commercial & Contracts Division · ${formatDate(new Date().toISOString())}`}
         actions={
           <Link to="/tenders" className={buttonClass('secondary')}>
             All tenders

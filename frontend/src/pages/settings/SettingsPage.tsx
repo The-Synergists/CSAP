@@ -77,7 +77,6 @@ export const SettingsPage: React.FC = () => {
               { label: 'Designation', value: currentUser.designation || '—' },
               { label: 'Employee ID', value: <span className="font-mono text-xs">{currentUser.employeeId || '—'}</span> },
               { label: 'Email', value: currentUser.email },
-              { label: 'Organisation', value: currentUser.organization || '—' },
               { label: 'Role', value: currentUser.role },
             ]}
           />

@@ -50,7 +50,7 @@ export const GemLayout: React.FC = () => {
         <Outlet />
       </main>
       <footer className="mx-auto max-w-6xl px-4 pb-6 text-[11px] text-slate-500">
-        Simulated marketplace for a prototype demonstration. Buyer: Chennai Petroleum Corporation Limited, Ministry of Petroleum and Natural Gas.
+        Simulated marketplace for a prototype demonstration. Buyer: a public sector undertaking under the Ministry of Petroleum and Natural Gas.
       </footer>
     </div>
   );

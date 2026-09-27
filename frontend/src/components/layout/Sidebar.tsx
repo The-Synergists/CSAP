@@ -81,10 +81,9 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             <span className="font-mono text-[11px]">v2.0 · prototype</span>
             <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              CPCL Portal
+              Online
             </span>
           </div>
-          <p className="mt-1 text-[10px] text-slate-400">Chennai Petroleum Corporation Limited (Govt of India Enterprise)</p>
         </div>
       </aside>
     </>

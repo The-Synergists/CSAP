@@ -189,7 +189,7 @@ export const GemReceiptPage: React.FC = () => {
               GeM bid number <span className="font-mono font-semibold">{sub.gemBidNo}</span> · bid <span className="font-mono">{sub.tenderId}</span> · {formatDateTime(sub.submittedAt)}
             </p>
             <p className="mt-2 text-sm text-slate-700">
-              The buyer, Chennai Petroleum Corporation Limited, will review your bid. You will see the result, and any clarification the buyer needs, under My Bids.
+              The buyer will review your bid. You will see the result, and any clarification the buyer needs, under My Bids.
             </p>
           </div>
         </div>

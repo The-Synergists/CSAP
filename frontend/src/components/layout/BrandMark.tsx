@@ -9,7 +9,7 @@ export const BrandMark: React.FC = () => (
     </div>
     <div className="flex flex-col">
       <span className="text-base font-bold uppercase tracking-wider text-white">CSAP</span>
-      <span className="text-[10px] font-medium tracking-wide text-slate-400">CPCL Procurement Portal</span>
+      <span className="text-[10px] font-medium tracking-wide text-slate-400">Procurement Portal</span>
     </div>
   </div>
 );

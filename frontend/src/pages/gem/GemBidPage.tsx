@@ -49,7 +49,6 @@ export const GemBidPage: React.FC = () => {
             <Row k="Bid opening date / time" v="On the next working day after the end date, 15:30" />
             <Row k="Bid offer validity" v="120 days from end date" />
             <Row k="Ministry" v="Ministry of Petroleum and Natural Gas" />
-            <Row k="Organisation" v={t.buyer} />
             <Row k="Office" v={t.division} />
             <Row k="Item category" v={`${t.title} (${t.category})`} />
             <Row k="Estimated bid value" v={crore(t.estimatedValue)} />

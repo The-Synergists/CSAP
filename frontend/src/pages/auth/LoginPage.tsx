@@ -49,7 +49,6 @@ export const LoginPage: React.FC = () => {
           </div>
           <h1 className="text-2xl font-black uppercase tracking-wider text-white">CSAP</h1>
           <p className="mt-1 text-xs font-medium tracking-wide text-blue-300">Central Statutory Authentication Platform</p>
-          <div className="mt-2 font-mono text-[11px] text-slate-400">CHENNAI PETROLEUM CORPORATION LIMITED (CPCL)</div>
         </div>
 
         <div className="rounded-lg border border-slate-700/80 bg-[#0A2540] p-6 shadow-xl">
@@ -77,7 +76,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setIdentifier(e.target.value)}
                 aria-invalid={!!errors.identifier}
                 aria-describedby={errors.identifier ? 'identifier-error' : undefined}
-                placeholder="CPCL10421 or officer@cpcl.co.in"
+                placeholder="Employee ID or official email"
                 className={`${fieldClass} ${errors.identifier ? 'border-rose-400' : 'border-slate-600'}`}
               />
               {errors.identifier && <p id="identifier-error" className="mt-1 text-xs text-rose-300">{errors.identifier}</p>}

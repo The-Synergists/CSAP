@@ -34,7 +34,7 @@ export const TenderListPage: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Tenders"
-        subtitle="Tenders published by CPCL and the bids received against them."
+        subtitle="Tenders published by your organisation and the bids received against them."
         actions={
           source === 'api' && (
             <Link to="/tenders/new" className={buttonClass('primary', 'md')}>

@@ -153,7 +153,7 @@ export const REGISTRY: Record<string, { name: string; authority: string }> = {
   ESIC: { name: 'ESIC', authority: 'Employees’ State Insurance Corporation' },
   STARTUP_INDIA: { name: 'Startup India', authority: 'DPIIT' },
   NSIC: { name: 'NSIC registration', authority: 'NSIC' },
-  DEBARMENT: { name: 'Blacklisting / debarment', authority: 'CPPP · GeM · MoPNG · CPCL' },
+  DEBARMENT: { name: 'Blacklisting / debarment', authority: 'CPPP · GeM · MoPNG' },
   DIGILOCKER: { name: 'DigiLocker issued documents', authority: 'DigiLocker' },
 };
 

@@ -24,14 +24,10 @@ export const GemHomePage: React.FC = () => {
           <label className="mt-1 flex items-center gap-2 text-slate-700"><input type="checkbox" checked readOnly /> Ministry of Petroleum and Natural Gas</label>
         </div>
         <div>
-          <p className="font-semibold text-slate-700">Organisation</p>
-          <label className="mt-1 flex items-center gap-2 text-slate-700"><input type="checkbox" checked readOnly /> Chennai Petroleum Corporation Limited</label>
-        </div>
-        <div>
           <p className="font-semibold text-slate-700">Bid status</p>
           <label className="mt-1 flex items-center gap-2 text-slate-700"><input type="checkbox" checked readOnly /> Active (open for participation)</label>
         </div>
-        <p className="text-[11px] text-slate-500">Only CPCL bids are listed in this simulation.</p>
+        <p className="text-[11px] text-slate-500">Only this buyer's bids are listed in this simulation.</p>
       </aside>
 
       <div className="space-y-4">
@@ -59,7 +55,7 @@ export const GemHomePage: React.FC = () => {
                 <p className="text-sm font-semibold text-slate-900">{t.title}</p>
                 <p className="mt-1 text-slate-600">{t.description}</p>
                 <p className="mt-2 text-slate-500">Department</p>
-                <p className="text-slate-800">Ministry of Petroleum and Natural Gas · {t.buyer} · {t.division}</p>
+                <p className="text-slate-800">Ministry of Petroleum and Natural Gas · {t.division}</p>
               </div>
               <dl className="space-y-1.5">
                 <div><dt className="text-slate-500">Start date</dt><dd className="font-medium">{formatDate(t.publishDate)}</dd></div>

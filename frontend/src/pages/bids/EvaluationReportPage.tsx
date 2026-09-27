@@ -39,7 +39,7 @@ export const EvaluationReportPage: React.FC = () => {
       </div>
       <article className="mx-auto max-w-4xl bg-white p-8 text-[12px] leading-relaxed text-slate-900 shadow print:shadow-none">
         <header className="border-b-2 border-slate-800 pb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">Chennai Petroleum Corporation Limited · CSAP</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600">CSAP · Technical evaluation</p>
           <h1 className="text-xl font-bold">{c.title}</h1>
           <p className="mt-1">
             <strong>{c.reportNo}</strong> · generated {formatDateTime(c.generatedAt)} by {c.generatedBy}
