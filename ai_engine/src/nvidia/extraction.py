@@ -133,7 +133,21 @@ def _parse_json(content: str) -> Dict[str, Any]:
 
 
 def stream_chat(system: str, user: str, max_tokens: int) -> tuple:
-    """One streamed chat completion from the NVIDIA-hosted model; returns (text, latency_ms)."""
+    """One streamed chat completion from the NVIDIA-hosted model; returns (text, latency_ms).
+
+    The hosted model occasionally closes a stream without sending any text; such a reply is
+    requested again (up to three attempts in total) instead of being passed on as an answer.
+    """
+    started = time.perf_counter()
+    content = ""
+    for _ in range(3):
+        content, _latency = _stream_chat_once(system, user, max_tokens)
+        if content.strip():
+            break
+    return content, round((time.perf_counter() - started) * 1000)
+
+
+def _stream_chat_once(system: str, user: str, max_tokens: int) -> tuple:
     if not settings.nvidia_extraction_api_key:
         raise NvidiaNotConfigured("NVIDIA_EXTRACTION_API_KEY is not set for the extraction model.")
     body = {
