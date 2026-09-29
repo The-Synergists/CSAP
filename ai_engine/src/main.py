@@ -51,7 +51,7 @@ def health_check():
         "engineVersion": ENGINE_VERSION,
         "environment": settings.environment,
         "nvidia": {
-            "ocr": {"model": settings.nvidia_ocr_model, "configured": bool(settings.nvidia_ocr_api_key)},
+            "ocr": {"model": "nvidia/nemotron-ocr-v2", "configured": bool(settings.nvidia_ocr_api_key)},
             "extraction": {"model": settings.nvidia_extraction_model, "configured": bool(settings.nvidia_extraction_api_key)},
         },
     }
@@ -77,7 +77,7 @@ def _nvidia_call(fn, *args):
 
 @app.post("/api/v1/documents/ocr")
 def document_ocr(payload: DocumentOcrRequest):
-    """Stage 1: NVIDIA Nemotron Parse reads the document image."""
+    """Stage 1: NVIDIA Nemotron OCR V2 reads the document image."""
     try:
         data = base64.b64decode(payload.contentBase64, validate=True)
     except (binascii.Error, ValueError):

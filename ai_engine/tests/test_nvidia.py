@@ -10,6 +10,13 @@ from src.main import app
 client = TestClient(app)
 PNG = base64.b64encode(b"\x89PNG fake").decode()
 
+OCR_RESPONSE = {"data": [{"index": 0, "text_detections": [
+    {"text_prediction": {"text": "Name", "confidence": 0.95}, "bounding_box": {"points": [{"x": 0.05, "y": 0.40}]}},
+    {"text_prediction": {"text": "Permanent Account Number", "confidence": 0.93}, "bounding_box": {"points": [{"x": 0.05, "y": 0.25}]}},
+    {"text_prediction": {"text": "AABCA1234F", "confidence": 0.97}, "bounding_box": {"points": [{"x": 0.05, "y": 0.31}]}},
+    {"text_prediction": {"text": "ABC INDUSTRIAL SOLUTIONS PVT LTD", "confidence": 0.9}, "bounding_box": {"points": [{"x": 0.05, "y": 0.46}]}},
+]}]}
+
 
 def _ok(json_body):
     res = MagicMock(ok=True, status_code=200)
@@ -17,24 +24,12 @@ def _ok(json_body):
     return res
 
 
-def _ocr_stream(blocks):
-    """blocks: list of (xmin, ymin, text, xmax, ymax, class_label)."""
-    content = "\n\n".join(f"<x_{xmin}><y_{ymin}>{text}<x_{xmax}><y_{ymax}><class_{label}>" for xmin, ymin, text, xmax, ymax, label in blocks)
-    return _stream([content])
-
-
 def test_ocr_parses_detections_in_reading_order():
-    blocks = [
-        (0.05, 0.40, "Name", 0.30, 0.42, "Text"),
-        (0.05, 0.25, "Permanent Account Number", 0.40, 0.27, "Text"),
-        (0.05, 0.31, "AABCA1234F", 0.25, 0.33, "Text"),
-        (0.05, 0.46, "ABC INDUSTRIAL SOLUTIONS PVT LTD", 0.50, 0.48, "Text"),
-    ]
-    with patch("src.nvidia.ocr.requests.post", return_value=_ocr_stream(blocks)), patch("src.nvidia.ocr.settings") as s:
-        s.nvidia_ocr_api_key, s.nemotron_ocr_endpoint, s.nvidia_ocr_model = "k", "https://x", "nvidia/nemotron-parse-2.0"
+    with patch("src.nvidia.ocr.requests.post", return_value=_ok(OCR_RESPONSE)), patch("src.nvidia.ocr.settings") as s:
+        s.nvidia_ocr_api_key, s.nemotron_ocr_endpoint, s.nemotron_ocr_merge_level = "k", "https://x", "paragraph"
         body = client.post("/api/v1/documents/ocr", json={"fileName": "a.png", "mimeType": "image/png", "contentBase64": PNG}).json()
     assert body["text"].split("\n") == ["Permanent Account Number", "AABCA1234F", "Name", "ABC INDUSTRIAL SOLUTIONS PVT LTD"]
-    assert body["model"] == "nvidia/nemotron-parse-2.0"
+    assert body["model"] == "nvidia/nemotron-ocr-v2"
 
 
 def test_ocr_without_key_fails_instead_of_inventing_data():
@@ -157,14 +152,13 @@ def _pdf(pages):
 
 def test_pdf_pages_are_rendered_and_read_in_order():
     pdf = base64.b64encode(_pdf(["PAN AABCA1234F", "Page two"])).decode()
-    page = _ocr_stream([(0.1, 0.1, "PAN AABCA1234F", 0.5, 0.2, "Text")])
-    with patch("src.nvidia.ocr.requests.post", return_value=page) as post, patch("src.nvidia.ocr.settings") as s:
-        s.nvidia_ocr_api_key, s.nemotron_ocr_endpoint, s.nvidia_ocr_model = "k", "https://x", "nvidia/nemotron-parse-2.0"
+    with patch("src.nvidia.ocr.requests.post", return_value=_ok(OCR_RESPONSE)) as post, patch("src.nvidia.ocr.settings") as s:
+        s.nvidia_ocr_api_key, s.nemotron_ocr_endpoint, s.nemotron_ocr_merge_level = "k", "https://x", "paragraph"
         body = client.post("/api/v1/documents/ocr", json={"fileName": "a.pdf", "mimeType": "application/pdf", "contentBase64": pdf}).json()
     assert post.call_count == 2  # one OCR call per page
     assert body["pages"] == 2
     assert body["blocks"][0]["page"] == 1 and body["blocks"][-1]["page"] == 2
-    assert post.call_args_list[0].kwargs["json"]["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert post.call_args_list[0].kwargs["json"]["input"][0]["url"].startswith("data:image/png;base64,")
 
 
 def test_broken_pdf_is_rejected():

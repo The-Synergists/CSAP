@@ -17,11 +17,10 @@ class Settings(BaseModel):
     # Shared secret required from the backend on every call except health (empty = not enforced).
     engine_api_key: str = os.getenv("ENGINE_API_KEY", "")
 
-    # NVIDIA model 1 — Nemotron Parse 2.0 (hosted NIM, OpenAI-compatible chat completions).
-    # Replaced Nemotron OCR V2 on 2026-09-29: same role (read a document image), different API shape.
+    # NVIDIA model 1 — Nemotron OCR V2 (hosted NIM)
     nvidia_ocr_api_key: str = os.getenv("NVIDIA_OCR_API_KEY", os.getenv("NVIDIA_API_KEY", ""))
-    nemotron_ocr_endpoint: str = os.getenv("NEMOTRON_OCR_ENDPOINT", "https://integrate.api.nvidia.com/v1/chat/completions")
-    nvidia_ocr_model: str = os.getenv("NVIDIA_OCR_MODEL", "nvidia/nemotron-parse-2.0")
+    nemotron_ocr_endpoint: str = os.getenv("NEMOTRON_OCR_ENDPOINT", "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2")
+    nemotron_ocr_merge_level: str = os.getenv("NEMOTRON_OCR_MERGE_LEVEL", "paragraph")
 
     # NVIDIA model 2 — language model for extraction, explanations and the assistant
     # (OpenAI-compatible chat completions). In use since 2026-09-27: nvidia/nemotron-3-super-120b-a12b
