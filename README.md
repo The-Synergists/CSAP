@@ -13,10 +13,10 @@ advisory AI recommendation, and record the decision — which is written to the 
 
 | Use | Model | Since |
 | --- | --- | --- |
-| Reading documents (OCR) | `nvidia/nemotron-ocr-v2` (hosted NIM) | Phase 1 |
+| Reading documents (OCR) | `nvidia/nemotron-parse-2.0` (integrate.api.nvidia.com) | 2026-09-29, replacing `nvidia/nemotron-ocr-v2` |
 | Field extraction, cited explanation, officer assistant | `nvidia/nemotron-3-super-120b-a12b` (integrate.api.nvidia.com) | 2026-09-27, replacing `nvidia/nemotron-3-ultra-550b-a55b` (same results on CSAP's tasks, about ten times faster) |
 
-Keys and the model name are environment variables (`NVIDIA_OCR_API_KEY`, `NVIDIA_EXTRACTION_API_KEY`,
+Keys and the model name are environment variables (`NVIDIA_OCR_API_KEY`, `NVIDIA_OCR_MODEL`, `NVIDIA_EXTRACTION_API_KEY`,
 `NVIDIA_EXTRACTION_MODEL` in `ai_engine/.env` and in Vercel); the UI shows them as "CSAP AI".
 
 ## Evaluation workflow rules
