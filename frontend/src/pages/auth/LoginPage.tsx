@@ -2,7 +2,7 @@
 // a soft raised shadow, 14px text in neutral-1000 (#172B4D), labels in neutral-800, inputs with a
 // 2px border that turns brand blue (#0C66E4) on focus, and a full-width primary button.
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2, Lock, Shield, XCircle } from 'lucide-react';
 import { useApp } from '../../state/appContext';
 import { useToast } from '../../components/ui/toast';
@@ -21,25 +21,6 @@ export const LoginPage: React.FC = () => {
   const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const doLogin = async (id: string, pw: string) => {
-    setSubmitting(true);
-    const result = await login(id, pw);
-    setSubmitting(false);
-    if (!result.ok) {
-      setErrors({ form: result.error });
-      return;
-    }
-    // RedirectIfAuthenticated forwards to the originally requested page once the session exists.
-    toast({ kind: 'success', title: 'Signed in' });
-  };
-
-  // A visitor opening CSAP is signed in automatically with the demo officer's credentials — no
-  // click needed. The form still works normally if sign-in has to be retried.
-  useEffect(() => {
-    void doLogin(identifier, password);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
@@ -47,7 +28,16 @@ export const LoginPage: React.FC = () => {
     if (!password) next.password = 'Enter your password.';
     setErrors(next);
     if (next.identifier || next.password) return;
-    await doLogin(identifier, password);
+
+    setSubmitting(true);
+    const result = await login(identifier, password);
+    setSubmitting(false);
+    if (!result.ok) {
+      setErrors({ form: result.error });
+      return;
+    }
+    // RedirectIfAuthenticated forwards to the originally requested page once the session exists.
+    toast({ kind: 'success', title: 'Signed in' });
   };
 
   return (
