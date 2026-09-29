@@ -1,13 +1,15 @@
-"""NVIDIA's hosted endpoints answer 429 (too many requests) or 503 when busy. Such a request is sent
-again after a pause (the server's Retry-After when given, otherwise 2, 4, 8, 16 s with a little jitter)
-instead of failing the document."""
+"""NVIDIA's hosted endpoints answer 429 (too many requests) or 503 when busy, and the newer,
+less mature hosted NIMs (Nemotron Parse 2.0) are also observed to answer 500 or 502 transiently —
+reproduced directly against NVIDIA's own published example, not just CSAP's requests. Such a
+request is sent again after a pause (the server's Retry-After when given, otherwise 2, 4, 8, 16 s
+with a little jitter) instead of failing the document."""
 
 import random
 import time
 
 import requests
 
-RETRY_STATUS = {429, 503}
+RETRY_STATUS = {429, 500, 502, 503, 504}
 ATTEMPTS = 5
 
 
