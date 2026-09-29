@@ -14,8 +14,9 @@ export const LoginPage: React.FC = () => {
   const { login } = useApp();
   const toast = useToast();
 
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  // Pre-filled with the demo officer's credentials so a visitor can sign in with one click (demo/recording use).
+  const [identifier, setIdentifier] = useState('CPCL10421');
+  const [password, setPassword] = useState('Cpcl@2026');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
   const [submitting, setSubmitting] = useState(false);
